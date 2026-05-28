@@ -1289,26 +1289,44 @@ def billing_portal():
         return redirect(url_for('billing'))
 
 def call_openrouter(messages, model, key, max_tokens=4000):
-    """Call OpenRouter chat completions API. Returns response text or error string."""
-    try:
-        r = _req.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
-            json={'model': model, 'messages': messages, 'max_tokens': max_tokens},
-            timeout=90
-        )
-        if r.status_code == 401:
-            return 'Error: Invalid or expired OpenRouter API key. Please update it in Settings.'
-        if r.status_code == 402:
-            return 'Error: OpenRouter account out of credits. Please add credits at openrouter.ai.'
-        if r.status_code == 429:
-            return 'Error: AI rate limit reached. Please wait a moment and try again.'
-        data = r.json()
-        if 'error' in data:
-            return f'AI Error: {data["error"].get("message", str(data["error"]))}'
-        return data['choices'][0]['message']['content'].strip()
-    except Exception as e:
-        return f'Error calling AI: {str(e)}'
+    """Call OpenRouter chat completions API with automatic fallback. Returns response text or error string."""
+    fallback_model = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
+    models_to_try = [model]
+    if fallback_model and fallback_model != model:
+        models_to_try.append(fallback_model)
+    
+    last_error = None
+    for m in models_to_try:
+        try:
+            r = _req.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+                json={'model': m, 'messages': messages, 'max_tokens': max_tokens},
+                timeout=90
+            )
+            if r.status_code == 401:
+                return 'Error: Invalid or expired OpenRouter API key. Please update it in Settings.'
+            if r.status_code == 402:
+                return 'Error: OpenRouter account out of credits. Please add credits at openrouter.ai.'
+            if r.status_code == 429:
+                last_error = 'Rate limited'
+                continue  # Try fallback
+            data = r.json()
+            if 'error' in data:
+                err_msg = data['error'].get('message', str(data['error']))
+                if any(k in err_msg.lower() for k in ['rate', 'limit', 'unavailable', 'not found', 'capacity']):
+                    last_error = err_msg
+                    continue  # Try fallback
+                return f'AI Error: {err_msg}'
+            result = data['choices'][0]['message']['content'].strip()
+            if m != model:
+                result = f"[Used fallback: {m}]\n\n{result}"
+            return result
+        except Exception as e:
+            last_error = str(e)
+            continue
+    
+    return f'Error: AI unavailable. Tried: {", ".join(models_to_try)}. Last error: {last_error or "unknown"}'
 
 
 def ai_describe_photo(image_path):
@@ -1866,6 +1884,9 @@ def settings():
         selected_model = request.form.get('ai_model', '').strip()
         if selected_model:
             set_setting('ai_model', selected_model)
+        fallback_model = request.form.get('ai_fallback_model', '').strip()
+        if fallback_model:
+            set_setting('ai_fallback_model', fallback_model)
         # New integration keys
         for key in ['sendgrid_api_key', 'from_email', 'stripe_secret_key',
                     'stripe_publishable_key', 'google_maps_api_key',
@@ -1888,13 +1909,15 @@ def settings():
         else:
             masked_key = '••••••••'
     env_key_set       = bool(OPENROUTER_KEY)
-    current_model     = get_setting('ai_model', 'openai/gpt-4o-mini')
+    current_model     = get_setting('ai_model', 'openrouter/owl-alpha')
+    current_fallback  = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
     current_willie_key = get_setting('willie_agent_key', '')
     return render_template('settings.html',
                            masked_key=masked_key,
                            key_is_set=bool(current_key),
                            env_key_set=env_key_set,
                            current_model=current_model,
+                           current_fallback=current_fallback,
                            current_willie_key=current_willie_key)
 
 # ── Admin: Team Management ────────────────────────────────────────────────────

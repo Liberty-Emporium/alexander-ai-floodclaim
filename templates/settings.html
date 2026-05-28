@@ -115,22 +115,16 @@
         <div class="model-grid">
 
           {% set models = [
-            ('openai/gpt-4o-mini',          'GPT-4o Mini',       'OpenAI',      ['fast','vision']),
-            ('openai/gpt-4o',               'GPT-4o',            'OpenAI',      ['smart','vision','best']),
-            ('openai/o1',                   'o1',                'OpenAI',      ['best','vision']),
-            ('openai/o3-mini',              'o3-mini',           'OpenAI',      ['fast','smart']),
-            ('anthropic/claude-opus-4',     'Claude Opus 4',     'Anthropic',   ['best','vision']),
-            ('anthropic/claude-sonnet-4-5', 'Claude Sonnet 4.5', 'Anthropic',   ['smart','vision']),
-            ('anthropic/claude-3-5-haiku',  'Claude 3.5 Haiku',  'Anthropic',   ['fast','vision']),
-            ('google/gemini-2.5-pro',       'Gemini 2.5 Pro',    'Google',      ['best','vision']),
-            ('google/gemini-2.0-flash',     'Gemini 2.0 Flash',  'Google',      ['fast','vision']),
-            ('google/gemini-2.5-flash',     'Gemini 2.5 Flash',  'Google',      ['fast','smart','vision']),
-            ('meta-llama/llama-4-maverick', 'Llama 4 Maverick',  'Meta',        ['smart','vision','free']),
-            ('meta-llama/llama-4-scout',    'Llama 4 Scout',     'Meta',        ['fast','vision','free']),
-            ('x-ai/grok-3-mini-beta',       'Grok-3 Mini',       'xAI',         ['fast','smart']),
-            ('x-ai/grok-2-vision-1212',     'Grok-2 Vision',     'xAI',         ['smart','vision']),
-            ('deepseek/deepseek-r1',        'DeepSeek R1',       'DeepSeek',    ['best','smart']),
-            ('mistralai/mistral-small-3.1', 'Mistral Small 3.1', 'Mistral',     ['fast','vision','free']),
+            ('openrouter/owl-alpha',          'OWL Alpha',         'OpenRouter',  ['best','smart','vision']),
+            ('anthropic/claude-sonnet-4-5',     'Claude Sonnet 4.5','Anthropic',   ['smart','vision','fallback']),
+            ('anthropic/claude-opus-4',         'Claude Opus 4',    'Anthropic',   ['best','vision']),
+            ('openai/gpt-4o',                  'GPT-4o',           'OpenAI',      ['smart','vision']),
+            ('openai/gpt-4o-mini',             'GPT-4o Mini',      'OpenAI',      ['fast','vision']),
+            ('openai/o3-mini',                 'o3-mini',          'OpenAI',      ['fast','smart']),
+            ('google/gemini-2.5-pro',          'Gemini 2.5 Pro',   'Google',      ['best','vision']),
+            ('google/gemini-2.5-flash',        'Gemini 2.5 Flash', 'Google',      ['fast','smart','vision']),
+            ('deepseek/deepseek-r1',           'DeepSeek R1',      'DeepSeek',    ['best','smart']),
+            ('meta-llama/llama-4-maverick',    'Llama 4 Maverick', 'Meta',        ['smart','vision','free']),
           ] %}
 
           {% for model_id, model_name, provider, tags in models %}
@@ -153,6 +147,29 @@
         </div>
         <div style="font-size:.78rem;color:var(--gray-400);margin-top:.6rem;">
           All models support vision (photo analysis). <strong>Free</strong> models cost nothing on OpenRouter.
+        </div>
+      </div>
+
+      <!-- Fallback Model Picker -->
+      <div class="form-group" style="margin-top:1.25rem;margin-bottom:1.25rem">
+        <label style="margin-bottom:.6rem;display:block;">🔄 Fallback Model <span style="font-weight:400;color:var(--gray-400);">(used if primary model is down or rate-limited)</span></label>
+        <div class="model-grid">
+          {% for model_id, model_name, provider, tags in models %}
+          <label style="display:contents">
+            <input class="model-option" type="radio" name="ai_fallback_model"
+                   value="{{ model_id }}"
+                   {% if current_fallback == model_id %}checked{% endif %}/>
+            <div class="model-card">
+              <span class="m-provider">{{ provider }}</span>
+              <span class="m-name">{{ model_name }}</span>
+              <div class="m-tags">
+                {% for tag in tags %}
+                <span class="m-tag tag-{{ tag }}">{{ tag }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </label>
+          {% endfor %}
         </div>
       </div>
 
