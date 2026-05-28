@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>{% block title %}FloodClaim Pro{% endblock %}</title>
+  <title>{% block title %}FloodClaims Pro{% endblock %}</title>
   {% if session.user_id %}<meta name="csrf" content="{{ csrf_token() }}">{% endif %}
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1069,7 +1069,7 @@ const HELP_CONTENT = {
         <div class="help-step"><div class="help-step-num">3</div><div class="help-step-body"><strong>Aquila Key + Sync</strong><p>Paste Willie’s widget API key (from AI Agent Widget app → Aquila → Edit), then click “⚡ Sync Actions to Aquila”. This gives Aquila her 28 superpowers.</p></div></div>
         <div class="help-step"><div class="help-step-num">4</div><div class="help-step-body"><strong>SendGrid</strong><p>Enables automatic client emails on status changes. Free tier sends 100 emails/day. Required for notifications to work.</p></div></div>
         <div class="help-step"><div class="help-step-num">5</div><div class="help-step-body"><strong>Twilio</strong><p>Enables SMS text messages to clients. Optional but great for urgent updates.</p></div></div>
-        <div class="help-step"><div class="help-step-num">6</div><div class="help-step-body"><strong>Stripe</strong><p>Only needed if you’re billing other adjusters or firms for using FloodClaim Pro. Not needed for personal use.</p></div></div>
+        <div class="help-step"><div class="help-step-num">6</div><div class="help-step-body"><strong>Stripe</strong><p>Only needed if you’re billing other adjusters or firms for using FloodClaims Pro. Not needed for personal use.</p></div></div>
       </div>
       <div class="help-tip"><strong>Weekly Report:</strong> Set your email address at the bottom and click Send — you’ll get a weekly summary of new claims, closures, and pipeline value.</div>
     `
@@ -1093,7 +1093,7 @@ const HELP_CONTENT = {
       <div class="help-section">
         <div class="help-section-title">Adding a team member</div>
         <div class="help-step"><div class="help-step-num">1</div><div class="help-step-body"><strong>Fill the form on the right</strong><p>Enter name, email, and a temporary password. Set role to <em>adjuster</em> for field staff, <em>admin</em> for managers who need full access.</p></div></div>
-        <div class="help-step"><div class="help-step-num">2</div><div class="help-step-body"><strong>Share the login</strong><p>Send the adjuster their email and temporary password. They log in at your FloodClaim Pro URL and can change their password in Settings.</p></div></div>
+        <div class="help-step"><div class="help-step-num">2</div><div class="help-step-body"><strong>Share the login</strong><p>Send the adjuster their email and temporary password. They log in at your FloodClaims Pro URL and can change their password in Settings.</p></div></div>
         <div class="help-step"><div class="help-step-num">3</div><div class="help-step-body"><strong>Assign claims</strong><p>On the Dashboard or when creating a new claim, use the Adjuster dropdown to assign claims to specific team members.</p></div></div>
       </div>
       <div class="help-tip"><strong>Claims count</strong> shows how many active claims each adjuster has. Use this to balance workload evenly.</div>
@@ -1124,7 +1124,7 @@ const CURRENT_ENDPOINT = '{{ request.endpoint }}';
 function openHelp() {
   const key  = PAGE_HELP_MAP[CURRENT_ENDPOINT] || null;
   const info = key ? HELP_CONTENT[key] : null;
-  const title = info ? info.title : 'FloodClaim Pro Help';
+  const title = info ? info.title : 'FloodClaims Pro Help';
   const html  = info ? info.html : `
     <div class="help-tip">Select a page from the sidebar to see its specific instructions.</div>
     <div class="help-section">
