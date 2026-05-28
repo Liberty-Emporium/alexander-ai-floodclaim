@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Aquila — FloodClaim Pro{% endblock %}
+{% block title %}Aquila — FloodClaims Pro{% endblock %}
 {% block page_title %}🌊 Chat with Aquila{% endblock %}
 
 {% block extra_css %}
@@ -318,7 +318,7 @@ let isThinking    = false;
 const SESSION_ID  = 'willie-{{ session.user_id }}-' + Date.now();
 // Context: claim_id if navigated from a claim page
 const CLAIM_ID    = new URLSearchParams(window.location.search).get('claim_id') || null;
-const PAGE_CTX    = document.title || 'FloodClaim Pro';
+const PAGE_CTX    = document.title || 'FloodClaims Pro';
 
 function autoResize(el) {
   el.style.height = 'auto';
