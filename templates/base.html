@@ -748,9 +748,6 @@
 
 {% block extra_js %}{% endblock %}
 
-<!-- Aquila Chat Bubble — local, no widget dependency -->
-<style>
-  #aai-bubble {
 <!-- Aquila Chat Bubble + Floating Chat Panel — no page navigation -->
 <style>
   /* Bubble */
@@ -850,8 +847,8 @@
 
 <script>
 (function() {
-  // Check user is logged in (don't show bubble on login page)
-  if (!document.cookie.includes('session')) return;
+  // Check user is logged in via CSRF meta tag (session cookie is HttpOnly, invisible to JS)
+  if (!document.querySelector('meta[name="csrf"]')) return;
 
   var chatHistory = [];
   var isThinking = false;
@@ -1350,3 +1347,5 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeHelp();
 });
 </script>
+</body>
+</html>
