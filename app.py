@@ -1332,48 +1332,39 @@ def call_openrouter(messages, model, key, max_tokens=4000):
 def ai_describe_photo(image_path):
     key = OPENROUTER_KEY
     if not key:
-        try:
-            kys_token = os.environ.get('KYS_API_TOKEN', '')
-            kys_url   = os.environ.get('KYS_URL', 'https://ai-api-tracker-production.up.railway.app')
-            if kys_token:
-                r = _req.post(f'{kys_url}/api/fetch-key',
-                              headers={'Authorization': f'Bearer {kys_token}',
-                                       'Content-Type': 'application/json'},
-                              json={'key': 'openrouter'}, timeout=5)
-                d = r.json()
-                if d.get('ok'):
-                    key = d.get('value', '')
-        except Exception:
-            pass
-    if not key:
-        return ''   # No key — store blank, don't pollute the DB with error strings
+        return ''  # No key — return empty, don't pollute DB with error strings
     try:
         with open(image_path, 'rb') as f:
             img_b64 = base64.b64encode(f.read()).decode()
         ext  = image_path.rsplit('.', 1)[-1].lower()
         mime = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
-        selected_model = get_setting('ai_model', 'openai/gpt-4o-mini')
-        r = _req.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
-            json={
-                'model': selected_model,
-                'messages': [{
-                    'role': 'user',
-                    'content': [
-                        {'type': 'text', 'text': (
-                            'You are a flood damage assessor. Describe the flood damage '
-                            'visible in this photo in 2-3 sentences. Be specific about what '
-                            'is damaged, the severity, and likely repair needs. Be professional and concise.'
-                        )},
-                        {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}}
-                    ]
-                }],
-                'max_tokens': 200
-            }, timeout=30)
-        return r.json()['choices'][0]['message']['content']
+        # Use the same model + fallback logic
+        model = get_setting('ai_model', 'openrouter/owl-alpha')
+        result = call_openrouter(
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'text', 'text': (
+                        'You are a flood damage assessor. Describe the flood damage '
+                        'visible in this photo in 2-3 sentences. Be specific about what '
+                        'is damaged, the severity, and likely repair needs. Be professional and concise.'
+                    )},
+                    {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}}
+                ]
+            }],
+            model=model,
+            key=key,
+            max_tokens=200
+        )
+        # result is a string — if it starts with "Error:" or "[Used fallback:" it's still usable
+        if result.startswith('Error:'):
+            return ''
+        # Strip fallback tag from output if present
+        if result.startswith('[Used fallback:'):
+            result = result.split(']\n\n', 1)[-1] if ']\n\n' in result else result
+        return result
     except Exception as e:
-        return ''  # Return empty so it can be retried — never pollute DB with error strings
+        return ''  # Return empty so it can be retried
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
