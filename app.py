@@ -2872,6 +2872,70 @@ Always be professional, specific, and helpful. When you don’t know something, 
     return redirect(url_for('settings'))
 
 
+# ── Admin: Train Aquila (Brain Editor) ────────────────────────────────────────
+
+@app.route('/admin/willie/brain', methods=['GET'])
+@login_required
+@admin_required
+def willie_brain_get():
+    """Fetch Aquila's current brain files from the AI Widget."""
+    WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
+    WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
+    willie_key      = get_setting('willie_agent_key', '')
+    if not willie_key:
+        return jsonify({'error': 'Aquila widget API key not set. Go to Settings → Aquila Integration and paste the key.'}), 400
+    try:
+        r = _req.get(
+            f'{WIDGET_BASE}/agent/{WILLIE_AGENT_ID}/brain',
+            params={'token': willie_key},
+            timeout=15
+        )
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/willie/brain/update', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def willie_brain_update():
+    """Save Aquila's brain files to the AI Widget."""
+    WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
+    WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
+    willie_key      = get_setting('willie_agent_key', '')
+    if not willie_key:
+        return jsonify({'error': 'Aquila widget API key not set.'}), 400
+
+    identity_md   = request.form.get('identity_md', '')
+    soul_md       = request.form.get('soul_md', '')
+    memory_md     = request.form.get('memory_md', '')
+    system_prompt = request.form.get('system_prompt', '')
+
+    payload = {
+        'token':         willie_key,
+        'identity_md':   identity_md,
+        'soul_md':       soul_md,
+        'memory_md':     memory_md,
+    }
+    if system_prompt:
+        payload['system_prompt'] = system_prompt
+
+    try:
+        r = _req.post(
+            f'{WIDGET_BASE}/agent/{WILLIE_AGENT_ID}/brain/update',
+            json=payload,
+            timeout=15
+        )
+        d = r.json()
+        if d.get('ok'):
+            return jsonify({'ok': True, 'message': 'Brain files saved!', 'updated': d.get('updated', [])})
+        else:
+            return jsonify({'error': d.get('error', 'Unknown error')}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/willie/api/actions/sync', methods=['POST'])
 def willie_sync_actions():
     """Push all FloodClaim actions to Willie's widget so he can use them correctly.
