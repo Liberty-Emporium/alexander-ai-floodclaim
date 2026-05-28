@@ -763,15 +763,7 @@
   #aai-bubble:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(6,214,199,0.6) !important; }
   #aai-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
   #aai-bubble .aai-icon { font-size: 28px; }
-  #aai-bubble .aai-greeting {
-    position: absolute; bottom: 64px; right: 0;
-    background: var(--surface, #1a1a2e); color: var(--t-primary, #e2e8f0);
-    padding: 10px 14px; border-radius: 12px; font-size: .8rem;
-    white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.3);
-    max-width: 240px; white-space: normal; line-height: 1.4;
-    opacity: 0; pointer-events: none; transition: opacity .3s;
-  }
-  #aai-bubble:hover .aai-greeting { opacity: 1; pointer-events: auto; }
+
 
   /* Chat Panel Overlay */
   #aai-chat-panel {
@@ -854,8 +846,7 @@
   var chatHistory = [];
   var isThinking = false;
   var botName = 'Aquila';
-  var bubbleIcon = '\u{1F30A}'; // 🌊 emoji via unicode to avoid encoding issues
-  var greeting = "Hi! I'm Aquila, your flood damage expert. Click to chat!";
+  var bubbleIcon = '\u{1F30A}';
   var claimId = null;
 
   // Try to get claim ID from URL or page
@@ -866,8 +857,7 @@
   var bubble = document.createElement('div');
   bubble.id = 'aai-bubble';
   bubble.innerHTML = 
-    '<span class="aai-icon" id="aai-bubble-emoji">' + bubbleIcon + '</span>' +
-    '<div class="aai-greeting" id="aai-bubble-greeting">' + greeting + '</div>';
+    '<span class="aai-icon" id="aai-bubble-emoji">' + bubbleIcon + '</span>';
   document.body.appendChild(bubble);
 
   // ── Create Chat Panel ──
