@@ -32,12 +32,12 @@ app = Flask(__name__)
 # ── EcDash network client (Phase 2 + 3) ───────────────────────────────────
 try:
     from ecdash_client import init_app as _ecdash_init, call_app as _call_app
-    _ecdash_init(app, 'FloodClaim Pro')
+    _ecdash_init(app, 'FloodClaims Pro')
 except ImportError:
     _ecdash_init = None
     def _call_app(*a, **kw): return None
 
-APP_NAME    = 'FloodClaim Pro'
+APP_NAME    = 'FloodClaims Pro'
 APP_VERSION = '1.0'
 import time as _uptime_time
 _APP_START_TIME = _uptime_time.time()
@@ -544,16 +544,16 @@ def notify_client_status_change(claim, new_status):
     """Email client when claim status changes."""
     if not claim['client_email']:
         return
-    subject = f'FloodClaim Pro — Your Claim {claim["claim_number"]} Update'
+    subject = f'FloodClaims Pro — Your Claim {claim["claim_number"]} Update'
     html = f'''<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#0a1628">FloodClaim Pro Update</h2>
+        <h2 style="color:#0a1628">FloodClaims Pro Update</h2>
         <p>Hello {claim["client_name"]},</p>
         <p>Your flood damage claim <strong>{claim["claim_number"]}</strong> has been updated.</p>
         <p style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981">
             <strong>New Status: {new_status}</strong></p>
         <p>If you have questions, please contact your adjuster directly.</p>
         <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0">
-        <p style="font-size:12px;color:#94a3b8">FloodClaim Pro · Professional Flood Damage Assessment</p>
+        <p style="font-size:12px;color:#94a3b8">FloodClaims Pro · Professional Flood Damage Assessment</p>
     </div>'''
     send_email(claim['client_email'], subject, html)
 
@@ -1137,7 +1137,7 @@ def generate_portal_link(claim_id):
             <p>Hello {claim["client_name"]},</p>
             <p>Your adjuster has shared your flood damage claim with you.</p>
             <p><a href="{portal_url}" style="background:#0a1628;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">View My Claim ↗</a></p>
-            <p style="font-size:12px;color:#94a3b8">Claim: {claim["claim_number"]} · FloodClaim Pro</p></div>'''
+            <p style="font-size:12px;color:#94a3b8">Claim: {claim["claim_number"]} · FloodClaims Pro</p></div>'''
         send_email(claim['client_email'], subject, html)
     return jsonify({'ok': True, 'portal_url': portal_url, 'token': token})
 
@@ -1224,7 +1224,7 @@ def billing_checkout():
             payment_method_types=['card'],
             line_items=[{'price_data': {
                 'currency': 'usd',
-                'product_data': {'name': f'FloodClaim Pro — {plan["name"]} Plan'},
+                'product_data': {'name': f'FloodClaims Pro — {plan["name"]} Plan'},
                 'unit_amount': plan['price_cents'],
                 'recurring': {'interval': 'month'},
             }, 'quantity': 1}],
@@ -1261,7 +1261,7 @@ def billing_success():
             db.commit()
         except Exception:
             pass
-    flash('🎉 Subscription activated! Welcome to FloodClaim Pro.', 'success')
+    flash('🎉 Subscription activated! Welcome to FloodClaims Pro.', 'success')
     return redirect(url_for('billing'))
 
 @app.route('/billing/portal', methods=['POST'])
@@ -2100,7 +2100,7 @@ def willie_chat():
     ) or '  None scheduled today'
 
     # Build the enriched system context injected as first message
-    system_context = f"""You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaim Pro.
+    system_context = f"""You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaims Pro.
 You have FULL CONTROL of the app and can take actions directly on behalf of the adjuster.
 Always be helpful, concise, and professional. Use your knowledge of NFIP rules and flood claim procedures.
 
@@ -2164,7 +2164,7 @@ When referencing a claim, always use its claim number AND name so it's clear."""
     brain_system    = get_setting('brain_system_prompt', '')
 
     # Default brain if nothing saved yet
-    default_system = brain_system or """You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaim Pro.
+    default_system = brain_system or """You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaims Pro.
 You have FULL CONTROL of the app and can take actions directly on behalf of the adjuster.
 Always be helpful, concise, and professional. Use your knowledge of NFIP rules and flood claim procedures."""
 
@@ -2182,7 +2182,7 @@ Always be helpful, concise, and professional. Use your knowledge of NFIP rules a
     # Replace the old system_context with the brain-augmented one
     # but keep all the live app context (claims, dashboard, etc.)
     live_context = system_context.replace(
-        'You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaim Pro.\nYou have FULL CONTROL of the app and can take actions directly on behalf of the adjuster.\nAlways be helpful, concise, and professional. Use your knowledge of NFIP rules and flood claim procedures.',
+        'You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaims Pro.\nYou have FULL CONTROL of the app and can take actions directly on behalf of the adjuster.\nAlways be helpful, concise, and professional. Use your knowledge of NFIP rules and flood claim procedures.',
         final_system
     )
 
@@ -2930,7 +2930,7 @@ def save_chat_bubble():
 
 @app.route('/willie/api/actions/sync', methods=['POST'])
 def willie_sync_actions():
-    """Push all FloodClaim actions to Willie's widget so he can use them correctly.
+    """Push all FloodClaims actions to Willie's widget so he can use them correctly.
     Requires willie_agent_key to be set in settings (Willie's own widget API key).
     Auth: Willie token OR admin session."""
     if not session.get('user_id') and not willie_auth():
@@ -2950,7 +2950,7 @@ def willie_sync_actions():
     ACTIONS = [
         {
             'name':        'get_dashboard',
-            'description': 'Get FloodClaim Pro dashboard stats: total claims, pipeline value, status breakdown, recent claims.',
+            'description': 'Get FloodClaims Pro dashboard stats: total claims, pipeline value, status breakdown, recent claims.',
             'method':      'GET',
             'url':         f'{FLOOD_BASE}/willie/api/dashboard',
             'headers':     {'Authorization': f'Bearer {flood_token}'},
@@ -3081,7 +3081,7 @@ def willie_sync_actions():
         },
         {
             'name':        'get_settings',
-            'description': 'Get current FloodClaim Pro app settings (AI model, etc.)',
+            'description': 'Get current FloodClaims Pro app settings (AI model, etc.)',
             'method':      'GET',
             'url':         f'{FLOOD_BASE}/willie/api/settings',
             'headers':     {'Authorization': f'Bearer {flood_token}'},
@@ -3346,13 +3346,13 @@ def willie_notify_client(claim_id):
         return jsonify({'error': 'message is required'}), 400
     sent_email = sent_sms_flag = False
     if method in ('email', 'both') and claim['client_email']:
-        subject = f'Update on your FloodClaim — {claim["claim_number"]}'
-        html = f'<div style="font-family:sans-serif"><h2>FloodClaim Pro Update</h2><p>Hello {claim["client_name"]},</p><p>{message}</p><hr><small>Claim: {claim["claim_number"]}</small></div>'
+        subject = f'Update on your FloodClaims — {claim["claim_number"]}'
+        html = f'<div style="font-family:sans-serif"><h2>FloodClaims Pro Update</h2><p>Hello {claim["client_name"]},</p><p>{message}</p><hr><small>Claim: {claim["claim_number"]}</small></div>'
         sent_email = send_email(claim['client_email'], subject, html)
         if sent_email:
             _log_notification(claim_id, 'manual', claim['client_email'], message)
     if method in ('sms', 'both'):
-        sent_sms_flag = notify_client_sms(claim, f'FloodClaim Pro | {claim["claim_number"]}: {message}')
+        sent_sms_flag = notify_client_sms(claim, f'FloodClaims Pro | {claim["claim_number"]}: {message}')
     result = []
     if sent_email: result.append('email')
     if sent_sms_flag: result.append('SMS')
@@ -3712,7 +3712,7 @@ def send_claim_sms(claim_id):
     msg = request.form.get('message', '').strip()
     if not msg:
         return jsonify({'ok': False, 'error': 'Message required'}), 400
-    full_msg = f'FloodClaim Pro | {claim["claim_number"]}: {msg}'
+    full_msg = f'FloodClaims Pro | {claim["claim_number"]}: {msg}'
     sent = notify_client_sms(claim, full_msg)
     if sent:
         flash(f'SMS sent to {claim["client_phone"]}.', 'success')
@@ -3867,7 +3867,7 @@ def send_weekly_report():
     html = f'''
     <div style="font-family:sans-serif;max-width:640px;margin:0 auto">
       <div style="background:#0a1628;color:#fff;padding:1.5rem 2rem;border-radius:12px 12px 0 0">
-        <h2 style="margin:0;font-size:1.3rem">FloodClaim Pro — Weekly Summary</h2>
+        <h2 style="margin:0;font-size:1.3rem">FloodClaims Pro — Weekly Summary</h2>
         <p style="margin:.25rem 0 0;opacity:.7;font-size:.85rem">{datetime.datetime.now().strftime("%B %d, %Y")}</p>
       </div>
       <div style="background:#f8fafc;padding:1.5rem 2rem;border:1px solid #e2e8f0;border-top:none">
@@ -3889,10 +3889,10 @@ def send_weekly_report():
             <div style="font-size:.75rem;color:#64748b;font-weight:700;text-transform:uppercase">Pipeline Value</div>
           </div>
         </div>
-        <p style="font-size:.85rem;color:#64748b">Log in to <a href="https://billy-floods.up.railway.app">FloodClaim Pro</a> to view full details.</p>
+        <p style="font-size:.85rem;color:#64748b">Log in to <a href="https://billy-floods.up.railway.app">FloodClaims Pro</a> to view full details.</p>
       </div>
     </div>'''
-    sent = send_email(admin_email, f'FloodClaim Pro — Weekly Report ({datetime.datetime.now().strftime("%b %d")})', html)
+    sent = send_email(admin_email, f'FloodClaims Pro — Weekly Report ({datetime.datetime.now().strftime("%b %d")})', html)
     if sent:
         flash(f'📧 Weekly report sent to {admin_email}.', 'success')
     else:
@@ -4108,9 +4108,9 @@ def notifications_send():
     if not claim['client_email']:
         flash('No client email on this claim.', 'error')
         return redirect(url_for('notifications'))
-    subject = f'Update on your FloodClaim — {claim["claim_number"]}'
+    subject = f'Update on your FloodClaims — {claim["claim_number"]}'
     html = f'''<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#0a1628">FloodClaim Pro — Claim Update</h2>
+        <h2 style="color:#0a1628">FloodClaims Pro — Claim Update</h2>
         <p>Hello {claim["client_name"]},</p>
         <p>{message}</p>
         <p style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981">
@@ -4118,7 +4118,7 @@ def notifications_send():
             Status: {claim["status"]}
         </p>
         <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0">
-        <p style="font-size:12px;color:#94a3b8">FloodClaim Pro · Professional Flood Damage Assessment</p>
+        <p style="font-size:12px;color:#94a3b8">FloodClaims Pro · Professional Flood Damage Assessment</p>
     </div>'''
     sent = send_email(claim['client_email'], subject, html)
     if sent:
@@ -4354,7 +4354,7 @@ def _build_proof_of_loss_text(claim, rooms, room_data):
         f'Adjuster Signature:       _________________________ Date: __________',
         f'Flood Control Number:     _________________________',
         '',
-        '--- Generated by FloodClaim Pro ---',
+        '--- Generated by FloodClaims Pro ---',
     ]
     return '\n'.join(lines)
 
@@ -4419,7 +4419,7 @@ def _build_xactimate_esx(claim, rooms_data):
         '<XactimateEstimate version="1.0" xmlns="http://www.xactware.com/xactimate">',
         '  <Header>',
         f'    <FileType>ESX</FileType>',
-        f'    <CreatedBy>FloodClaim Pro</CreatedBy>',
+        f'    <CreatedBy>FloodClaims Pro</CreatedBy>',
         f'    <ExportDate>{now}</ExportDate>',
         '  </Header>',
         '  <ClaimInfo>',
@@ -4699,7 +4699,7 @@ IMPORTANT DEADLINES
 • Keep copies of all submitted documents
 • Note your claim number: {cn}
 
-Generated by FloodClaim Pro — Professional Flood Damage Assessment
+Generated by FloodClaims Pro — Professional Flood Damage Assessment
 '''
         zf.writestr(f'{cn}/README_{carrier.upper()}.txt', readme)
 
