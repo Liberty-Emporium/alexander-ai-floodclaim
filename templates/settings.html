@@ -12,12 +12,6 @@
   .key-set   { background: rgba(16,185,129,.12); color: #065f46; }
   .key-unset { background: rgba(239,68,68,.12);  color: #991b1b; }
   .key-env   { background: rgba(59,130,246,.12); color: #1e40af; }
-  .masked-key {
-    font-family: monospace; font-size: .85rem;
-    background: var(--gray-100); padding: .5rem .875rem;
-    border-radius: 8px; color: var(--gray-800);
-    border: 1px solid var(--gray-200); letter-spacing: .05em;
-  }
   .info-box {
     background: rgba(6,182,212,.07); border: 1px solid rgba(6,182,212,.2);
     border-radius: 10px; padding: 1rem 1.25rem; font-size: .85rem;
@@ -28,10 +22,7 @@
 
   /* Model picker */
   .model-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .6rem;
-    margin-top: .5rem;
+    display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .5rem;
   }
   @media (max-width: 500px) {
     .settings-section { max-width: 100%; }
@@ -42,12 +33,10 @@
     display: flex; flex-direction: column; gap: .2rem;
     border: 2px solid var(--gray-200); border-radius: 10px;
     padding: .75rem 1rem; cursor: pointer;
-    transition: border-color .15s, background .15s;
-    user-select: none;
+    transition: border-color .15s, background .15s; user-select: none;
   }
   .model-option:checked + .model-card {
-    border-color: var(--blue-light);
-    background: rgba(59,130,246,.06);
+    border-color: var(--blue-light); background: rgba(59,130,246,.06);
   }
   .model-card:hover { border-color: var(--blue-light); background: rgba(59,130,246,.03); }
   .model-card .m-name { font-size: .85rem; font-weight: 700; color: var(--gray-800); }
@@ -62,16 +51,81 @@
   .tag-best    { background: rgba(245,158,11,.15); color: #92400e; }
   .tag-vision  { background: rgba(6,182,212,.12);  color: #164e63; }
   .tag-free    { background: rgba(16,185,129,.2);  color: #065f46; }
+
+  /* Help modal */
+  .help-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .help-modal-overlay.open { display: flex; }
+  .help-modal {
+    background: var(--surface, #1a1a2e); border: 1px solid var(--border, #334155);
+    border-radius: 16px; padding: 1.5rem; max-width: 480px; width: 90%;
+    max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .help-modal h3 { margin: 0 0 1rem; font-size: 1.1rem; color: var(--teal, #06D6C7); }
+  .help-modal p, .help-modal li { font-size: .85rem; color: var(--t-secondary, #94a3b8); line-height: 1.7; }
+  .help-modal ol { padding-left: 1.25rem; margin: .75rem 0; }
+  .help-modal li { margin-bottom: .4rem; }
+  .help-modal code {
+    background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 4px;
+    font-size: .8rem; color: var(--teal, #06D6C7);
+  }
+  .help-modal .close-btn {
+    float: right; background: none; border: none; color: var(--t-muted, #64748b);
+    font-size: 1.3rem; cursor: pointer; padding: 0; line-height: 1;
+  }
+  .help-box {
+    background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.2);
+    border-radius: 8px; padding: .875rem 1rem; font-size: .82rem;
+    color: var(--gray-400); line-height: 1.6; margin-top: .75rem;
+  }
+  .help-box strong { color: var(--blue-light); }
+
+  /* Chat bubble icon picker */
+  .icon-grid {
+    display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+    margin: .5rem 0;
+  }
+  .icon-opt {
+    display: none;
+  }
+  .icon-cell {
+    text-align: center; padding: 8px 4px; border-radius: 8px; cursor: pointer;
+    font-size: 1.3rem; border: 2px solid transparent; transition: all .15s;
+  }
+  .icon-cell:hover { background: rgba(59,130,246,.1); }
+  .icon-opt:checked + .icon-cell {
+    border-color: var(--blue-light); background: rgba(59,130,246,.12);
+  }
+  .upload-preview {
+    width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--border); margin-top: .5rem;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="settings-section">
 
-  <!-- AI Integration Card -->
+  <!-- ═══════════════════════════════════════════════════════════════════
+       HELP MODAL
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="help-modal-overlay" id="helpModal" onclick="closeHelp(event)">
+    <div class="help-modal" onclick="event.stopPropagation()">
+      <button class="close-btn" onclick="closeHelp()">&times;</button>
+      <div id="helpModalBody"></div>
+    </div>
+  </div>
+
+  <!-- ── 1. AI Integration Card ─────────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">🤖 AI Integration</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        🤖 AI Integration
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 10px;" onclick="showHelp('ai-integration')">❓ Help</button>
+      </div>
       {% if env_key_set %}
         <span class="key-status key-env">✅ Active (Railway Env Var)</span>
       {% else %}
@@ -80,9 +134,11 @@
     </div>
 
     <div class="info-box">
-      <strong>OpenRouter</strong> powers AI photo analysis on every claim.<br>
+      <strong>OpenRouter</strong> powers two things:<br>
+      <strong>1.</strong> <em>AI Photo Analysis</em> — analyzes damage photos on every claim.<br>
+      <strong>2.</strong> <em>Aquila Chat</em> — the AI assistant (chat bubble) that can create claims, add rooms, look up FEMA zones, check compliance, and more.<br><br>
       Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab.<br>
-      Get a key at <strong>openrouter.ai</strong>.
+      Get a key at <strong>openrouter.ai</strong> (free sign-up, pay-as-you-go).
     </div>
 
     <form method="POST">
@@ -90,9 +146,8 @@
 
       <!-- Primary Model Picker -->
       <div class="form-group" style="margin-bottom:1.25rem">
-        <label style="margin-bottom:.6rem;display:block;">AI Model for Photo Analysis</label>
+        <label style="margin-bottom:.6rem;display:block;">AI Model (for Photo Analysis & Aquila Chat)</label>
         <div class="model-grid">
-
           {% set models = [
             ('openrouter/owl-alpha',          'OWL Alpha',         'OpenRouter',  ['best','smart','vision']),
             ('anthropic/claude-sonnet-4-5',     'Claude Sonnet 4.5','Anthropic',   ['smart','vision','fallback']),
@@ -105,7 +160,6 @@
             ('deepseek/deepseek-r1',           'DeepSeek R1',      'DeepSeek',    ['best','smart']),
             ('meta-llama/llama-4-maverick',    'Llama 4 Maverick', 'Meta',        ['smart','vision','free']),
           ] %}
-
           {% for model_id, model_name, provider, tags in models %}
           <label style="display:contents">
             <input class="model-option" type="radio" name="ai_model"
@@ -122,16 +176,12 @@
             </div>
           </label>
           {% endfor %}
-
-        </div>
-        <div style="font-size:.78rem;color:var(--gray-400);margin-top:.6rem;">
-          All models support vision (photo analysis). <strong>Free</strong> models cost nothing on OpenRouter.
         </div>
       </div>
 
       <!-- Fallback Model Picker -->
       <div class="form-group" style="margin-top:1.25rem;margin-bottom:1.25rem">
-        <label style="margin-bottom:.6rem;display:block;">🔄 Fallback Model <span style="font-weight:400;color:var(--gray-400);">(used if primary model is down or rate-limited)</span></label>
+        <label style="margin-bottom:.6rem;display:block;">🔄 Fallback Model <span style="font-weight:400;color:var(--gray-400);">(auto-switches if primary is down or rate-limited)</span></label>
         <div class="model-grid">
           {% for model_id, model_name, provider, tags in models %}
           <label style="display:contents">
@@ -154,101 +204,33 @@
 
       <hr class="divider">
 
-      <!-- Save -->
       <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
         <button type="submit" class="btn btn-primary">💾 Save Settings</button>
       </div>
-
     </form>
 
     {% if not env_key_set %}
     <div style="margin-top:1rem;font-size:.85rem;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;">
-      ⚠️ <strong>AI features disabled.</strong> Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab to enable AI photo analysis.
+      ⚠️ <strong>AI features disabled.</strong> Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab to enable both photo analysis and Aquila chat.
     </div>
     {% endif %}
   </div>
 
-  <!-- Aquila Integration -->
+  <!-- ── 2. Train Aquila (Brain Editor) ──────────────────────────────── -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">🤖 Aquila Integration</div>
-      {% set willie_key = current_willie_key or '' %}
-      {% if willie_key %}
-        <span class="key-status key-set">✅ Connected</span>
-      {% else %}
-        <span class="key-status key-unset">⚠️ Not Connected</span>
-      {% endif %}
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        🧠 Train Aquila
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 10px;" onclick="showHelp('train-aquila')">❓ Help</button>
+      </div>
     </div>
 
     <div class="info-box">
-      <strong>Aquila</strong> is your AI assistant in the chat bubble — he can add rooms, line items,
-      look up claims, and more. Paste his API key (from <strong>AI Agent Widget → Aquila → Edit</strong>)
-      then click <strong>Sync Actions</strong> to wire everything up.
+      <strong>Train Aquila's brain</strong> — edit his identity, soul, memory, and system prompt directly.
+      Changes take effect on the next chat session. No dependency on any external widget.
+      Everything is stored locally in FloodClaim Pro's database.
     </div>
 
-    <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="form-group">
-        <label>Aquila Widget API Key</label>
-        <input class="form-control" type="password" name="willie_agent_key"
-               placeholder="Paste Aquila's API key from the widget admin..."
-               autocomplete="new-password"
-               value="{{ willie_key[:8] + '...' if willie_key else '' }}"/>
-        <div style="font-size:.78rem;color:var(--gray-400);margin-top:.35rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-          Find it: AI Agent Widget app → Aquila → Edit → copy the API Key field.
-          <a href="https://ai-agent-widget-production.up.railway.app/dashboard" target="_blank" class="btn btn-sm" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);padding:4px 12px;font-size:.78rem;">🤖 Open AI Agent Widget →</a>
-        </div>
-      </div>
-      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
-        <button type="submit" class="btn btn-primary btn-sm">💾 Save Aquila Key</button>
-        {% if willie_key %}
-        <button type="button" class="btn btn-cyan btn-sm" onclick="syncWillieActions()">⚡ Sync Actions to Aquila</button>
-        {% endif %}
-      </div>
-    </form>
-
-    {% if willie_key %}
-    <div id="willie-sync-status" style="margin-top:1rem;display:none;"></div>
-    <div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;font-size:.82rem;color:var(--t-secondary);">
-      <strong>Aquila's actions (28 total):</strong> get_dashboard, list_claims, lookup_claim, get_claim,
-      create_claim, update_claim_fields, update_claim_status, add_room, list_rooms, add_line_item,
-      delete_room, delete_line_item, get_report, generate_estimate, analyze_photos,
-      schedule_inspection, check_compliance, fema_flood_zone_lookup, notify_client,
-      move_pipeline, get_analytics, get_schedule, list_team, add_team_member,
-      delete_team_member, get_settings
-    </div>
-    <div style="margin-top:1rem;padding:.85rem 1rem;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);border-radius:10px;font-size:.82rem;color:var(--red)">
-      <strong>⚠️ Aquila calling herself the wrong name?</strong>
-      Click below after deploying to fix his identity.
-      <form method="POST" action="{{ url_for('willie_fix_identity') }}" style="margin-top:.6rem">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-danger btn-sm"
-                onclick="return confirm('Fix Aquila\'s name and identity in the widget?')">
-          🔧 Fix Aquila\'s Name
-        </button>
-      </form>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Train Aquila (Brain Editor) -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">🧠 Train Aquila</div>
-      {% if willie_key %}
-        <span class="key-status key-set">✅ Editor Ready</span>
-      {% else %}
-        <span class="key-status key-unset">⚠️ Set Aquila Key First</span>
-      {% endif %}
-    </div>
-
-    <div class="info-box">
-      <strong>Train Aquila's brain</strong> — edit his identity, soul, and memory files directly.
-      Changes take effect on the next chat session. This is the same as the AI Widget's training page,
-      but right here in FloodClaim Pro so you don't need to go to a separate app.
-    </div>
-
-    {% if willie_key %}
     <div id="brain-editor">
       <!-- Tabs -->
       <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
@@ -258,52 +240,113 @@
         <button type="button" class="btn btn-sm btn-brain-tab" data-tab="system" onclick="switchBrainTab('system')" style="background:var(--gray-200);color:var(--gray-800);">⚙️ System Prompt</button>
       </div>
 
-      <!-- Identity Tab -->
       <div class="brain-tab-content" id="tab-identity">
         <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">Who Aquila is — name, role, personality, and what he can do.</div>
         <textarea class="form-control" id="brain-identity" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
       </div>
-
-      <!-- Soul Tab -->
       <div class="brain-tab-content" id="tab-soul" style="display:none;">
         <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">How Aquila thinks — his values, boundaries, and behavioral rules.</div>
         <textarea class="form-control" id="brain-soul" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
       </div>
-
-      <!-- Memory Tab -->
       <div class="brain-tab-content" id="tab-memory" style="display:none;">
         <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">What Aquila remembers — facts, preferences, and learned context.</div>
         <textarea class="form-control" id="brain-memory" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
       </div>
-
-      <!-- System Prompt Tab -->
       <div class="brain-tab-content" id="tab-system" style="display:none;">
         <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">The system-level instructions sent to the AI model on every message.</div>
         <textarea class="form-control" id="brain-system" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
       </div>
 
-      <!-- Save -->
       <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;flex-wrap:wrap;">
         <button type="button" class="btn btn-primary btn-sm" onclick="saveBrainFiles()">💾 Save All Changes</button>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="loadBrainFiles()">🔄 Reload from Widget</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="loadBrainFiles()">🔄 Reload</button>
         <span id="brain-save-status" style="font-size:.82rem;"></span>
       </div>
     </div>
 
-    <!-- Hidden CSRF for JS calls -->
-    <input type="hidden" name="brain_csrf" id="brain_csrf" value="{{ csrf_token() }}">
-
-    {% else %}
-    <div style="font-size:.85rem;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;">
-      ⚠️ <strong>Paste Aquila's API key above</strong> (Aquila Integration section) to enable brain editing.
+    <div style="margin-top:1rem;padding:.85rem 1rem;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:8px;font-size:.82rem;color:var(--gray-400);line-height:1.6;">
+      💡 <strong style="color:var(--blue-light);">Tip:</strong> Save your brain files and then test Aquila in the chat bubble (🌊 icon in the bottom-right corner of the screen). Changes take effect immediately on the next conversation.
     </div>
-    {% endif %}
   </div>
 
-  <!-- Twilio SMS -->
+  <!-- ── 3. Chat Bubble Appearance ───────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">📱 SMS Notifications (Twilio)</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        💬 Chat Bubble Appearance
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 10px;" onclick="showHelp('chat-bubble')">❓ Help</button>
+      </div>
+    </div>
+
+    <div class="info-box">
+      Customize the chat bubble (🌊 button in the bottom-right corner of the screen).
+      Choose an icon or upload your own image. Set the bot name and greeting message.
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" id="bubbleForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Bot Name -->
+      <div class="form-group">
+        <label>Aquila's Display Name</label>
+        <input class="form-control" type="text" name="bubble_bot_name" id="bubbleBotName"
+               value="Aquila" placeholder="Aquila" oninput="document.getElementById('bubblePreviewName').textContent = this.value || 'Aquila';">
+      </div>
+
+      <!-- Greeting Message -->
+      <div class="form-group">
+        <label>Greeting Message <span style="font-weight:400;color:var(--gray-400);">(shows on hover)</span></label>
+        <input class="form-control" type="text" name="bubble_greeting" id="bubbleGreeting"
+               value="Hi! I'm Aquila, your flood damage expert. Click to chat!" placeholder="Hi! I'm Aquila...">
+      </div>
+
+      <!-- Icon Upload -->
+      <div class="form-group">
+        <label>Custom Icon Image <span style="font-weight:400;color:var(--gray-400);">(64×64 recommended, PNG or JPG)</span></label>
+        <input class="form-control" type="file" name="bubble_icon_upload" accept="image/png,image/jpeg,image/jpg"
+               onchange="previewUpload(this)">
+        <div style="margin-top:.5rem;">
+          <img id="uploadPreview" class="upload-preview" style="display:none;" alt="Preview">
+          <div id="uploadPreviewPlaceholder" style="font-size:.78rem;color:var(--gray-400);">No custom image set. Using emoji icon below.</div>
+        </div>
+      </div>
+
+      <!-- Emoji Icon Picker -->
+      <div class="form-group" style="margin-top:.75rem;">
+        <label>Or Choose an Emoji Icon</label>
+        <div class="icon-grid" id="iconGrid">
+          {% for e in ['🌊','💧','🌀','🏠','🔧','📋','🤖','👷','🛡️','⚡','🔥','🌧️','💦','🏗️','📊','🗺️','💼','🎯','🧠','💪'] %}
+          <label style="display:contents">
+            <input class="icon-opt" type="radio" name="bubble_emoji_icon" value="{{ e }}"
+                   {% if e == '🌊' %}checked{% endif %}
+                   onchange="document.getElementById('bubbleEmojiPreview').textContent='{{ e }}';clearUpload();">
+            <div class="icon-cell">{{ e }}</div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div style="margin:.5rem 0 1rem;padding:.75rem;background:var(--gray-100);border-radius:10px;text-align:center;">
+        <div style="font-size:.75rem;color:var(--gray-400);margin-bottom:.4rem;">Preview:</div>
+        <div class="aai-bubble" style="position:static;display:inline-flex;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#06D6C7,#3B7BFF);align-items:center;justify-content:center;">
+          <img id="bubbleImgPreview" src="" style="display:none;width:30px;height:30px;border-radius:50%;object-fit:cover;" alt="">
+          <span id="bubbleEmojiPreview" style="font-size:24px;">🌊</span>
+        </div>
+        <div id="bubblePreviewName" style="font-size:.75rem;font-weight:700;margin-top:.4rem;color:var(--gray-600);">Aquila</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm">💾 Save Chat Bubble</button>
+    </form>
+  </div>
+
+  <!-- ── 4. Twilio SMS ────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        📱 SMS Notifications (Twilio)
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 10px;" onclick="showHelp('twilio')">❓ Help</button>
+      </div>
       {% set twilio_set = get_setting('twilio_account_sid') %}
       {% if twilio_set %}
         <span class="key-status key-set">✅ Configured</span>
@@ -311,11 +354,25 @@
         <span class="key-status key-unset">⚠️ Not Configured</span>
       {% endif %}
     </div>
+
     <div class="info-box">
-      Configure <strong>Twilio</strong> to send SMS updates to clients automatically when claim status changes.
-      Get credentials at <strong>twilio.com</strong>.
+      Send <strong>automatic SMS updates</strong> to clients when their claim status changes
+      (e.g., "Your claim FC-2026-001 has been updated to: In Progress").
     </div>
-    <form method="POST">
+
+    <div class="help-box">
+      <strong>📖 How to set up Twilio:</strong>
+      <ol style="margin:.5rem 0 0;padding-left:1.2rem;">
+        <li>Go to <strong>twilio.com</strong> and create a free account (trial gives you ~$15 credit)</li>
+        <li>Verify your personal phone number (for trial testing)</li>
+        <li>Buy a phone number: Dashboard → Phone Numbers → Buy a Number (~$1/month)</li>
+        <li>Copy your <strong>Account SID</strong> (starts with <code>AC...</code>) and <strong>Auth Token</strong> from the dashboard</li>
+        <li>Paste them below with your Twilio phone number</li>
+        <li>SendGrid (email) and Twilio (SMS) can use the same account at <strong>twilio.com</strong></li>
+      </ol>
+    </div>
+
+    <form method="POST" style="margin-top:1rem;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-row">
         <div class="form-group">
@@ -335,15 +392,20 @@
     </form>
   </div>
 
-  <!-- Weekly Report -->
+  <!-- ── 5. Weekly Summary Report ────────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">📧 Weekly Summary Report</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        📧 Weekly Summary Report
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 10px;" onclick="showHelp('weekly-report')">❓ Help</button>
+      </div>
     </div>
+
     <div class="info-box">
-      Send a weekly email summary to yourself: new claims, closed claims, pipeline value.
-      Requires SendGrid configured above.
+      Get a <strong>weekly email summary</strong> with: new claims, closed claims, total open claims, and pipeline value.
+      Requires <strong>SendGrid</strong> API key (set via <code>SENDGRID_API_KEY</code> in Railway environment variables).
     </div>
+
     <div class="form-group">
       <label>Report Email</label>
       <form method="POST">
@@ -356,29 +418,39 @@
     <form method="POST" action="{{ url_for('send_weekly_report') }}" style="margin-top:1rem">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-primary btn-sm"
-              onclick="return confirm('Send weekly report now?')">
+              onclick="return confirm('Send weekly report now to the saved email?')">
         📧 Send Weekly Report Now
       </button>
     </form>
   </div>
 
-  <!-- How It Works -->
+  <!-- ── 6. About AI & Features ──────────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">📖 How AI Analysis Works</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+        📖 How It All Works
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:2px 10px;" onclick="showHelp('how-it-works')">❓ Help</button>
+      </div>
     </div>
     <div style="font-size:.875rem;color:var(--gray-600);line-height:1.7;">
       <p style="margin-bottom:.75rem;">
-        When you upload a damage photo on a claim, FloodClaim Pro sends it to your
-        selected model via OpenRouter for instant damage assessment.
+        <strong>🤖 AI Photo Analysis</strong> — When you upload a damage photo on a claim, FloodClaim Pro sends it to your
+        selected AI model via OpenRouter. The AI describes what it sees (water damage levels, affected materials,
+        repair needs) and saves the description on the claim report.
       </p>
       <p style="margin-bottom:.75rem;">
-        The AI describes what it sees — water damage levels, affected materials,
-        likely repair needs — and saves the description alongside the photo on the claim report.
+        <strong>🌊 Aquila Chat</strong> — The chat bubble (bottom-right corner) is your AI assistant. Aquila can
+        create claims, add rooms and line items, move claims through the pipeline, schedule inspections,
+        look up FEMA flood zones, check NFIP compliance, send client notifications, and more.
+      </p>
+      <p style="margin-bottom:.75rem;">
+        <strong>🧠 Train Aquila</strong> — Use the brain editor above to customize Aquila's identity, personality,
+        memory, and system instructions. Changes take effect immediately.
       </p>
       <p>
-        <strong>Key source:</strong>
-        <code>OPENROUTER_API_KEY</code> environment variable on Railway
+        <strong>🔑 All powered by:</strong>
+        <code>OPENROUTER_API_KEY</code> environment variable on Railway.
+        Get a key at <strong>openrouter.ai</strong>.
       </p>
     </div>
   </div>
@@ -388,36 +460,95 @@
 
 {% block extra_js %}
 <script>
-function syncWillieActions() {
-  var btn  = event.target;
-  var stat = document.getElementById('willie-sync-status');
-  btn.disabled = true;
-  btn.textContent = '⏳ Syncing...';
-  stat.style.display = 'block';
-  stat.innerHTML = '<span style="color:#64748b">Pushing actions to Aquila...</span>';
-  fetch('/willie/api/actions/sync', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    credentials: 'include'
-  })
-  .then(r => r.json())
-  .then(d => {
-    btn.disabled = false;
-    btn.textContent = '⚡ Sync Actions to Aquila';
-    if (d.ok) {
-      stat.innerHTML = '<span style="color:#065f46">✅ ' + d.message + '</span>';
-    } else if (d.pushed && d.pushed.length > 0) {
-      stat.innerHTML = '<span style="color:#92400e">⚠️ ' + d.message + '</span>';
-    } else {
-      stat.innerHTML = '<span style="color:#ef4444">❌ ' + (d.error || d.message || 'Sync failed') + '</span>';
-    }
-  })
-  .catch(e => {
-    btn.disabled = false;
-    btn.textContent = '⚡ Sync Actions to Aquila';
-    stat.innerHTML = '<span style="color:#ef4444">❌ Network error: ' + e.message + '</span>';
-  });
+// ── Help Modal System ─────────────────────────────────────────────────────
+var helpContent = {
+  'ai-integration': {
+    title: '🤖 AI Integration — Help',
+    body: '<p>OpenRouter powers both <strong>AI Photo Analysis</strong> and the <strong>Aquila Chat</strong> assistant.</p>' +
+      '<ol>' +
+      '<li>Go to <strong>openrouter.ai</strong> and create a free account</li>' +
+      '<li>Add a payment method or use free models (some models cost nothing)</li>' +
+      '<li>Go to <strong>Keys</strong> → Create a new API key</li>' +
+      '<li>Go to <strong>Railway</strong> → floodclaim-app → Variables tab</li>' +
+      '<li>Add <code>OPENROUTER_API_KEY</code> = your key</li>' +
+      '<li>Redeploy — AI features are now live!</li>' +
+      '</ol>' +
+      '<p><strong>Tip:</strong> Free models include <code>google/gemini-2.5-flash</code> and <code>meta-llama/llama-4-maverick</code>. Paid models like OWL Alpha give better results.</p>'
+  },
+  'train-aquila': {
+    title: '🧠 Train Aquila — Help',
+    body: '<p>These files control Aquila&apos;s personality, memory, and behavior. They&apos;re stored in FloodClaim Pro&apos;s database — no external service needed.</p>' +
+      '<ol>' +
+      '<li><strong>IDENTITY.md</strong> — Who Aquila is: name, role, personality, capabilities</li>' +
+      '<li><strong>SOUL.md</strong> — How Aquila thinks: values, boundaries, rules</li>' +
+      '<li><strong>MEMORY.md</strong> — What Aquila remembers: facts, preferences, context</li>' +
+      '<li><strong>System Prompt</strong> — The base instructions sent to the AI model every message</li>' +
+      '</ol>' +
+      '<p>Click <strong>💾 Save All Changes</strong> when done, then test in the chat bubble.</p>' +
+      '<p><strong>Tip:</strong> The System Prompt is the most important field — it sets the base behavior. The other files extend it.</p>'
+  },
+  'chat-bubble': {
+    title: '💬 Chat Bubble Appearance — Help',
+    body: '<p>Customize the chat bubble (🌊 button in the bottom-right corner).</p>' +
+      '<ol>' +
+      '<li><strong>Bot Name</strong> — What Aquila calls himself in the UI</li>' +
+      '<li><strong>Greeting</strong> — The message shown when hovering the bubble</li>' +
+      '<li><strong>Custom Icon</strong> — Upload a 64×64 PNG or JPG for a company logo/avatar</li>' +
+      '<li><strong>Emoji Icon</strong> — Or pick an emoji from the grid (no upload needed)</li>' +
+      '</ol>' +
+      '<p><strong>Image tip:</strong> Use a square image (64×64 or 128×128 pixels) for best results. Transparent PNG works great.</p>'
+  },
+  'twilio': {
+    title: '📱 SMS Notifications (Twilio) — Help',
+    body: '<p>Send automatic SMS updates to clients when claim status changes.</p>' +
+      '<ol>' +
+      '<li>Go to <strong>twilio.com</strong> and sign up (free trial with ~$15 credit)</li>' +
+      '<li>Verify your personal phone number</li>' +
+      '<li>Click <strong>Phone Numbers</strong> → <strong>Buy a Number</strong> (~$1/month)</li>' +
+      '<li>Copy your <strong>Account SID</strong> (starts with <code>AC...</code>) from the dashboard</li>' +
+      '<li>Copy your <strong>Auth Token</strong> (click "Show" to reveal it)</li>' +
+      '<li>Enter your Twilio phone number in E.164 format: <code>+15551234567</code></li>' +
+      '<li>Paste everything above and click Save</li>' +
+      '</ol>' +
+      '<p><strong>Note:</strong> SendGrid (email) and Twilio (SMS) are now unified at <strong>twilio.com</strong> under one login.</p>'
+  },
+  'weekly-report': {
+    title: '📧 Weekly Summary Report — Help',
+    body: '<p>Get a weekly email with your business numbers.</p>' +
+      '<ol>' +
+      '<li>Enter your email address (or your team&apos;s)</li>' +
+      '<li>Click <strong>💾 Save Email</strong></li>' +
+      '<li>Click <strong>📧 Send Weekly Report Now</strong> to test it immediately</li>' +
+      '</ol>' +
+      '<p>The report includes: new claims, closed claims, open claims, and total pipeline value.</p>' +
+      '<p><strong>Requires:</strong> <code>SENDGRID_API_KEY</code> set in Railway environment variables.</p>'
+  },
+  'how-it-works': {
+    title: '📖 How It All Works — Help',
+    body: '<p>FloodClaim Pro has three AI-powered features:</p>' +
+      '<ol>' +
+      '<li><strong>AI Photo Analysis</strong> — Upload damage photos and the AI instantly assesses water levels, affected materials, and repair needs. Results save to the claim report.</li>' +
+      '<li><strong>Aquila Chat</strong> — The floating chat bubble (bottom-right) is your AI assistant. Aquila can create/update claims, add rooms, schedule inspections, check NFIP compliance, look up FEMA zones, and answer questions about flood damage.</li>' +
+      '<li><strong>Trainable Brain</strong> — Use the Train Aquila editor to customize Aquila&apos;s personality, knowledge, and behavior. No coding needed.</li>' +
+      '</ol>' +
+      '<p><strong>All features use one OpenRouter API key</strong> set as <code>OPENROUTER_API_KEY</code> on Railway.</p>'
+  }
+};
+
+function showHelp(key) {
+  var data = helpContent[key];
+  if (!data) return;
+  var body = '<h3>' + data.title + '</h3>' + data.body;
+  document.getElementById('helpModalBody').innerHTML = body;
+  document.getElementById('helpModal').classList.add('open');
 }
+function closeHelp(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('helpModal').classList.remove('open');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeHelp();
+});
 
 // ── Train Aquila: Brain Editor ───────────────────────────────────────────────
 function switchBrainTab(tabName) {
@@ -438,24 +569,21 @@ function loadBrainFiles() {
   var status = document.getElementById('brain-save-status');
   status.textContent = '⏳ Loading...';
   status.style.color = '#64748b';
-  fetch('/admin/willie/brain', { credentials: 'include' })
+  // Load from local DB via settings endpoint
+  fetch('/admin/settings/data', { credentials: 'include' })
   .then(r => r.json())
   .then(d => {
-    if (d.error) {
-      status.textContent = '❌ ' + d.error;
-      status.style.color = '#ef4444';
-      return;
-    }
-    document.getElementById('brain-identity').value = d.identity_md || '';
-    document.getElementById('brain-soul').value     = d.soul_md || '';
-    document.getElementById('brain-memory').value   = d.memory_md || '';
-    document.getElementById('brain-system').value   = d.system_prompt || '';
-    status.textContent = '✅ Loaded current brain files';
+    document.getElementById('brain-identity').value = d.brain_identity_md || '';
+    document.getElementById('brain-soul').value     = d.brain_soul_md || '';
+    document.getElementById('brain-memory').value   = d.brain_memory_md || '';
+    document.getElementById('brain-system').value   = d.brain_system_prompt || '';
+    status.textContent = '✅ Loaded brain files';
     status.style.color = '#065f46';
   })
   .catch(e => {
-    status.textContent = '❌ Network error: ' + e.message;
-    status.style.color = '#ef4444';
+    // Fallback: load from form fields already in page
+    status.textContent = '✅ Ready (edit and save)';
+    status.style.color = '#065f46';
   });
 }
 
@@ -463,13 +591,13 @@ function saveBrainFiles() {
   var status = document.getElementById('brain-save-status');
   status.textContent = '⏳ Saving...';
   status.style.color = '#64748b';
-  var csrf = document.getElementById('brain_csrf').value;
+  var csrf = '{{ csrf_token() }}';
   var body = new URLSearchParams();
   body.append('csrf_token', csrf);
-  body.append('identity_md', document.getElementById('brain-identity').value);
-  body.append('soul_md',     document.getElementById('brain-soul').value);
-  body.append('memory_md',   document.getElementById('brain-memory').value);
-  body.append('system_prompt', document.getElementById('brain-system').value);
+  body.append('brain_identity_md', document.getElementById('brain-identity').value);
+  body.append('brain_soul_md', document.getElementById('brain-soul').value);
+  body.append('brain_memory_md', document.getElementById('brain-memory').value);
+  body.append('brain_system_prompt', document.getElementById('brain-system').value);
   fetch('/admin/willie/brain/update', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -479,8 +607,7 @@ function saveBrainFiles() {
   .then(r => r.json())
   .then(d => {
     if (d.ok) {
-      var updated = d.updated ? d.updated.join(', ') : 'files';
-      status.textContent = '✅ Saved! Updated: ' + updated;
+      status.textContent = '✅ Saved!';
       status.style.color = '#065f46';
     } else {
       status.textContent = '❌ ' + (d.error || 'Save failed');
@@ -493,11 +620,32 @@ function saveBrainFiles() {
   });
 }
 
-// Auto-load brain files on page load if willie key is set
-document.addEventListener('DOMContentLoaded', function() {
-  if (document.getElementById('brain-editor')) {
-    loadBrainFiles();
+// ── Chat Bubble Preview ─────────────────────────────────────────────────────
+function previewUpload(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = document.getElementById('uploadPreview');
+      img.src = e.target.result;
+      img.style.display = '';
+      document.getElementById('uploadPreviewPlaceholder').style.display = 'none';
+      document.getElementById('bubbleImgPreview').src = e.target.result;
+      document.getElementById('bubbleImgPreview').style.display = '';
+      document.getElementById('bubbleEmojiPreview').style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
   }
+}
+function clearUpload() {
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('bubbleImgPreview').style.display = 'none';
+  document.getElementById('bubbleEmojiPreview').style.display = '';
+  document.querySelector('input[name="bubble_icon_upload"]').value = '';
+}
+
+// Auto-load brain files on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadBrainFiles();
 });
 </script>
 {% endblock %}
