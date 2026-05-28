@@ -231,6 +231,75 @@
     {% endif %}
   </div>
 
+  <!-- Train Aquila (Brain Editor) -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🧠 Train Aquila</div>
+      {% if willie_key %}
+        <span class="key-status key-set">✅ Editor Ready</span>
+      {% else %}
+        <span class="key-status key-unset">⚠️ Set Aquila Key First</span>
+      {% endif %}
+    </div>
+
+    <div class="info-box">
+      <strong>Train Aquila's brain</strong> — edit his identity, soul, and memory files directly.
+      Changes take effect on the next chat session. This is the same as the AI Widget's training page,
+      but right here in FloodClaim Pro so you don't need to go to a separate app.
+    </div>
+
+    {% if willie_key %}
+    <div id="brain-editor">
+      <!-- Tabs -->
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm btn-brain-tab active" data-tab="identity" onclick="switchBrainTab('identity')" style="background:var(--blue-light);color:#fff;">🪪 IDENTITY.md</button>
+        <button type="button" class="btn btn-sm btn-brain-tab" data-tab="soul" onclick="switchBrainTab('soul')" style="background:var(--gray-200);color:var(--gray-800);">💫 SOUL.md</button>
+        <button type="button" class="btn btn-sm btn-brain-tab" data-tab="memory" onclick="switchBrainTab('memory')" style="background:var(--gray-200);color:var(--gray-800);">🧠 MEMORY.md</button>
+        <button type="button" class="btn btn-sm btn-brain-tab" data-tab="system" onclick="switchBrainTab('system')" style="background:var(--gray-200);color:var(--gray-800);">⚙️ System Prompt</button>
+      </div>
+
+      <!-- Identity Tab -->
+      <div class="brain-tab-content" id="tab-identity">
+        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">Who Aquila is — name, role, personality, and what he can do.</div>
+        <textarea class="form-control" id="brain-identity" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
+      </div>
+
+      <!-- Soul Tab -->
+      <div class="brain-tab-content" id="tab-soul" style="display:none;">
+        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">How Aquila thinks — his values, boundaries, and behavioral rules.</div>
+        <textarea class="form-control" id="brain-soul" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
+      </div>
+
+      <!-- Memory Tab -->
+      <div class="brain-tab-content" id="tab-memory" style="display:none;">
+        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">What Aquila remembers — facts, preferences, and learned context.</div>
+        <textarea class="form-control" id="brain-memory" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
+      </div>
+
+      <!-- System Prompt Tab -->
+      <div class="brain-tab-content" id="tab-system" style="display:none;">
+        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">The system-level instructions sent to the AI model on every message.</div>
+        <textarea class="form-control" id="brain-system" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
+      </div>
+
+      <!-- Save -->
+      <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;flex-wrap:wrap;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveBrainFiles()">💾 Save All Changes</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="loadBrainFiles()">🔄 Reload from Widget</button>
+        <span id="brain-save-status" style="font-size:.82rem;"></span>
+      </div>
+    </div>
+
+    <!-- Hidden CSRF for JS calls -->
+    <input type="hidden" name="brain_csrf" id="brain_csrf" value="{{ csrf_token() }}">
+
+    {% else %}
+    <div style="font-size:.85rem;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;">
+      ⚠️ <strong>Paste Aquila's API key above</strong> (Aquila Integration section) to enable brain editing.
+    </div>
+    {% endif %}
+  </div>
+
   <!-- Twilio SMS -->
   <div class="card">
     <div class="card-header">
@@ -349,5 +418,86 @@ function syncWillieActions() {
     stat.innerHTML = '<span style="color:#ef4444">❌ Network error: ' + e.message + '</span>';
   });
 }
+
+// ── Train Aquila: Brain Editor ───────────────────────────────────────────────
+function switchBrainTab(tabName) {
+  document.querySelectorAll('.brain-tab-content').forEach(function(el) { el.style.display = 'none'; });
+  document.querySelectorAll('.btn-brain-tab').forEach(function(el) {
+    el.style.background = 'var(--gray-200)';
+    el.style.color = 'var(--gray-800)';
+  });
+  document.getElementById('tab-' + tabName).style.display = '';
+  var activeBtn = document.querySelector('.btn-brain-tab[data-tab="' + tabName + '"]');
+  if (activeBtn) {
+    activeBtn.style.background = 'var(--blue-light)';
+    activeBtn.style.color = '#fff';
+  }
+}
+
+function loadBrainFiles() {
+  var status = document.getElementById('brain-save-status');
+  status.textContent = '⏳ Loading...';
+  status.style.color = '#64748b';
+  fetch('/admin/willie/brain', { credentials: 'include' })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) {
+      status.textContent = '❌ ' + d.error;
+      status.style.color = '#ef4444';
+      return;
+    }
+    document.getElementById('brain-identity').value = d.identity_md || '';
+    document.getElementById('brain-soul').value     = d.soul_md || '';
+    document.getElementById('brain-memory').value   = d.memory_md || '';
+    document.getElementById('brain-system').value   = d.system_prompt || '';
+    status.textContent = '✅ Loaded current brain files';
+    status.style.color = '#065f46';
+  })
+  .catch(e => {
+    status.textContent = '❌ Network error: ' + e.message;
+    status.style.color = '#ef4444';
+  });
+}
+
+function saveBrainFiles() {
+  var status = document.getElementById('brain-save-status');
+  status.textContent = '⏳ Saving...';
+  status.style.color = '#64748b';
+  var csrf = document.getElementById('brain_csrf').value;
+  var body = new URLSearchParams();
+  body.append('csrf_token', csrf);
+  body.append('identity_md', document.getElementById('brain-identity').value);
+  body.append('soul_md',     document.getElementById('brain-soul').value);
+  body.append('memory_md',   document.getElementById('brain-memory').value);
+  body.append('system_prompt', document.getElementById('brain-system').value);
+  fetch('/admin/willie/brain/update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    credentials: 'include',
+    body: body.toString()
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      var updated = d.updated ? d.updated.join(', ') : 'files';
+      status.textContent = '✅ Saved! Updated: ' + updated;
+      status.style.color = '#065f46';
+    } else {
+      status.textContent = '❌ ' + (d.error || 'Save failed');
+      status.style.color = '#ef4444';
+    }
+  })
+  .catch(e => {
+    status.textContent = '❌ Network error: ' + e.message;
+    status.style.color = '#ef4444';
+  });
+}
+
+// Auto-load brain files on page load if willie key is set
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('brain-editor')) {
+    loadBrainFiles();
+  }
+});
 </script>
 {% endblock %}
