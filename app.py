@@ -1330,7 +1330,7 @@ def call_openrouter(messages, model, key, max_tokens=4000):
 
 
 def ai_describe_photo(image_path):
-    key = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    key = OPENROUTER_KEY
     if not key:
         try:
             kys_token = os.environ.get('KYS_API_TOKEN', '')
@@ -1876,18 +1876,14 @@ def report(claim_id):
 @csrf_required
 def settings():
     if request.method == 'POST':
-        openrouter_key = request.form.get('openrouter_api_key', '').strip()
-        if openrouter_key:
-            set_setting('openrouter_api_key', openrouter_key)
-        elif request.form.get('clear_openrouter'):
-            set_setting('openrouter_api_key', '')
+        # API key is managed via Railway env var OPENROUTER_API_KEY only — not stored in DB
         selected_model = request.form.get('ai_model', '').strip()
         if selected_model:
             set_setting('ai_model', selected_model)
         fallback_model = request.form.get('ai_fallback_model', '').strip()
         if fallback_model:
             set_setting('ai_fallback_model', fallback_model)
-        # New integration keys
+        # Integration keys (SendGrid, Stripe, etc. — these are safe in DB)
         for key in ['sendgrid_api_key', 'from_email', 'stripe_secret_key',
                     'stripe_publishable_key', 'google_maps_api_key',
                     'twilio_account_sid', 'twilio_auth_token', 'twilio_from_number',
@@ -1895,26 +1891,17 @@ def settings():
             val = request.form.get(key, '').strip()
             if val:
                 set_setting(key, val)
-        # Willie integration key
         willie_key_input = request.form.get('willie_agent_key', '').strip()
         if willie_key_input and not willie_key_input.endswith('...'):
             set_setting('willie_agent_key', willie_key_input)
         flash('Settings saved!', 'success')
         return redirect(url_for('settings'))
-    current_key = get_setting('openrouter_api_key')
-    masked_key  = ''
-    if current_key:
-        if len(current_key) > 12:
-            masked_key = current_key[:8] + '•' * (len(current_key) - 12) + current_key[-4:]
-        else:
-            masked_key = '••••••••'
+    
     env_key_set       = bool(OPENROUTER_KEY)
     current_model     = get_setting('ai_model', 'openrouter/owl-alpha')
     current_fallback  = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
     current_willie_key = get_setting('willie_agent_key', '')
     return render_template('settings.html',
-                           masked_key=masked_key,
-                           key_is_set=bool(current_key),
                            env_key_set=env_key_set,
                            current_model=current_model,
                            current_fallback=current_fallback,

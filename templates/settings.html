@@ -72,44 +72,23 @@
   <div class="card">
     <div class="card-header">
       <div class="card-title">🤖 AI Integration</div>
-      {% if key_is_set %}
-        <span class="key-status key-set">✅ Key Active</span>
-      {% elif env_key_set %}
-        <span class="key-status key-env">🔧 Via Env Var</span>
+      {% if env_key_set %}
+        <span class="key-status key-env">✅ Active (Railway Env Var)</span>
       {% else %}
         <span class="key-status key-unset">⚠️ Not Configured</span>
       {% endif %}
     </div>
 
     <div class="info-box">
-      <strong>OpenRouter</strong> powers AI photo analysis on every claim.
-      Paste your key, pick a model, hit Save — no redeploy needed.
-      Get a free key at <strong>openrouter.ai</strong>.
+      <strong>OpenRouter</strong> powers AI photo analysis on every claim.<br>
+      Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab.<br>
+      Get a key at <strong>openrouter.ai</strong>.
     </div>
 
     <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-      <!-- API Key -->
-      {% if key_is_set %}
-      <div class="form-group">
-        <label>Current Key</label>
-        <div class="masked-key">{{ masked_key }}</div>
-      </div>
-      {% endif %}
-
-      <div class="form-group">
-        <label>{% if key_is_set %}Replace{% else %}Add{% endif %} OpenRouter API Key</label>
-        <input class="form-control" type="password" name="openrouter_api_key"
-               placeholder="sk-or-v1-..." autocomplete="new-password"/>
-        <div style="font-size:.78rem;color:var(--gray-400);margin-top:.35rem;">
-          Leave blank to keep the current key.
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Model Picker -->
+      <!-- Primary Model Picker -->
       <div class="form-group" style="margin-bottom:1.25rem">
         <label style="margin-bottom:.6rem;display:block;">AI Model for Photo Analysis</label>
         <div class="model-grid">
@@ -175,24 +154,16 @@
 
       <hr class="divider">
 
-      <!-- Save / Remove -->
+      <!-- Save -->
       <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
         <button type="submit" class="btn btn-primary">💾 Save Settings</button>
-        {% if key_is_set %}
-        <button type="submit" name="clear_openrouter" value="1"
-                class="btn btn-ghost btn-sm"
-                onclick="return confirm('Remove the saved API key?')">
-          🗑 Remove Key
-        </button>
-        {% endif %}
       </div>
 
     </form>
 
-    {% if env_key_set and not key_is_set %}
-    <div style="margin-top:1rem;font-size:.8rem;color:var(--gray-400);">
-      ℹ️ An <code>OPENROUTER_API_KEY</code> environment variable is set on Railway —
-      that will be used until you save a key here.
+    {% if not env_key_set %}
+    <div style="margin-top:1rem;font-size:.85rem;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;">
+      ⚠️ <strong>AI features disabled.</strong> Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab to enable AI photo analysis.
     </div>
     {% endif %}
   </div>
