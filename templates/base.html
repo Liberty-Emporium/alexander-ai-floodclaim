@@ -845,6 +845,7 @@
   }
 </style>
 
+{% raw %}
 <script>
 (function() {
   // Check user is logged in via CSRF meta tag (session cookie is HttpOnly, invisible to JS)
@@ -853,8 +854,8 @@
   var chatHistory = [];
   var isThinking = false;
   var botName = 'Aquila';
-  var bubbleIcon = '🌊';
-  var greeting = 'Hi! I\\'m Aquila, your flood damage expert. Click to chat!';
+  var bubbleIcon = '\u{1F30A}'; // 🌊 emoji via unicode to avoid encoding issues
+  var greeting = "Hi! I'm Aquila, your flood damage expert. Click to chat!";
   var claimId = null;
 
   // Try to get claim ID from URL or page
@@ -865,7 +866,6 @@
   var bubble = document.createElement('div');
   bubble.id = 'aai-bubble';
   bubble.innerHTML = 
-    '<img src="" style="display:none" id="aai-bubble-img" alt="Aquila">' +
     '<span class="aai-icon" id="aai-bubble-emoji">' + bubbleIcon + '</span>' +
     '<div class="aai-greeting" id="aai-bubble-greeting">' + greeting + '</div>';
   document.body.appendChild(bubble);
@@ -877,24 +877,24 @@
     '<div class="aai-chat-header">' +
       '<div class="aai-av" id="aai-chat-av">' + bubbleIcon + '</div>' +
       '<div><div class="aai-name" id="aai-chat-name">' + botName + '</div><div class="aai-sub">Flood Claims Expert</div></div>' +
-      '<button class="aai-close" onclick="window.aaiToggle(true)">&times;</button>' +
+      '<button class="aai-close" id="aai-close-btn">&times;</button>' +
     '</div>' +
     '<div class="aai-chat-msgs" id="aai-chat-msgs">' +
       '<div class="aai-welcome" id="aai-welcome">' +
-        '<div class="aai-w-av">🌊</div>' +
-        '<div class="aai-w-title">Hey, I\\'m ' + botName + '</div>' +
+        '<div class="aai-w-av">' + bubbleIcon + '</div>' +
+        '<div class="aai-w-title">Hey, I\u2019m ' + botName + '</div>' +
         '<div class="aai-w-sub">Your flood damage expert. Ask me anything or tell me to take action in the app.</div>' +
         '<div class="aai-quick-btns">' +
-          '<button class="aai-qb" onclick="aaiQuick(\'Show me a dashboard summary\\')">📊 Dashboard summary</button>' +
-          '<button class="aai-qb" onclick="aaiQuick(\'List my open claims\\')">📋 Open claims</button>' +
-          '<button class="aai-qb" onclick="aaiQuick(\'What are today\\'s inspections?\\')">📅 Today\\'s schedule</button>' +
-          '<button class="aai-qb" onclick="aaiQuick(\'Walk me through creating a new claim\\')">➕ Create a claim</button>' +
+          '<button class="aai-qb" data-qb="Show me a dashboard summary">&#x1F4CA; Dashboard summary</button>' +
+          '<button class="aai-qb" data-qb="List my open claims">&#x1F4CB; Open claims</button>' +
+          '<button class="aai-qb" data-qb="What are today\u2019s inspections?">&#x1F4C5; Today\u2019s schedule</button>' +
+          '<button class="aai-qb" data-qb="Walk me through creating a new claim">&#x2795; Create a claim</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
     '<div class="aai-chat-input">' +
       '<textarea id="aai-input" rows="1" placeholder="Ask ' + botName + ' anything..." onkeydown="aaiHandleKey(event)" oninput="aaiAutoResize(this)"></textarea>' +
-      '<button class="aai-send-btn" id="aai-send-btn" onclick="aaiSend()">➤</button>' +
+      '<button class="aai-send-btn" id="aai-send-btn">&#x27A4;</button>' +
     '</div>';
   document.body.appendChild(panel);
 
@@ -910,12 +910,18 @@
   };
 
   bubble.addEventListener('click', function() { window.aaiToggle(); });
+  document.getElementById('aai-close-btn').addEventListener('click', function() { window.aaiToggle(true); });
 
-  // ── Quick send ──
-  window.aaiQuick = function(text) {
-    document.getElementById('aai-input').value = text;
-    aaiSend();
-  };
+  // ── Quick send buttons (via data attributes, no inline onclick) ──
+  document.querySelectorAll('.aai-qb').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.getElementById('aai-input').value = this.getAttribute('data-qb');
+      window.aaiSend();
+    });
+  });
+
+  // ── Send button ──
+  document.getElementById('aai-send-btn').addEventListener('click', function() { window.aaiSend(); });
 
   // ── Send ──
   window.aaiSend = async function() {
@@ -927,7 +933,8 @@
     input.style.height = 'auto';
     isThinking = true;
     document.getElementById('aai-send-btn').disabled = true;
-    document.getElementById('aai-welcome')?.remove();
+    var welcomeEl = document.getElementById('aai-welcome');
+    if (welcomeEl) welcomeEl.remove();
 
     // Add user msg
     aaiAddMsg('user', text);
@@ -938,7 +945,7 @@
     var typing = document.createElement('div');
     typing.className = 'aai-msg bot';
     typing.id = 'aai-typing';
-    typing.innerHTML = '<div class="av">🌊</div><div class="bubble"><div class="aai-typing"><div class="aai-typing-dot"></div><div class="aai-typing-dot"></div><div class="aai-typing-dot"></div></div></div>';
+    typing.innerHTML = '<div class="av">' + bubbleIcon + '</div><div class="bubble"><div class="aai-typing"><div class="aai-typing-dot"></div><div class="aai-typing-dot"></div><div class="aai-typing-dot"></div></div></div>';
     msgs.appendChild(typing);
     msgs.scrollTop = msgs.scrollHeight;
 
@@ -958,12 +965,12 @@
       });
       var data = await res.json();
       typing.remove();
-      var reply = data.reply || '⚠️ Something went wrong.';
+      var reply = data.reply || '\u26A0\uFE0F Something went wrong.';
       aaiAddMsg('bot', reply);
       chatHistory.push({role:'assistant', content:reply});
     } catch(e) {
       typing.remove();
-      aaiAddMsg('bot', '⚠️ Could not reach ' + botName + '. Check your connection.');
+      aaiAddMsg('bot', '\u26A0\uFE0F Could not reach ' + botName + '. Check your connection.');
     }
 
     isThinking = false;
@@ -975,7 +982,7 @@
     var msgs = document.getElementById('aai-chat-msgs');
     var div = document.createElement('div');
     div.className = 'aai-msg ' + (role === 'user' ? 'user' : 'bot');
-    var av = role === 'user' ? '👤' : '🌊';
+    var av = role === 'user' ? '\u{1F464}' : bubbleIcon;
     div.innerHTML = '<div class="av">' + av + '</div><div class="bubble">' + aaiEsc(content) + '</div>';
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
@@ -986,6 +993,7 @@
   window.aaiAutoResize = function(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 80) + 'px'; };
 })();
 </script>
+{% endraw %}
 
 <script>
   lucide.createIcons();
