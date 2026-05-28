@@ -751,6 +751,10 @@
 <!-- Aquila Chat Bubble — local, no widget dependency -->
 <style>
   #aai-bubble {
+<!-- Aquila Chat Bubble + Floating Chat Panel — no page navigation -->
+<style>
+  /* Bubble */
+  #aai-bubble {
     background: linear-gradient(135deg, #06D6C7 0%, #3B7BFF 100%) !important;
     box-shadow: 0 4px 20px rgba(6,214,199,0.45) !important;
     border: 2px solid rgba(255,255,255,0.15) !important;
@@ -759,10 +763,7 @@
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: transform .2s, box-shadow .2s;
   }
-  #aai-bubble:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 28px rgba(6,214,199,0.6) !important;
-  }
+  #aai-bubble:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(6,214,199,0.6) !important; }
   #aai-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
   #aai-bubble .aai-icon { font-size: 28px; }
   #aai-bubble .aai-greeting {
@@ -774,23 +775,218 @@
     opacity: 0; pointer-events: none; transition: opacity .3s;
   }
   #aai-bubble:hover .aai-greeting { opacity: 1; pointer-events: auto; }
+
+  /* Chat Panel Overlay */
+  #aai-chat-panel {
+    position: fixed; bottom: 90px; right: 24px; z-index: 9998;
+    width: 380px; height: 520px;
+    background: var(--surface, #1a1a2e);
+    border: 1px solid var(--border, #334155);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    display: none; flex-direction: column; overflow: hidden;
+  }
+  #aai-chat-panel.open { display: flex; }
+
+  /* Chat panel header */
+  .aai-chat-header {
+    padding: 14px 16px; background: linear-gradient(135deg, rgba(6,214,199,.15), rgba(59,123,255,.15));
+    border-bottom: 1px solid var(--border, #334155);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .aai-chat-header .aai-av { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,#06D6C7,#3B7BFF); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+  .aai-chat-header .aai-name { font-weight: 800; font-size: .85rem; color: var(--t-primary, #e2e8f0); }
+  .aai-chat-header .aai-sub { font-size: .68rem; color: var(--t-muted, #64748b); }
+  .aai-chat-header .aai-close {
+    margin-left: auto; background: none; border: none; color: var(--t-muted, #64748b);
+    font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: background .15s;
+  }
+  .aai-chat-header .aai-close:hover { background: rgba(255,255,255,.08); }
+
+  /* Messages area */
+  .aai-chat-msgs {
+    flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .aai-chat-msgs::-webkit-scrollbar { width: 4px; }
+  .aai-chat-msgs::-webkit-scrollbar-thumb { background: var(--border, #334155); border-radius: 2px; }
+  .aai-msg { display: flex; gap: 8px; max-width: 85%; animation: aaiMsgIn .2s ease; }
+  @keyframes aaiMsgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .aai-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .aai-msg.bot { align-self: flex-start; }
+  .aai-msg .av { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .8rem; margin-top: 2px; }
+  .aai-msg.bot .av { background: linear-gradient(135deg, rgba(6,214,199,.2), rgba(59,123,255,.2)); border: 1px solid rgba(6,214,199,.2); }
+  .aai-msg.user .av { background: rgba(255,255,255,.08); border: 1px solid var(--border, #334155); }
+  .aai-msg .bubble { padding: 9px 12px; border-radius: 12px; font-size: .82rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .aai-msg.bot .bubble { background: rgba(255,255,255,.06); border: 1px solid var(--border, #334155); color: var(--t-primary, #e2e8f0); border-radius: 4px 12px 12px 12px; }
+  .aai-msg.user .bubble { background: linear-gradient(135deg, #06D6C7, #3B7BFF); color: #fff; border-radius: 12px 12px 4px 12px; }
+  .aai-typing { display: flex; gap: 5px; padding: 10px 12px; }
+  .aai-typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal, #06D6C7); opacity: .4; animation: aaiDot 1.2s infinite; }
+  .aai-typing-dot:nth-child(2) { animation-delay: .2s; }
+  .aai-typing-dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes aaiDot { 0%,60%,100%{transform:translateY(0);opacity:.3} 30%{transform:translateY(-4px);opacity:1} }
+
+  /* Welcome screen in chat panel */
+  .aai-welcome { text-align: center; padding: 1.5rem .5rem; }
+  .aai-welcome .aai-w-av { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg,#06D6C7,#3B7BFF); display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: .75rem; }
+  .aai-welcome .aai-w-title { font-weight: 800; font-size: 1.05rem; color: var(--t-primary, #e2e8f0); margin-bottom: .3rem; }
+  .aai-welcome .aai-w-sub { font-size: .78rem; color: var(--t-muted, #64748b); line-height: 1.6; margin-bottom: 1rem; padding: 0 1rem; }
+  .aai-quick-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 .5rem; }
+  .aai-qb { padding: 8px 10px; background: rgba(255,255,255,.05); border: 1px solid var(--border, #334155); border-radius: 10px; font-size: .72rem; cursor: pointer; color: var(--t-secondary, #94a3b8); transition: all .15s; font-family: inherit; text-align: left; line-height: 1.4; }
+  .aai-qb:hover { border-color: rgba(6,214,199,.3); color: var(--t-primary, #e2e8f0); background: rgba(6,214,199,.06); }
+
+  /* Input area */
+  .aai-chat-input { padding: 10px 12px 12px; border-top: 1px solid var(--border, #334155); background: rgba(0,0,0,.2); flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; }
+  .aai-chat-input textarea { flex: 1; background: rgba(255,255,255,.06); border: 1.5px solid var(--border, #334155); border-radius: 10px; padding: 9px 12px; color: var(--t-primary, #e2e8f0); font-family: inherit; font-size: .82rem; resize: none; outline: none; max-height: 80px; transition: border-color .2s; line-height: 1.4; }
+  .aai-chat-input textarea:focus { border-color: var(--teal, #06D6C7); background: rgba(6,214,199,.04); }
+  .aai-chat-input textarea::placeholder { color: var(--t-muted, #64748b); }
+  .aai-chat-input .aai-send-btn { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg,#06D6C7,#3B7BFF); border: none; cursor: pointer; color: #fff; font-size: .9rem; flex-shrink: 0; transition: transform .15s; display: flex; align-items: center; justify-content: center; }
+  .aai-chat-input .aai-send-btn:hover { transform: scale(1.07); }
+  .aai-chat-input .aai-send-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+  @media(max-width: 440px) {
+    #aai-chat-panel { width: calc(100vw - 24px); right: 12px; height: 70vh; bottom: 80px; }
+  }
 </style>
+
 <script>
 (function() {
-  // Fetch chat bubble settings from server
-  var bubbleIcon = '🌊';
-  var bubbleGreeting = 'Hi! I\'m Aquila, your flood damage expert. Click to chat!';
+  // Check user is logged in (don't show bubble on login page)
+  if (!document.cookie.includes('session')) return;
 
-  // Create bubble
+  var chatHistory = [];
+  var isThinking = false;
+  var botName = 'Aquila';
+  var bubbleIcon = '🌊';
+  var greeting = 'Hi! I\\'m Aquila, your flood damage expert. Click to chat!';
+  var claimId = null;
+
+  // Try to get claim ID from URL or page
+  var urlParams = new URLSearchParams(window.location.search);
+  claimId = urlParams.get('claim_id') || null;
+
+  // ── Create Bubble ──
   var bubble = document.createElement('div');
   bubble.id = 'aai-bubble';
-  bubble.innerHTML = '<img src="" style="display:none" id="aai-bubble-img" alt="Aquila"><span class="aai-icon" id="aai-bubble-emoji">🌊</span><div class="aai-greeting" id="aai-bubble-greeting">Hi! I\'m Aquila, your flood damage expert. Click to chat!</div>';
+  bubble.innerHTML = 
+    '<img src="" style="display:none" id="aai-bubble-img" alt="Aquila">' +
+    '<span class="aai-icon" id="aai-bubble-emoji">' + bubbleIcon + '</span>' +
+    '<div class="aai-greeting" id="aai-bubble-greeting">' + greeting + '</div>';
   document.body.appendChild(bubble);
 
-  // Open Aquila chat
-  bubble.addEventListener('click', function() {
-    window.open('/willie', '_blank');
-  });
+  // ── Create Chat Panel ──
+  var panel = document.createElement('div');
+  panel.id = 'aai-chat-panel';
+  panel.innerHTML = 
+    '<div class="aai-chat-header">' +
+      '<div class="aai-av" id="aai-chat-av">' + bubbleIcon + '</div>' +
+      '<div><div class="aai-name" id="aai-chat-name">' + botName + '</div><div class="aai-sub">Flood Claims Expert</div></div>' +
+      '<button class="aai-close" onclick="window.aaiToggle(true)">&times;</button>' +
+    '</div>' +
+    '<div class="aai-chat-msgs" id="aai-chat-msgs">' +
+      '<div class="aai-welcome" id="aai-welcome">' +
+        '<div class="aai-w-av">🌊</div>' +
+        '<div class="aai-w-title">Hey, I\\'m ' + botName + '</div>' +
+        '<div class="aai-w-sub">Your flood damage expert. Ask me anything or tell me to take action in the app.</div>' +
+        '<div class="aai-quick-btns">' +
+          '<button class="aai-qb" onclick="aaiQuick(\'Show me a dashboard summary\\')">📊 Dashboard summary</button>' +
+          '<button class="aai-qb" onclick="aaiQuick(\'List my open claims\\')">📋 Open claims</button>' +
+          '<button class="aai-qb" onclick="aaiQuick(\'What are today\\'s inspections?\\')">📅 Today\\'s schedule</button>' +
+          '<button class="aai-qb" onclick="aaiQuick(\'Walk me through creating a new claim\\')">➕ Create a claim</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="aai-chat-input">' +
+      '<textarea id="aai-input" rows="1" placeholder="Ask ' + botName + ' anything..." onkeydown="aaiHandleKey(event)" oninput="aaiAutoResize(this)"></textarea>' +
+      '<button class="aai-send-btn" id="aai-send-btn" onclick="aaiSend()">➤</button>' +
+    '</div>';
+  document.body.appendChild(panel);
+
+  // ── Toggle ──
+  window.aaiToggle = function(forceClose) {
+    var isOpen = panel.classList.contains('open');
+    if (forceClose || isOpen) {
+      panel.classList.remove('open');
+    } else {
+      panel.classList.add('open');
+      document.getElementById('aai-input').focus();
+    }
+  };
+
+  bubble.addEventListener('click', function() { window.aaiToggle(); });
+
+  // ── Quick send ──
+  window.aaiQuick = function(text) {
+    document.getElementById('aai-input').value = text;
+    aaiSend();
+  };
+
+  // ── Send ──
+  window.aaiSend = async function() {
+    if (isThinking) return;
+    var input = document.getElementById('aai-input');
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    input.style.height = 'auto';
+    isThinking = true;
+    document.getElementById('aai-send-btn').disabled = true;
+    document.getElementById('aai-welcome')?.remove();
+
+    // Add user msg
+    aaiAddMsg('user', text);
+    chatHistory.push({role:'user', content:text});
+
+    // Typing indicator
+    var msgs = document.getElementById('aai-chat-msgs');
+    var typing = document.createElement('div');
+    typing.className = 'aai-msg bot';
+    typing.id = 'aai-typing';
+    typing.innerHTML = '<div class="av">🌊</div><div class="bubble"><div class="aai-typing"><div class="aai-typing-dot"></div><div class="aai-typing-dot"></div><div class="aai-typing-dot"></div></div></div>';
+    msgs.appendChild(typing);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    try {
+      var csrfEl = document.querySelector('meta[name="csrf"]');
+      var csrf = csrfEl ? csrfEl.content : '';
+      var res = await fetch('/willie/chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({
+          message: text,
+          history: chatHistory.slice(-12),
+          claim_id: claimId ? parseInt(claimId) : null,
+          context: document.title || 'FloodClaims Pro'
+        })
+      });
+      var data = await res.json();
+      typing.remove();
+      var reply = data.reply || '⚠️ Something went wrong.';
+      aaiAddMsg('bot', reply);
+      chatHistory.push({role:'assistant', content:reply});
+    } catch(e) {
+      typing.remove();
+      aaiAddMsg('bot', '⚠️ Could not reach ' + botName + '. Check your connection.');
+    }
+
+    isThinking = false;
+    document.getElementById('aai-send-btn').disabled = false;
+    document.getElementById('aai-input').focus();
+  };
+
+  function aaiAddMsg(role, content) {
+    var msgs = document.getElementById('aai-chat-msgs');
+    var div = document.createElement('div');
+    div.className = 'aai-msg ' + (role === 'user' ? 'user' : 'bot');
+    var av = role === 'user' ? '👤' : '🌊';
+    div.innerHTML = '<div class="av">' + av + '</div><div class="bubble">' + aaiEsc(content) + '</div>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function aaiEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  window.aaiHandleKey = function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.aaiSend(); } };
+  window.aaiAutoResize = function(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 80) + 'px'; };
 })();
 </script>
 
