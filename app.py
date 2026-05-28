@@ -1882,21 +1882,16 @@ def settings():
             val = request.form.get(key, '').strip()
             if val:
                 set_setting(key, val)
-        willie_key_input = request.form.get('willie_agent_key', '').strip()
-        if willie_key_input and not willie_key_input.endswith('...'):
-            set_setting('willie_agent_key', willie_key_input)
         flash('Settings saved!', 'success')
         return redirect(url_for('settings'))
-    
+
     env_key_set       = bool(OPENROUTER_KEY)
     current_model     = get_setting('ai_model', 'openrouter/owl-alpha')
     current_fallback  = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
-    current_willie_key = get_setting('willie_agent_key', '')
     return render_template('settings.html',
                            env_key_set=env_key_set,
                            current_model=current_model,
-                           current_fallback=current_fallback,
-                           current_willie_key=current_willie_key)
+                           current_fallback=current_fallback)
 
 # ── Admin: Team Management ────────────────────────────────────────────────────
 
@@ -2027,10 +2022,7 @@ def willie_chat():
     if not message:
         return jsonify({'error': 'message required'}), 400
 
-    WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
-    WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
-    FLOOD_BASE      = request.host_url.rstrip('/')
-    flood_token     = get_willie_token()
+    FLOOD_BASE = request.host_url.rstrip('/')
 
     # ── Build rich live context ─────────────────────────────────────────
     db = get_db()
@@ -2165,19 +2157,75 @@ When referencing a claim, always use its claim number AND name so it's clear."""
         {'role': 'system', 'content': system_context}
     ] + history[-8:]
 
+    # ── Build brain-augmented system prompt from local DB ─────────────────
+    brain_identity  = get_setting('brain_identity_md', '')
+    brain_soul      = get_setting('brain_soul_md', '')
+    brain_memory    = get_setting('brain_memory_md', '')
+    brain_system    = get_setting('brain_system_prompt', '')
+
+    # Default brain if nothing saved yet
+    default_system = brain_system or """You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaim Pro.
+You have FULL CONTROL of the app and can take actions directly on behalf of the adjuster.
+Always be helpful, concise, and professional. Use your knowledge of NFIP rules and flood claim procedures."""
+
+    # Prepend brain files to system context
+    brain_prefix = ''
+    if brain_identity:
+        brain_prefix += f"\n\n## Your Identity\n{brain_identity}"
+    if brain_soul:
+        brain_prefix += f"\n\n## Your Soul\n{brain_soul}"
+    if brain_memory:
+        brain_prefix += f"\n\n## Your Memory\n{brain_memory}"
+
+    final_system = default_system + brain_prefix
+
+    # Replace the old system_context with the brain-augmented one
+    # but keep all the live app context (claims, dashboard, etc.)
+    live_context = system_context.replace(
+        'You are Aquila, an expert AI flood damage adjuster assistant embedded inside FloodClaim Pro.\nYou have FULL CONTROL of the app and can take actions directly on behalf of the adjuster.\nAlways be helpful, concise, and professional. Use your knowledge of NFIP rules and flood claim procedures.',
+        final_system
+    )
+
+    # Build messages for OpenRouter
+    messages = [{'role': 'system', 'content': live_context}] + history[-8:]
+
     try:
-        payload = json.dumps({
-            'message':    message,
-            'history':    enriched_history,
-            'session_id': session_id or f'willie-{session["user_id"]}'
-        }).encode()
-        req = _req.post(
-            f'{WIDGET_BASE}/chat/{WILLIE_AGENT_ID}',
-            headers={'Content-Type': 'application/json'},
-            data=payload, timeout=45
-        )
-        result = req.json()
-        reply  = result.get('reply', 'Aquila is unavailable right now.')
+        selected_model   = get_setting('ai_model', 'openrouter/owl-alpha')
+        fallback_model   = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
+        openrouter_key   = OPENROUTER_KEY
+        if not openrouter_key:
+            return jsonify({'reply': '⚠️ OpenRouter API key not configured. Go to Settings → AI Integration to set it up.'})
+
+        reply = None
+        models_to_try = [selected_model]
+        if fallback_model and fallback_model != selected_model:
+            models_to_try.append(fallback_model)
+
+        for model in models_to_try:
+            try:
+                r = _req.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    headers={'Authorization': f'Bearer {openrouter_key}', 'Content-Type': 'application/json'},
+                    json={'model': model, 'messages': messages, 'max_tokens': 2000},
+                    timeout=45
+                )
+                d = r.json()
+                if 'error' in d:
+                    err = d['error']
+                    if isinstance(err, dict):
+                        err = err.get('message', str(err))
+                    if model == models_to_try[-1]:
+                        reply = f'⚠️ AI error: {err}'
+                    continue
+                reply = d['choices'][0]['message']['content']
+                if model != selected_model:
+                    reply = f'[Used fallback: {model}]\n\n{reply}'
+                break
+            except Exception as inner_e:
+                if model == models_to_try[-1]:
+                    reply = f'Aquila is unavailable right now. ({str(inner_e)[:80]})'
+
+        reply = reply or 'Aquila is unavailable right now.'
     except Exception as e:
         reply = f'Aquila is unavailable right now. ({str(e)[:80]})'
 
@@ -2195,7 +2243,7 @@ When referencing a claim, always use its claim number AND name so it's clear."""
                 db.execute('UPDATE willie_conversations SET title=?,updated=CURRENT_TIMESTAMP WHERE id=?',
                            (title, conv_id))
             else:
-                db.execute('UPDATE willie_conversations SET updated=CURRENT_TIMESTAMP WHERE id=?', (conv_id,))
+                db.execute('UPDATE willie_conversations SET updated=CURRENT_TIMESTAMP WHERE id=?', (conv_id))
             db.commit()
 
     return jsonify({'reply': reply})
@@ -2803,96 +2851,20 @@ def willie_update_settings():
     return jsonify({'ok': True, 'updated': updated})
 
 
-@app.route('/willie/fix-identity', methods=['POST'])
-@login_required
-@admin_required
-@csrf_required
-def willie_fix_identity():
-    """Fix Willie's name/identity in the widget — call after a redeploy."""
-    WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
-    WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
-    willie_key      = get_setting('willie_agent_key', '')
-    if not willie_key:
-        flash('Aquila API key not set in Settings yet.', 'error')
-        return redirect(url_for('settings'))
-
-    IDENTITY = """# IDENTITY
-
-- Name: Aquila
-- Full name: Aquila The Flood Expert
-- Role: AI flood damage adjuster assistant inside FloodClaim Pro
-- Built by: Alexander AI Integrated Solutions
-
-## Who I am
-I am Aquila — NOT Billy, NOT an unnamed assistant. My name is Aquila.
-I am an expert flood damage adjuster AI assistant embedded inside FloodClaim Pro.
-I have deep knowledge of NFIP rules, flood claim procedures, and 2026 pricing rates.
-
-## What I can do
-- Create, view, and update flood damage claims
-- Add rooms and damage line items with correct NFIP pricing
-- Move claims through the pipeline (New → In Progress → Submitted → Closed)
-- Schedule inspections and assign adjusters
-- Check NFIP compliance scores
-- Look up FEMA flood zones
-- Send client notifications via email or SMS
-- Run AI estimates on claims
-- Analyze damage photos and suggest scope of work
-- Answer any question about flood claims, NFIP rules, water categories, and pricing
-
-## My personality
-Professional, knowledgeable, helpful, and direct. I give specific answers with real numbers.
-I always refer to myself as Aquila."""
-
-    SYSTEM_PROMPT = """You are Aquila, an expert AI flood damage adjuster assistant inside FloodClaim Pro.
-Your name is Aquila — always introduce yourself as Aquila, never as Billy or any other name.
-You have deep knowledge of NFIP flood insurance rules, water damage categories, 2026 restoration pricing,
-and the full FloodClaim Pro platform. You can take direct actions in the app on behalf of adjusters.
-Always be professional, specific, and helpful. When you don’t know something, say so honestly."""
-
-    try:
-        r = _req.post(
-            f'{WIDGET_BASE}/agent/{WILLIE_AGENT_ID}/brain/update',
-            json={
-                'token':         willie_key,
-                'identity_md':   IDENTITY,
-                'system_prompt': SYSTEM_PROMPT,
-                'name':          'Aquila The Flood Expert',
-                'tagline':       'Hi! I am Aquila your flood damage expert. How can I help?',
-            },
-            timeout=15
-        )
-        d = r.json()
-        if d.get('ok'):
-            flash(f'✅ Willie’s identity fixed! Updated: {", ".join(d.get("updated", []))}.', 'success')
-        else:
-            flash(f'❌ Could not update Willie: {d.get("error", str(d))}', 'error')
-    except Exception as e:
-        flash(f'❌ Network error: {e}', 'error')
-    return redirect(url_for('settings'))
-
-
-# ── Admin: Train Aquila (Brain Editor) ────────────────────────────────────────
+# ── Admin: Train Aquila (Brain Editor) — Local DB Storage ─────────────────────
 
 @app.route('/admin/willie/brain', methods=['GET'])
 @login_required
 @admin_required
 def willie_brain_get():
-    """Fetch Aquila's current brain files from the AI Widget."""
-    WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
-    WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
-    willie_key      = get_setting('willie_agent_key', '')
-    if not willie_key:
-        return jsonify({'error': 'Aquila widget API key not set. Go to Settings → Aquila Integration and paste the key.'}), 400
-    try:
-        r = _req.get(
-            f'{WIDGET_BASE}/agent/{WILLIE_AGENT_ID}/brain',
-            params={'token': willie_key},
-            timeout=15
-        )
-        return jsonify(r.json())
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Fetch Aquila's brain files from local database settings."""
+    db = get_db()
+    keys = ['brain_identity_md', 'brain_soul_md', 'brain_memory_md', 'brain_system_prompt']
+    result = {}
+    for k in keys:
+        row = db.execute('SELECT value FROM settings WHERE key=?', (k,)).fetchone()
+        result[k] = row['value'] if row else ''
+    return jsonify(result)
 
 
 @app.route('/admin/willie/brain/update', methods=['POST'])
@@ -2900,40 +2872,60 @@ def willie_brain_get():
 @admin_required
 @csrf_required
 def willie_brain_update():
-    """Save Aquila's brain files to the AI Widget."""
-    WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
-    WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
-    willie_key      = get_setting('willie_agent_key', '')
-    if not willie_key:
-        return jsonify({'error': 'Aquila widget API key not set.'}), 400
+    """Save Aquila's brain files to local database settings."""
+    brain_keys = ['brain_identity_md', 'brain_soul_md', 'brain_memory_md', 'brain_system_prompt']
+    for key in brain_keys:
+        val = request.form.get(key, '')
+        set_setting(key, val)
+    return jsonify({'ok': True, 'message': 'Brain files saved!', 'updated': brain_keys})
 
-    identity_md   = request.form.get('identity_md', '')
-    soul_md       = request.form.get('soul_md', '')
-    memory_md     = request.form.get('memory_md', '')
-    system_prompt = request.form.get('system_prompt', '')
 
-    payload = {
-        'token':         willie_key,
-        'identity_md':   identity_md,
-        'soul_md':       soul_md,
-        'memory_md':     memory_md,
-    }
-    if system_prompt:
-        payload['system_prompt'] = system_prompt
+# ── Admin: Chat Bubble Settings ───────────────────────────────────────────────
 
-    try:
-        r = _req.post(
-            f'{WIDGET_BASE}/agent/{WILLIE_AGENT_ID}/brain/update',
-            json=payload,
-            timeout=15
-        )
-        d = r.json()
-        if d.get('ok'):
-            return jsonify({'ok': True, 'message': 'Brain files saved!', 'updated': d.get('updated', [])})
-        else:
-            return jsonify({'error': d.get('error', 'Unknown error')}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@app.route('/admin/settings/data')
+@login_required
+@admin_required
+def settings_data():
+    """Return all settings as JSON (for AJAX loading of brain files etc.)."""
+    db = get_db()
+    rows = db.execute('SELECT key, value FROM settings').fetchall()
+    return jsonify({r['key']: r['value'] for r in rows})
+
+
+@app.route('/admin/settings/chat-bubble', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def save_chat_bubble():
+    """Save chat bubble appearance settings."""
+    set_setting('bubble_bot_name', request.form.get('bubble_bot_name', 'Aquila').strip())
+    set_setting('bubble_greeting', request.form.get('bubble_greeting', '').strip())
+    set_setting('bubble_emoji_icon', request.form.get('bubble_emoji_icon', '🌊').strip())
+
+    # Handle icon upload
+    icon_file = request.files.get('bubble_icon_upload')
+    if icon_file and icon_file.filename:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(icon_file.read()))
+        img = img.convert('RGBA')
+        img.thumbnail((64, 64), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        import base64
+        b64 = base64.b64encode(buf.read()).decode()
+        set_setting('bubble_icon_data', f'data:image/png;base64,{b64}')
+        set_setting('bubble_icon_type', 'upload')
+    else:
+        # If no upload, check if emoji was selected
+        emoji = request.form.get('bubble_emoji_icon', '').strip()
+        if emoji and not get_setting('bubble_icon_data'):
+            set_setting('bubble_icon_type', 'emoji')
+            set_setting('bubble_emoji_icon', emoji)
+
+    flash('Chat bubble settings saved!', 'success')
+    return redirect(url_for('settings'))
 
 
 @app.route('/willie/api/actions/sync', methods=['POST'])
