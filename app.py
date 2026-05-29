@@ -4809,5 +4809,321 @@ def ai_describe_photo_via_network(image_path):
     # Fallback to local
     return ai_describe_photo(image_path)
 
+# ── PHASE 1 BACKEND: Batch Photo Analysis — Added by OWL ──────────────────────
+
+def migrate_batch_photo_columns():
+    """Add columns to photos table for batch AI analysis."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        cols = [r[1] for r in db.execute('PRAGMA table_info(photos)').fetchall()]
+        extras = [
+            ('batch_id',       'INTEGER DEFAULT 0'),
+            ('ai_raw_json',    'TEXT DEFAULT ""'),
+            ('detected_items', 'TEXT DEFAULT "[]"'),
+            ('is_high_value',  'INTEGER DEFAULT 0'),
+            ('needs_closeup',  'INTEGER DEFAULT 0'),
+            ('water_category', 'TEXT DEFAULT ""'),
+            ('water_class',    'TEXT DEFAULT ""'),
+            ('ai_confidence',  'REAL DEFAULT 0'),
+            ('customer_submitted', 'INTEGER DEFAULT 0'),
+            ('analysis_status',    'TEXT DEFAULT "pending"'),
+        ]
+        for col, typedef in extras:
+            if col not in cols:
+                db.execute(f'ALTER TABLE photos ADD COLUMN {col} {typedef}')
+        db.commit()
+        db.close()
+    except Exception as e:
+        print(f'migrate_batch_photo_columns error: {e}')
+
+migrate_batch_photo_columns()
+
+
+def _get_vision_model():
+    """Return a vision-capable model for batch photo analysis."""
+    configured = get_setting('ai_vision_model', '')
+    if configured:
+        return configured
+    # Default: use OpenRouter auto-router for vision
+    return 'openrouter/auto'
+
+
+def _analyze_photo_vision(image_paths, claim=None, room_id=None):
+    """Send multiple photos to a vision-capable AI model for flood damage analysis.
+    Returns structured JSON with detected items, water category/class, high-value flags.
+    """
+    key = OPENROUTER_KEY
+    if not key:
+        return {'error': 'no_api_key', 'items': []}
+
+    model = _get_vision_model()
+
+    # Build the content array with all images
+    content = [
+        {
+            'type': 'text',
+            'text': (
+                'You are a certified flood damage assessor. Analyze the following photos of a room '
+                'affected by flood damage. For each visible item:\n'
+                '1. Identify the item and its material\n'
+                '2. Rate damage severity (1-5): 1=minor cosmetic, 5=total loss\n'
+                '3. Estimate replacement cost: low/medium/high/luxury\n'
+                '4. Flag high-value items (jewelry, designer, electronics >$500)\n'
+                '5. Determine water category: Category 1 (clean), 2 (gray), 3 (black)\n'
+                '6. Determine water class: Class 1 (minimal), 2 (significant), 3 (gross), 4 (extreme)\n'
+                'Respond ONLY with valid JSON: '
+                '{"items": [{"name": "...", "material": "...", "severity": N, "cost": "...", "high_value": true/false}], '
+                '"water_category": "1|2|3", "water_class": "1|2|3|4", '
+                '"notes": "brief summary"}'
+            )
+        }
+    ]
+
+    for img_path in image_paths:
+        try:
+            with open(img_path, 'rb') as f:
+                img_b64 = base64.b64encode(f.read()).decode()
+            ext = img_path.rsplit('.', 1)[-1].lower()
+            mime = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
+            content.append({
+                'type': 'image_url',
+                'image_url': {'url': f'data:{mime};base64,{img_b64}', 'detail': 'high'}
+            })
+        except Exception as e:
+            print(f'Error loading image {img_path}: {e}')
+
+    try:
+        result = call_openrouter(
+            messages=[{'role': 'user', 'content': content}],
+            model=model,
+            key=key,
+            max_tokens=4000
+        )
+        if result.startswith('Error:'):
+            return {'error': result, 'items': []}
+        if result.startswith('[Used fallback:'):
+            result = result.split(']\n\n', 1)[-1] if ']\n\n' in result else result
+
+        try:
+            parsed = json.loads(result)
+            return parsed
+        except json.JSONDecodeError:
+            # Try to extract JSON from the response
+            import re
+            json_match = re.search(r'\{.*\}', result, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+            return {'items': [], 'raw_text': result}
+    except Exception as e:
+        print(f'Vision analysis error: {e}')
+        return {'error': str(e), 'items': []}
+
+
+@app.route('/claim/<int:claim_id>/room/<int:room_id>/batch-analyze', methods=['POST'])
+@login_required
+def batch_analyze_claim_room(claim_id, room_id):
+    """Analyze a batch of uploaded photos for a specific room."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'auth_required'}), 401
+
+    # Verify claim access
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
+    if not claim:
+        db.close()
+        return jsonify({'error': 'claim_not_found'}), 404
+
+    # Get uploaded files
+    photos = request.files.getlist('photos')
+    if not photos:
+        db.close()
+        return jsonify({'error': 'no_photos'}), 400
+
+    # Save photos and collect paths
+    upload_dir = os.path.join(app.config.get('UPLOAD_FOLDER', 'static/uploads'), str(claim_id))
+    os.makedirs(upload_dir, exist_ok=True)
+    saved_paths = []
+
+    for i, photo in enumerate(photos):
+        if photo and photo.filename:
+            filename = f'batch_{room_id}_{int(datetime.datetime.now().timestamp())}_{i}_{secure_filename(photo.filename)}'
+            filepath = os.path.join(upload_dir, filename)
+            photo.save(filepath)
+
+            # Insert photo record
+            db.execute(
+                'INSERT INTO photos (claim_id, room_id, filename, ai_description, room_id, customer_submitted) VALUES (?, ?, ?, ?, ?, ?)',
+                (claim_id, room_id, filename, '', room_id, 0)
+            )
+            saved_paths.append(filepath)
+
+    db.commit()
+
+    # Run vision analysis
+    analysis = _analyze_photo_vision(saved_paths, claim=claim, room_id=room_id)
+
+    # Store results on the last photo
+    if saved_paths:
+        last_photo = db.execute(
+            'SELECT id FROM photos WHERE claim_id=? AND room_id=? ORDER BY id DESC LIMIT 1',
+            (claim_id, room_id)
+        ).fetchone()
+        if last_photo:
+            db.execute(
+                'UPDATE photos SET ai_raw_json=?, detected_items=?, is_high_value=?, '
+                'water_category=?, water_class=?, analysis_status=? WHERE id=?',
+                (
+                    json.dumps(analysis),
+                    json.dumps(analysis.get('items', [])),
+                    1 if any(item.get('high_value') for item in analysis.get('items', [])) else 0,
+                    analysis.get('water_category', ''),
+                    analysis.get('water_class', ''),
+                    'completed',
+                    last_photo['id']
+                )
+            )
+            db.commit()
+
+    db.close()
+
+    return jsonify({
+        'success': True,
+        'analysis': analysis,
+        'photos_processed': len(saved_paths)
+    })
+
+
+@app.route('/claim/<int:claim_id>/ai-populate', methods=['POST'])
+@login_required
+def ai_populate_claim(claim_id):
+    """Auto-populate claim line items from batch analysis results."""
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
+    if not claim:
+        db.close()
+        return jsonify({'error': 'claim_not_found'}), 404
+
+    # Get all analyzed photos for this claim
+    photos = db.execute(
+        'SELECT * FROM photos WHERE claim_id=? AND analysis_status="completed" AND detected_items!=""',
+        (claim_id,)
+    ).fetchall()
+
+    items_added = []
+    for photo in photos:
+        try:
+            items = json.loads(photo['detected_items'])
+            for item in items:
+                name = item.get('name', 'Unknown item')
+                severity = item.get('severity', 3)
+                cost_tier = item.get('cost', 'medium')
+
+                # Estimate price based on cost tier
+                price_map = {'low': 50, 'medium': 150, 'high': 500, 'luxury': 2000}
+                unit_price = price_map.get(cost_tier, 150)
+                qty = 1
+
+                db.execute(
+                    'INSERT INTO line_items (claim_id, room_id, description, quantity, unit_price, total, source) '
+                    'VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    (claim_id, photo['room_id'], f"[AI] {name} (severity {severity}/5)", qty, unit_price, unit_price * qty, 'ai_batch')
+                )
+                items_added.append(name)
+        except (json.JSONDecodeError, KeyError) as e:
+            continue
+
+    db.commit()
+    recalc_claim(claim_id)
+    db.close()
+
+    return jsonify({
+        'success': True,
+        'items_added': len(items_added),
+        'items': items_added
+    })
+
+
+@app.route('/customer/upload/<token>', methods=['POST'])
+def customer_upload_photos(token):
+    """Customer uploads photos via SMS link. No login required."""
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+
+    # Validate token
+    portal = db.execute(
+        'SELECT * FROM client_portal_tokens WHERE token=? AND used=0',
+        (token,)
+    ).fetchone()
+    if not portal:
+        db.close()
+        return jsonify({'error': 'invalid_or_expired_token'}), 403
+
+    claim_id = portal['claim_id']
+    photos = request.files.getlist('photos')
+
+    if not photos:
+        db.close()
+        return jsonify({'error': 'no_photos'}), 400
+
+    upload_dir = os.path.join(app.config.get('UPLOAD_FOLDER', 'static/uploads'), str(claim_id))
+    os.makedirs(upload_dir, exist_ok=True)
+
+    saved_count = 0
+    for i, photo in enumerate(photos):
+        if photo and photo.filename:
+            filename = f'customer_{token[:8]}_{int(datetime.datetime.now().timestamp())}_{i}_{secure_filename(photo.filename)}'
+            filepath = os.path.join(upload_dir, filename)
+            photo.save(filepath)
+            db.execute(
+                'INSERT INTO photos (claim_id, filename, ai_description, customer_submitted, analysis_status) '
+                'VALUES (?, ?, ?, ?, ?)',
+                (claim_id, filename, '', 1, 'pending')
+            )
+            saved_count += 1
+
+    # Mark token as used
+    db.execute('UPDATE client_portal_tokens SET used=1 WHERE token=?', (token,))
+    db.commit()
+    db.close()
+
+    return jsonify({
+        'success': True,
+        'photos_uploaded': saved_count,
+        'message': f'{saved_count} photos uploaded successfully'
+    })
+
+
+@app.route('/claim/<int:claim_id>/generate-upload-link', methods=['POST'])
+@login_required
+def generate_upload_link(claim_id):
+    """Generate a customer upload link (token + SMS)."""
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
+    if not claim:
+        db.close()
+        return jsonify({'error': 'claim_not_found'}), 404
+
+    # Generate unique token
+    token = secrets.token_urlsafe(32)
+    db.execute(
+        'INSERT INTO client_portal_tokens (claim_id, token, used, created_at) VALUES (?, ?, 0, ?)',
+        (claim_id, token, datetime.datetime.now().isoformat())
+    )
+    db.commit()
+    db.close()
+
+    upload_url = url_for('customer_upload_photos', token=token, _external=True)
+
+    return jsonify({
+        'success': True,
+        'upload_url': upload_url,
+        'token': token,
+        'sms_message': f'FloodClaims Pro: Upload photos of your damage here: {upload_url}'
+    })
+
+
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
