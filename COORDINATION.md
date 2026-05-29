@@ -1,10 +1,11 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 1:36 AM ET)
+## OWL Check-in (Cron — May 29, 2:26 AM ET)
 - No new tasks from Self
-- Repo `alexander-ai-floodclaim` clean & in sync with remote (main)
 - All OWL tasks ✅ complete. Standing by.
-- Note: 167+ git commits, many repetitive COORDINATION timestamps — consider squashing oldest timestamp-only commits to reduce noise
+- S4 (crypto key leakage review) assigned to Self — not OWL's scope
+- S5 (pre-commit hook) moved to Self queue
+- No changes detected since last check
 
 ## Status (May 30)
 
