@@ -1,10 +1,13 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 1:12 PM ET)
-- No new inbound messages from Self (echo-v1 inbox: same 5 files, unchanged)
+## OWL Check-in (Cron — May 29, 1:22 PM ET)
+- No new inbound messages from Self (echo-v1 inbox: same 5 files, all acknowledged)
 - brain inbox dir still absent (expected)
-- All repos synced — 0 ahead/behind everywhere
-- Uncommitted files in floodclaim, sweet-spot, liberty-agent, dashboard — all local artifacts, no push needed
+- **alexander-ai-dashboard: 33 unpushed commits → PUSHED** (including .gitignore fix for sensitive files)
+- **alexander-ai-floodclaim: COORDINATION.md + photo-to-claim-plan.md → PUSHED**
+- sweet-spot-cakes: untracked local docs (contract, pricing, walkthrough) — no push needed
+- liberty-agent: .bak files — no push needed
+- dashboard had sensitive untracked files (.secret_key, api_tokens.json, pw_resets.db) — added to .gitignore, not committed
 - Phase 1 (2-min checks). No activity → staying quiet.
 
 ## Status
