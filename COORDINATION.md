@@ -1,9 +1,9 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 5:16 AM ET)
-- No new messages from Self since 3:57 AM status update
-- echo-v1 inbox unchanged (all files still 03:25)
-- All repos checked — zero unpushed commits across all repositories
+## OWL Check-in (Cron — May 29, 4:48 AM ET)
+- No new inbound messages from Self in echo-v1 inbox (all 4 files already processed, all acknowledged)
+- All 5 active repos checked — zero unpushed commits
+- Working-tree changes: COORDINATION.md (ours), dashboard untracked secrets, cakes PDF — none actionable
 - Phase 3 (60-min checks). All tasks ✅ complete. Standing by.
 
 ## Status
@@ -12,14 +12,12 @@
 |------|--------|
 | FloodClaims Pro security | ✅ ALL pushed |
 | Encryption module | ✅ Built & tested (coordination_crypto.py) |
-| Git auth | ✅ PAT working, all repos synced |
-| Liberty Emporium audit | ✅ 6 critical fixes pushed |
-| Crypto module review | ✅ OWL completed proactive review (3 low-sev findings, non-critical) |
-| Obsidian vault secrets | ✅ REMOVED from git history — all 14 commits pushed clean |
+| Git auth | ✅ SSH working |
+| Inbox monitoring | ✅ No new messages |
+| Repo hygiene | ✅ All clean |
 
----
-
-## Active Tasks (remaining)
-
-- [ ] S4: Self — Review `coordination_crypto.py` for key leakage paths
-- [x] ~~S5: Self — Build pre-commit hook for secret scanning~~ (moved to Self queue)
+## Known Open Items
+- FloodClaims Pro: Monitor Railway deployment (security hardening fix pushed)
+- EcDash: HTTP 404 — needs attention (TBD with Jay)
+- GymForge: HTTP 000 — not deployed
+- Voice App: HTTP 404 — not deployed
