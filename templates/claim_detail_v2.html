@@ -1,0 +1,1187 @@
+{% extends 'base.html' %}
+{% block title %}{{ claim.claim_number }} — FloodClaims Pro{% endblock %}
+{% block page_title %}🏠 Claim {{ claim.claim_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Photo card: horizontal layout — image left, info right ── */
+  .photo-grid {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: .75rem;
+    margin-bottom: .5rem;
+  }
+  .photo-card {
+    position: relative;
+    display: flex !important;
+    flex-direction: row;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    transition: box-shadow .15s;
+  }
+  .photo-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); }
+  .photo-thumb-wrap {
+    flex: 0 0 220px;
+    position: relative;
+  }
+  .photo-thumb-wrap img {
+    width: 220px;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+  }
+  .photo-card-body {
+    flex: 1;
+    padding: .9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    min-width: 0;
+  }
+  .photo-card-body p {
+    font-size: .82rem;
+    color: #475569;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .photo-card-body .ai-tag {
+    font-size: .68rem;
+    font-weight: 700;
+    color: #0891b2;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 0;
+  }
+  .photo-caption-label {
+    font-size: .85rem;
+    font-weight: 700;
+    color: #0a1628;
+  }
+  .photo-meta-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: .5rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .photo-actions {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    display: flex;
+    gap: .3rem;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .photo-card:hover .photo-actions { opacity: 1; }
+  .photo-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; font-weight: 700; transition: all .15s;
+  }
+  .photo-btn-edit   { background: rgba(255,255,255,.92); color: #1e40af; }
+  .photo-btn-delete { background: rgba(239,68,68,.9);    color: #fff;    }
+  .photo-btn-ai     { background: rgba(6,182,212,.9);    color: #fff;    }
+  .photo-btn:hover  { transform: scale(1.1); }
+  .ai-analyzing-tag { color: #0891b2; font-size: .72rem; font-style: italic; }
+  @keyframes ai-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .ai-analyzing-tag { animation: ai-pulse .8s infinite; }
+  @media (max-width: 600px) {
+    .photo-card { flex-direction: column !important; }
+    .photo-thumb-wrap, .photo-thumb-wrap img { width: 100% !important; height: 180px !important; flex: none; }
+  }
+  /* Mobile: claim action buttons wrap nicely */
+  @media (max-width: 768px) {
+    .claim-actions { flex-wrap: wrap; gap: .4rem !important; }
+    .claim-actions .btn { flex: 1 1 auto; min-width: 80px; text-align: center; justify-content: center; }
+    .claim-actions form { flex: 1 1 auto; }
+    .claim-actions form .btn { width: 100%; }
+    .add-item-grid { grid-template-columns: 1fr 1fr !important; }
+    .add-item-grid .item-desc { grid-column: 1 / -1; }
+    .add-item-grid .item-submit { grid-column: 1 / -1; }
+    .add-item-grid .item-submit .btn { width: 100%; }
+    .room-header span:first-child { font-size: .85rem !important; }
+    .info-mini-grid { grid-template-columns: 1fr 1fr !important; }
+  }
+  @media (max-width: 480px) {
+    .add-item-grid { grid-template-columns: 1fr !important; }
+    .add-item-grid .item-desc { grid-column: 1; }
+    .add-item-grid .item-submit { grid-column: 1; }
+  }
+
+  /* Edit modal */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 14px; padding: 1.75rem;
+    width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    position: relative;
+  }
+  .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem; color: #0a1628; }
+  .modal-close {
+    position: absolute; top: 1rem; right: 1rem;
+    background: none; border: none; font-size: 1.2rem;
+    cursor: pointer; color: #94a3b8; line-height: 1;
+  }
+  .modal-close:hover { color: #1e293b; }
+  .modal-preview {
+    width: 100%; height: 160px; object-fit: cover;
+    border-radius: 8px; margin-bottom: 1rem;
+    border: 1px solid #e2e8f0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header bar -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+  <div>
+    <div style="font-size:1.3rem;font-weight:800;color:#0a1628">{{ claim.client_name }}</div>
+    <div style="font-size:.9rem;color:#64748b;margin-top:.2rem">📍 {{ claim.property_address }}</div>
+  </div>
+  <div class="claim-actions" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+    <form method="POST" action="{{ url_for('update_status', claim_id=claim.id) }}" style="display:flex;gap:.5rem;align-items:center">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <select name="status" class="form-control" style="width:auto;padding:.4rem .75rem;font-size:.85rem">
+        {% for s in ['New','In Progress','Submitted','Closed'] %}
+        <option value="{{ s }}" {% if claim.status==s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-ghost btn-sm">Update</button>
+    </form>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="if(typeof aaiToggle==='function'){window.claimId={{ claim.id }};aaiToggle();}else{location.href='{{ url_for('willie') }}?claim_id={{ claim.id }}'}">🌊 Ask Aquila</button>
+    <a href="{{ url_for('submit_package_page', claim_id=claim.id) }}" class="btn btn-primary btn-sm">📤 Submit to Carrier</a>
+    <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
+    <a href="{{ url_for('compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
+
+    <a href="{{ url_for('claim_qr', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📱 QR Upload</a>
+    <a href="{{ url_for('claim_activity', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📜 Activity</a>
+    <form method="POST" action="{{ url_for('duplicate_claim', claim_id=claim.id) }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Duplicate this claim?')">⧉ Duplicate</button>
+    </form>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+    <form method="POST" action="{{ url_for('delete_claim', claim_id=claim.id) }}"
+          onsubmit="return confirm('Delete claim {{ claim.claim_number }} ({{ claim.client_name }})? This will permanently remove all rooms, photos, and line items.')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-danger btn-sm">🗑 Delete Claim</button>
+    </form>
+  </div>
+</div>
+
+<!-- Info cards -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem">
+  <div class="card" style="margin:0;padding:1rem">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em;margin-bottom:.5rem">Flood Date</div>
+    <div style="font-weight:700">{{ claim.flood_date }}</div>
+    {% if claim.water_category %}<div style="font-size:.75rem;color:#64748b;margin-top:3px">
+      {{ claim.water_category or '?' }} / {{ claim.water_class or '?' }}
+    </div>{% endif %}
+  </div>
+  <div class="card" style="margin:0;padding:1rem">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em;margin-bottom:.5rem">Property</div>
+    <div style="font-weight:700;font-size:.9rem">{{ claim.property_type or '—' }}</div>
+    <div style="font-size:.78rem;color:#64748b">
+      {% if claim.property_sqft %}{{ claim.property_sqft }} sq ft{% endif %}
+      {% if claim.year_built %} &middot; Built {{ claim.year_built }}{% endif %}
+    </div>
+  </div>
+  <div class="card" style="margin:0;padding:1rem">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em;margin-bottom:.5rem">Insurance</div>
+    <div style="font-weight:700;font-size:.9rem">{{ claim.insurance_company or '—' }}</div>
+    <div style="font-size:.78rem;color:#64748b">{{ claim.policy_number or '' }}</div>
+    {% if claim.coverage_building %}
+    <div style="font-size:.75rem;color:#64748b;margin-top:3px">
+      Bldg: ${{ "{:,.0f}".format(claim.coverage_building) }}
+      {% if claim.coverage_contents %} &middot; Contents: ${{ "{:,.0f}".format(claim.coverage_contents) }}{% endif %}
+    </div>{% endif %}
+  </div>
+  <div class="card" style="margin:0;padding:1rem">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em;margin-bottom:.5rem">Adjuster</div>
+    <div style="font-weight:700">{{ claim.adjuster_name or '—' }}</div>
+    {% if claim.priority and claim.priority != 'Normal' %}
+    <div style="margin-top:4px">
+      <span style="font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;
+        background:{% if claim.priority=='Urgent' %}rgba(239,68,68,.15){% elif claim.priority=='High' %}rgba(245,158,11,.15){% else %}rgba(16,185,129,.15){% endif %};
+        color:{% if claim.priority=='Urgent' %}#991b1b{% elif claim.priority=='High' %}#92400e{% else %}#065f46{% endif %}">
+        {{ claim.priority }} Priority
+      </span>
+    </div>{% endif %}
+  </div>
+  <div class="card" style="margin:0;padding:1rem;border:2px solid #10b981">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#10b981;letter-spacing:.06em;margin-bottom:.5rem">Total Estimate</div>
+    <div id="claim-total-estimate" style="font-size:1.5rem;font-weight:800;color:#10b981">${{ "{:,.2f}".format(claim.total_estimate) }}</div>
+    {% if claim.deductible %}
+    <div style="font-size:.75rem;color:#64748b;margin-top:3px">Deductible: ${{ "{:,.0f}".format(claim.deductible) }}</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Photo Upload -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">📸 Upload Damage Photo</div>
+  </div>
+  <form method="POST" action="{{ url_for('upload_photo', claim_id=claim.id) }}" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:1rem;align-items:end">
+      <div class="form-group" style="margin:0">
+        <label>Photo</label>
+        <input class="form-control" type="file" name="photo" accept="image/*" required/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Assign to Room (optional)</label>
+        <select class="form-control" name="room_id">
+          <option value="">-- Unassigned --</option>
+          {% for rd in room_data %}
+          <option value="{{ rd.room.id }}">{{ rd.room.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-bottom:0">🤖 Upload + AI Analyze</button>
+    </div>
+    <div class="form-group" style="margin-top:1rem;margin-bottom:0">
+      <label>Caption (optional)</label>
+      <input class="form-control" type="text" name="caption" placeholder="e.g. Living room east wall"/>
+    </div>
+  </form>
+
+  {% if unassigned_photos %}
+  <div style="margin-top:1.25rem">
+    <div style="font-size:.8rem;font-weight:600;color:#64748b;margin-bottom:.5rem">Unassigned Photos</div>
+    <div class="photo-grid">
+      {% for photo in unassigned_photos %}
+      <div class="photo-card" id="photo-{{ photo.id }}"
+           data-photo-id="{{ photo.id }}"
+           data-caption="{{ photo.caption|e }}"
+           data-room-id=""
+           data-src="{{ url_for('uploaded_file', filename=photo.filename) }}">
+        <div class="photo-thumb-wrap">
+          <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" alt="{{ photo.caption|e }}"/>
+        </div>
+        <div class="photo-card-body">
+          {% if photo.caption %}<div class="photo-caption-label">{{ photo.caption }}</div>{% endif %}
+          <div class="ai-tag" style="display:flex;align-items:center;justify-content:space-between">
+            <span>🤖 AI Analysis</span>
+          </div>
+          <p id="ai-desc-{{ photo.id }}" onclick="editAiDesc({{ photo.id }})" style="cursor:text;min-height:2em;flex:1" title="Click to edit">{{ photo.ai_description or 'No analysis yet — click 🤖 to analyze.' }}</p>
+          <div class="photo-meta-row">
+            <button class="photo-btn photo-btn-ai" title="Re-analyze with AI" onclick="reanalyzePhoto({{ photo.id }}, this)" style="position:static;opacity:1;width:auto;height:auto;padding:.25rem .6rem;border-radius:6px;font-size:.72rem;font-weight:600">🤖 Re-analyze</button>
+            <button onclick="editAiDesc({{ photo.id }})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#3b82f6;font-weight:600;padding:0">✏️ Edit note</button>
+            <button onclick="openEditModalFromCard(this.closest('.photo-card'))" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#64748b;font-weight:600;padding:0">🖊 Edit photo</button>
+            <button onclick="deletePhoto({{ photo.id }})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#ef4444;font-weight:600;padding:0;margin-left:auto">✕ Delete</button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+
+<!-- Batch Room Scan (NEW — Photo-to-Claim) -->
+<div class="card" id="batch-scan-card">
+  <div class="card-header">
+    <div class="card-title">📷 Scan Room — AI Batch Analysis</div>
+    <span style="font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6">BETA</span>
+  </div>
+  
+  <div id="batch-upload-ui">
+    <!-- Room selector -->
+    <div style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:end;margin-bottom:1rem">
+      <div class="form-group" style="margin:0">
+        <label>Room to Scan</label>
+        <select class="form-control" id="batch-room-select">
+          <option value="">— Select Room —</option>
+          {% for rd in room_data %}
+          <option value="{{ rd.room.id }}">{{ rd.room.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="font-size:.72rem;color:#64748b;white-space:nowrap">
+        💡 Take 5-20 photos of the room
+      </div>
+    </div>
+
+    <!-- Upload zone -->
+    <div class="batch-upload-zone" id="batch-drop-zone" onclick="document.getElementById('batch-file-input').click()">
+      <input type="file" id="batch-file-input" multiple accept="image/*" capture="environment" style="display:none" onchange="handleBatchFiles(this.files)">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">📸</div>
+      <div style="font-weight:600;margin-bottom:.25rem">Tap to take or choose photos</div>
+      <div style="font-size:.78rem;color:#64748b">Upload 5-20 photos of a single room for AI analysis</div>
+      <div id="batch-file-count" style="display:none;margin-top:.5rem;font-size:.75rem;font-weight:700;color:#06D6C7"></div>
+    </div>
+
+    <!-- Preview grid -->
+    <div class="batch-preview-grid" id="batch-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;margin-top:1rem"></div>
+
+    <!-- Selected files list -->
+    <div id="batch-file-list" style="margin-top:.75rem;font-size:.78rem;color:#64748b"></div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:.75rem;margin-top:1rem">
+      <button class="btn btn-primary" id="batch-analyze-btn" onclick="startBatchAnalysis()" disabled>
+        🤖 Analyze Room with AI
+      </button>
+      <button class="btn btn-ghost" onclick="clearBatchFiles()" id="batch-clear-btn" style="display:none">
+        ✕ Clear All
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div id="batch-progress" style="display:none;margin-top:1rem">
+      <div style="font-size:.82rem;color:#64748b;margin-bottom:.5rem" id="batch-progress-text">🤖 AI is analyzing your photos…</div>
+      <div style="height:6px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden">
+        <div id="batch-progress-fill" style="height:100%;background:linear-gradient(90deg,#06D6C7,#3B7BFF);border-radius:999px;width:0%;transition:width .3s"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Results (populated after analysis) -->
+  <div id="batch-results" style="display:none;margin-top:1.5rem">
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem">
+      🤖 AI Room Analysis
+      <span id="batch-results-room-name" style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(16,185,129,.1);color:#10b981"></span>
+    </div>
+
+    <!-- Summary -->
+    <div id="ai-room-summary" style="font-size:.82rem;color:#475569;background:rgba(6,214,199,.05);border:1px solid rgba(6,214,199,.15);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;line-height:1.6"></div>
+
+    <!-- Detected items -->
+    <div id="ai-detected-items" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem"></div>
+
+    <!-- Water category/class -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+      <div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:.75rem">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3b82f6;margin-bottom:.25rem">Water Category</div>
+        <div id="ai-water-category" style="font-size:1.5rem;font-weight:800"></div>
+      </div>
+      <div style="background:rgba(139,92,246,.05);border:1px solid rgba(139,92,246,.15);border-radius:10px;padding:.75rem">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8b5cf6;margin-bottom:.25rem">Water Class</div>
+        <div id="ai-water-class" style="font-size:1.5rem;font-weight:800"></div>
+      </div>
+    </div>
+
+    <!-- High-value flags -->
+    <div id="ai-high-value-flags" style="display:none;margin-bottom:1rem;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:.75rem 1rem">
+      <div style="font-size:.75rem;font-weight:700;color:#f59e0b;margin-bottom:.5rem">💎 HIGH-VALUE ITEMS DETECTED — Take Close-Up Photos</div>
+      <div id="ai-high-value-list" style="font-size:.82rem;color:#92400e;line-height:1.6"></div>
+    </div>
+
+    <!-- Action: Approve all -->
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="approveAllAiItems()">
+        ✓ Approve All & Add to Claim
+      </button>
+      <button class="btn btn-ghost" onclick="clearBatchResults()">
+        ✕ Discard Results
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Rooms & Damage -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">🛠️ Room-by-Room Damage</div>
+    <form method="POST" action="{{ url_for('add_room', claim_id=claim.id) }}" style="display:flex;gap:.5rem">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input class="form-control" type="text" name="room_name" placeholder="e.g. Living Room" style="width:180px"/>
+      <button type="submit" class="btn btn-success btn-sm">+ Add Room</button>
+    </form>
+  </div>
+
+  {% for rd in room_data %}
+  <div class="room-block">
+    <div class="room-header" onclick="toggleRoom('room-{{rd.room.id}}')" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🏠 {{ rd.room.name }}</span>
+      <span style="display:flex;align-items:center;gap:.75rem">
+        <span style="color:#10b981;font-size:.95rem">${{ "{:,.2f}".format(rd.room.subtotal) }} <span style="color:#94a3b8;font-size:.75rem;font-weight:400">▾</span></span>
+        <form method="POST" action="{{ url_for('delete_room', room_id=rd.room.id) }}" onsubmit="return confirm('Delete room \'{{ rd.room.name }}\' and all its items? This cannot be undone.')" onclick="event.stopPropagation()">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger btn-sm" style="padding:.2rem .5rem;font-size:.75rem" title="Delete room">🗑 Remove</button>
+        </form>
+      </span>
+    </div>
+    <div class="room-body" id="room-{{rd.room.id}}">
+
+      {% if rd.room_photos %}
+      <div class="photo-grid" style="margin-top:0;margin-bottom:1rem">
+        {% for photo in rd.room_photos %}
+        <div class="photo-card" id="photo-{{ photo.id }}"
+             data-photo-id="{{ photo.id }}"
+             data-caption="{{ photo.caption|e }}"
+             data-room-id="{{ rd.room.id }}"
+             data-src="{{ url_for('uploaded_file', filename=photo.filename) }}">
+          <div class="photo-thumb-wrap">
+            <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" alt="{{ photo.caption|e }}"/>
+          </div>
+          <div class="photo-card-body">
+            {% if photo.caption %}<div class="photo-caption-label">{{ photo.caption }}</div>{% endif %}
+            <div class="ai-tag" style="display:flex;align-items:center;justify-content:space-between">
+              <span>🤖 AI Analysis</span>
+            </div>
+            <p id="ai-desc-{{ photo.id }}" onclick="editAiDesc({{ photo.id }})" style="cursor:text;min-height:2em;flex:1" title="Click to edit">{{ photo.ai_description or 'No analysis yet — click 🤖 to analyze.' }}</p>
+            <div class="photo-meta-row">
+              <button class="photo-btn photo-btn-ai" title="Re-analyze with AI" onclick="reanalyzePhoto({{ photo.id }}, this)" style="position:static;opacity:1;width:auto;height:auto;padding:.25rem .6rem;border-radius:6px;font-size:.72rem;font-weight:600">🤖 Re-analyze</button>
+              <button onclick="editAiDesc({{ photo.id }})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#3b82f6;font-weight:600;padding:0">✏️ Edit note</button>
+              <button onclick="openEditModalFromCard(this.closest('.photo-card'))" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#64748b;font-weight:600;padding:0">🖊 Edit photo</button>
+              <button onclick="deletePhoto({{ photo.id }})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#ef4444;font-weight:600;padding:0;margin-left:auto">✕ Delete</button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if rd.line_items %}
+      <table class="table" style="margin-bottom:1rem">
+        <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th><th></th></tr></thead>
+        <tbody>
+        {% for item in rd.line_items %}
+        <tr>
+          <td>{{ item.description }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>{{ item.unit }}</td>
+          <td>${{ "{:,.2f}".format(item.unit_cost) }}</td>
+          <td style="font-weight:700">${{ "{:,.2f}".format(item.total) }}</td>
+          <td><button onclick="deleteItem({{ item.id }}, this)" class="btn btn-danger btn-sm">✕</button></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('add_item', room_id=rd.room.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="add-item-grid" style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr auto;gap:.5rem;align-items:end">
+          <div class="form-group item-desc" style="margin:0">
+            <label style="font-size:.7rem">Description</label>
+            <input class="form-control" type="text" name="description" placeholder="e.g. Drywall replacement" required/>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:.7rem">Qty</label>
+            <input class="form-control" type="number" name="quantity" value="1" step="0.5" min="0"/>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:.7rem">Unit</label>
+            <select class="form-control" name="unit">
+              <option>sf</option><option>sq ft</option><option>ln ft</option><option>lf</option><option>ea</option><option>hr</option><option>lot</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:.7rem">Unit Cost $</label>
+            <input class="form-control" type="number" name="unit_cost" value="0" step="0.01" min="0"/>
+          </div>
+          <div class="item-submit">
+            <button type="submit" class="btn btn-amber btn-sm" style="width:100%">+ Add</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if not room_data %}
+  <div style="text-align:center;padding:2rem;color:#94a3b8">
+    Add a room above to start logging damage items.
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Client Signature ─────────────────────────────────────── -->
+{% if signature %}
+<div class="card" style="border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,0.04)">
+  <div class="card-title" style="margin-bottom:.75rem">✅ Client Signature</div>
+  <div style="font-size:.85rem;color:#64748b;margin-bottom:.75rem">
+    Signed by <strong style="color:#1e293b">{{ signature.signer }}</strong>
+    on <strong style="color:#1e293b">{{ signature.signed_at }}</strong>
+  </div>
+  <img src="{{ signature.sig_data }}" alt="Client Signature"
+       style="border:1px solid #e2e8f0;border-radius:.5rem;max-width:400px;width:100%;background:#fff;padding:.5rem">
+  <div style="margin-top:.75rem;display:flex;gap:1rem;align-items:center">
+    <a href="/claims/{{ claim.id }}/report/pdf"
+       style="padding:.5rem 1.25rem;background:#0a1628;color:#fff;border-radius:.5rem;font-size:.85rem;font-weight:700;text-decoration:none">📄 Download Signed Report</a>
+    <a href="/claims/{{ claim.id }}/report" target="_blank"
+       style="padding:.5rem 1.25rem;background:#3b82f6;color:#fff;border-radius:.5rem;font-size:.85rem;font-weight:700;text-decoration:none">👁 View Full Report</a>
+  </div>
+</div>
+{% else %}
+<div class="card" style="border:1px solid rgba(148,163,184,.2)">
+  <div class="card-title" style="margin-bottom:.5rem">✏️ Client Signature</div>
+  <div style="font-size:.85rem;color:#94a3b8">No signature yet. Share the <a href="/claims/{{ claim.id }}/portal/view" style="color:#3b82f6" target="_blank">Client Portal</a> link for the client to sign.</div>
+</div>
+{% endif %}
+
+<!-- ── NFIP Quick-Fill ───────────────────────────────────────────── -->
+<div class="card" style="border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,0.04)">
+  <div class="card-title" style="margin-bottom:1rem">✅ NFIP Quick-Fill <span style="font-size:.8rem;font-weight:400;color:#94a3b8">— fill these to pass compliance</span></div>
+  <form method="POST" action="/claims/{{ claim.id }}/nfip-fill">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Policy Type</label>
+        <select name="policy_type" class="form-control">
+          <option value="">-- Select --</option>
+          <option value="Building" {% if claim.policy_type=='Building' %}selected{% endif %}>Building</option>
+          <option value="Contents" {% if claim.policy_type=='Contents' %}selected{% endif %}>Contents</option>
+          <option value="Both" {% if claim.policy_type=='Both' %}selected{% endif %}>Both</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Building Coverage ($)</label>
+        <input class="form-control" type="number" name="coverage_building" value="{{ claim.coverage_building or '' }}" placeholder="e.g. 250000">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Contents Coverage ($)</label>
+        <input class="form-control" type="number" name="coverage_contents" value="{{ claim.coverage_contents or '' }}" placeholder="e.g. 100000">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Deductible ($)</label>
+        <input class="form-control" type="number" name="deductible" value="{{ claim.deductible or '' }}" placeholder="e.g. 1000">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Flood Source</label>
+        <select name="flood_source" class="form-control">
+          <option value="">-- Select --</option>
+          {% for src in ['River overflow','Storm surge','Heavy rain','Sewer backup','Flash flood','Groundwater','Other'] %}
+          <option value="{{ src }}" {% if claim.flood_source==src %}selected{% endif %}>{{ src }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Water Category</label>
+        <select name="water_category" class="form-control">
+          <option value="">-- Select --</option>
+          <option value="Cat 1" {% if claim.water_category=='Cat 1' %}selected{% endif %}>Cat 1 — Clean</option>
+          <option value="Cat 2" {% if claim.water_category=='Cat 2' %}selected{% endif %}>Cat 2 — Gray</option>
+          <option value="Cat 3" {% if claim.water_category=='Cat 3' %}selected{% endif %}>Cat 3 — Black</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Water Class</label>
+        <select name="water_class" class="form-control">
+          <option value="">-- Select --</option>
+          <option value="Class 1" {% if claim.water_class=='Class 1' %}selected{% endif %}>Class 1</option>
+          <option value="Class 2" {% if claim.water_class=='Class 2' %}selected{% endif %}>Class 2</option>
+          <option value="Class 3" {% if claim.water_class=='Class 3' %}selected{% endif %}>Class 3</option>
+          <option value="Class 4" {% if claim.water_class=='Class 4' %}selected{% endif %}>Class 4</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Water Depth (inches)</label>
+        <input class="form-control" type="number" name="water_depth_in" value="{{ claim.water_depth_in or '' }}" placeholder="e.g. 12">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Date Water Removed</label>
+        <input class="form-control" type="date" name="date_water_removed" value="{{ claim.date_water_removed or '' }}">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">FEMA Flood Zone</label>
+        <input class="form-control" type="text" name="flood_zone" value="{{ claim.flood_zone or '' }}" placeholder="e.g. AE">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">FEMA Map Panel #</label>
+        <input class="form-control" type="text" name="fema_map_number" value="{{ claim.fema_map_number or '' }}" placeholder="e.g. 12345C0123J">
+      </div>
+
+      <div>
+        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:.3rem">Inspection Date</label>
+        <input class="form-control" type="date" name="inspection_date" value="{{ claim.inspection_date or claim.sched_date or '' }}">
+      </div>
+
+    </div>
+    <button type="submit" style="margin-top:1.25rem;padding:.6rem 1.5rem;background:#f59e0b;color:#000;border:none;border-radius:.5rem;font-size:.9rem;cursor:pointer;font-weight:700">✅ Save NFIP Fields</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-title" style="margin-bottom:.75rem">📝 Notes</div>
+  <form method="POST" action="/claims/{{ claim.id }}/notes">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <textarea name="notes" rows="5" style="width:100%;padding:.75rem;border:1px solid #e2e8f0;border-radius:.5rem;font-size:.9rem;line-height:1.7;resize:vertical;font-family:inherit;color:#475569">{{ claim.notes or '' }}</textarea>
+    <button type="submit" style="margin-top:.75rem;padding:.5rem 1.25rem;background:#3b82f6;color:#fff;border:none;border-radius:.5rem;font-size:.9rem;cursor:pointer;font-weight:600">💾 Save Notes</button>
+  </form>
+</div>
+
+<!-- ── Edit Photo Modal ───────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="editModal" onclick="closeModalOnBackdrop(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditModal()">×</button>
+    <div class="modal-title">✏️ Edit Photo</div>
+    <img id="modalPreview" class="modal-preview" src="" alt="preview"/>
+    <form id="editPhotoForm" method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label>Caption</label>
+        <input class="form-control" type="text" name="caption" id="modalCaption" placeholder="Describe what this photo shows"/>
+      </div>
+      <div class="form-group">
+        <label>Move to Room</label>
+        <select class="form-control" name="room_id" id="modalRoom">
+          <option value="">— Unassigned —</option>
+          {% for rd in room_data %}
+          <option value="{{ rd.room.id }}">{{ rd.room.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:.75rem;margin-top:1.25rem">
+        <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+        <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let batchFiles = [];
+let batchAnalysisResult = null;
+
+function handleBatchFiles(files) {
+  const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  batchFiles = [...batchFiles, ...validFiles];
+  renderBatchPreviews();
+}
+
+function renderBatchPreviews() {
+  const grid = document.getElementById('batch-preview-grid');
+  const count = document.getElementById('batch-file-count');
+  const btn = document.getElementById('batch-analyze-btn');
+  const clearBtn = document.getElementById('batch-clear-btn');
+  
+  grid.innerHTML = '';
+  batchFiles.forEach((f, i) => {
+    const url = URL.createObjectURL(f);
+    const div = document.createElement('div');
+    div.className = 'batch-preview-item';
+    div.innerHTML = `<img src="${url}"><button class="batch-preview-remove" onclick="removeBatchFile(${i})">✕</button>`;
+    grid.appendChild(div);
+  });
+  
+  count.style.display = batchFiles.length ? 'block' : 'none';
+  count.textContent = batchFiles.length + ' photo' + (batchFiles.length !== 1 ? 's' : '') + ' selected';
+  btn.disabled = batchFiles.length < 2;
+  clearBtn.style.display = batchFiles.length ? 'inline-flex' : 'none';
+}
+
+function removeBatchFile(idx) {
+  batchFiles.splice(idx, 1);
+  renderBatchPreviews();
+}
+
+function clearBatchFiles() {
+  batchFiles = [];
+  renderBatchPreviews();
+  document.getElementById('batch-file-input').value = '';
+}
+
+function clearBatchResults() {
+  document.getElementById('batch-results').style.display = 'none';
+  document.getElementById('batch-upload-ui').style.display = 'block';
+  clearBatchFiles();
+  batchAnalysisResult = null;
+}
+
+async function startBatchAnalysis() {
+  const roomId = document.getElementById('batch-room-select').value;
+  if (!roomId) {
+    alert('Please select a room first.');
+    return;
+  }
+  if (batchFiles.length < 2) {
+    alert('Please upload at least 2 photos for batch analysis.');
+    return;
+  }
+
+  // Show progress
+  document.getElementById('batch-upload-ui').style.display = 'none';
+  document.getElementById('batch-progress').style.display = 'block';
+  const fill = document.getElementById('batch-progress-fill');
+  const txt = document.getElementById('batch-progress-text');
+
+  // Fake progress animation
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + 5, 85);
+    fill.style.width = pct + '%';
+  }, 300);
+
+  // Build form data
+  const fd = new FormData();
+  batchFiles.forEach(f => fd.append('photos', f));
+  fd.append('room_id', roomId);
+
+  try {
+    const claimId = window.location.pathname.split('/claim/')[1]?.split('/')[0];
+    const resp = await fetch(`/claim/${claimId}/room/${roomId}/batch-analyze`, {
+      method: 'POST',
+      body: fd
+    });
+    const data = await resp.json();
+    clearInterval(iv);
+    fill.style.width = '100%';
+
+    if (data.error) {
+      txt.textContent = '❌ ' + data.error;
+      setTimeout(() => {
+        document.getElementById('batch-progress').style.display = 'none';
+        document.getElementById('batch-upload-ui').style.display = 'block';
+      }, 2000);
+      return;
+    }
+
+    batchAnalysisResult = data;
+    renderBatchResults(data);
+    
+    txt.textContent = '✅ Analysis complete! Review the results below.';
+    setTimeout(() => {
+      document.getElementById('batch-progress').style.display = 'none';
+      document.getElementById('batch-results').style.display = 'block';
+    }, 800);
+
+  } catch(e) {
+    clearInterval(iv);
+    txt.textContent = '❌ Analysis failed. Please try again.';
+    setTimeout(() => {
+      document.getElementById('batch-progress').style.display = 'none';
+      document.getElementById('batch-upload-ui').style.display = 'block';
+    }, 2000);
+  }
+}
+
+function renderBatchResults(data) {
+  // Room name
+  const roomSelect = document.getElementById('batch-room-select');
+  const roomName = roomSelect.options[roomSelect.selectedIndex].text;
+  document.getElementById('batch-results-room-name').textContent = roomName;
+
+  // Summary
+  document.getElementById('ai-room-summary').textContent = data.summary || 'No summary available.';
+
+  // Detected items
+  const itemsContainer = document.getElementById('ai-detected-items');
+  itemsContainer.innerHTML = '';
+  
+  const items = data.items || [];
+  items.forEach((item, idx) => {
+    const isHighValue = item.priority === 'HIGH_VALUE_FLAG' || item.category === 'personal_property_high_value';
+    const card = document.createElement('div');
+    card.className = 'ai-item-card' + (isHighValue ? ' high-value' : '');
+    card.id = 'ai-item-' + idx;
+    card.innerHTML = `
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+          ${isHighValue ? '<span class="ai-item-badge" style="background:rgba(251,191,36,.15);color:#d97706">💎 HIGH VALUE</span>' : ''}
+          <span class="ai-item-badge" style="background:rgba(59,130,246,.1);color:#3b82f6">${item.category || 'other'}</span>
+        </div>
+        <div style="font-weight:600;font-size:.85rem">${item.description || 'Unknown item'}</div>
+        <div style="font-size:.75rem;color:#64748b;margin-top:.15rem">
+          ${item.quantity || 1} ${item.unit || 'each'}
+          ${item.estimated_area ? ' · ' + item.estimated_area : ''}
+        </div>
+        <div style="font-size:.78rem;color:#475569;margin-top:.25rem">${item.condition || ''}</div>
+      </div>
+      <div style="display:flex;gap:.25rem">
+        <button onclick="approveAiItem(${idx})" style="background:#10b981;border:none;color:#fff;border-radius:8px;padding:.4rem .7rem;font-size:.7rem;font-weight:600;cursor:pointer">✓</button>
+        <button onclick="discardAiItem(${idx})" style="background:#ef4444;border:none;color:#fff;border-radius:8px;padding:.4rem .7rem;font-size:.7rem;font-weight:600;cursor:pointer">✕</button>
+      </div>
+    `;
+    itemsContainer.appendChild(card);
+  });
+
+  // Water category/class
+  document.getElementById('ai-water-category').textContent = 'Cat ' + (data.water_category || '—');
+  document.getElementById('ai-water-class').textContent = 'Class ' + (data.water_class || '—');
+
+  // High value flags
+  const hvFlags = data.needs_closeup || [];
+  if (hvFlags.length > 0) {
+    document.getElementById('ai-high-value-flags').style.display = 'block';
+    document.getElementById('ai-high-value-list').innerHTML = hvFlags.map(i => '• ' + i).join('<br>');
+  } else {
+    document.getElementById('ai-high-value-flags').style.display = 'none';
+  }
+}
+
+function approveAiItem(idx) {
+  const card = document.getElementById('ai-item-' + idx);
+  if (card) {
+    card.style.opacity = '.5';
+    card.querySelector('button').disabled = true;
+  }
+}
+
+function discardAiItem(idx) {
+  const card = document.getElementById('ai-item-' + idx);
+  if (card) {
+    card.style.display = 'none';
+  }
+}
+
+async function approveAllAiItems() {
+  if (!batchAnalysisResult || !batchAnalysisResult.items) return;
+  
+  const claimId = window.location.pathname.split('/claim/')[1]?.split('/')[0];
+  const roomId = document.getElementById('batch-room-select').value;
+  
+  try {
+    const resp = await fetch(`/claim/${claimId}/ai-populate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        room_id: roomId,
+        items: batchAnalysisResult.items,
+        batch_id: batchAnalysisResult.batch_id || ''
+      })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      // Reload claim page to show new line items
+      window.location.reload();
+    } else {
+      alert('Failed to save items: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) {
+    alert('Failed to save items. Please try again.');
+  }
+}
+
+// Drag & drop for batch zone
+const batchZone = document.getElementById('batch-drop-zone');
+['dragenter','dragover'].forEach(evt => {
+  batchZone.addEventListener(evt, e => { e.preventDefault(); batchZone.classList.add('dragover'); });
+});
+['dragleave','drop'].forEach(evt => {
+  batchZone.addEventListener(evt, e => { e.preventDefault(); batchZone.classList.remove('dragover'); });
+});
+batchZone.addEventListener('drop', e => { handleBatchFiles(e.dataTransfer.files); });
+
+function toggleRoom(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+// Read CSRF token — hidden input first, meta tag fallback
+function getCsrf() {
+  const inp  = document.querySelector('input[name="csrf_token"]');
+  if (inp) return inp.value;
+  const meta = document.querySelector('meta[name="csrf"]');
+  return meta ? meta.content : '';
+}
+
+async function deleteItem(id, btn) {
+  if (!confirm('Delete this line item?')) return;
+  const r = await fetch('/items/' + id + '/delete', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-CSRF-Token': getCsrf() }
+  });
+  if (r.ok) {
+    const row = btn.closest('tr');
+    if (row) row.remove();
+    // Update subtotal display without full reload
+    location.reload();
+  } else {
+    alert('Delete failed (status ' + r.status + '). Please refresh and try again.');
+  }
+}
+
+async function deletePhoto(id) {
+  if (!confirm('Delete this photo? This cannot be undone.')) return;
+  const r = await fetch('/photos/' + id + '/delete', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-CSRF-Token': getCsrf() }
+  });
+  const data = await r.json();
+  if (data.ok) {
+    const card = document.getElementById('photo-' + id);
+    if (card) {
+      card.style.transition = 'opacity .3s';
+      card.style.opacity = '0';
+      setTimeout(() => card.remove(), 300);
+    }
+  } else {
+    alert('Could not delete photo.');
+  }
+}
+
+async function reanalyzePhoto(photoId, btn) {
+  const descEl = document.getElementById('ai-desc-' + photoId);
+  const origBtn = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  descEl.innerHTML = '<span class="ai-analyzing-tag">⏳ Analyzing...</span>';
+  try {
+    const r = await fetch('/photos/' + photoId + '/analyze', {method: 'POST', credentials: 'include', headers:{'X-CSRF-Token':getCsrf()}});
+    const data = await r.json();
+    if (data.description) {
+      descEl.textContent = data.description;
+    } else if (data.error) {
+      descEl.textContent = data.error;
+    }
+  } catch(e) {
+    descEl.textContent = 'Analysis failed — check your OpenRouter key in Settings.';
+  }
+  btn.textContent = origBtn;
+  btn.disabled = false;
+}
+
+function openEditModalFromCard(card) {
+  const photoId = card.dataset.photoId;
+  const caption = card.dataset.caption;
+  const roomId  = card.dataset.roomId || '';
+  const src     = card.dataset.src;
+  document.getElementById('modalPreview').src = src;
+  document.getElementById('modalCaption').value = caption;
+  document.getElementById('modalRoom').value = roomId;
+  document.getElementById('editPhotoForm').action = '/photos/' + photoId + '/edit';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+function closeModalOnBackdrop(e) {
+  if (e.target === document.getElementById('editModal')) closeEditModal();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeEditModal(); closeEstimateModal(); } });
+
+// ── Edit AI Description ──
+function editAiDesc(photoId) {
+  const p = document.getElementById('ai-desc-' + photoId);
+  if (p.querySelector('textarea')) return; // already editing
+  const current = p.innerText.trim();
+  const ta = document.createElement('textarea');
+  ta.value = current === 'No analysis yet — click 🤖 to analyze.' ? '' : current;
+  ta.style.cssText = 'width:100%;min-height:80px;padding:6px 8px;border:1.5px solid #3b82f6;border-radius:6px;font-size:.8rem;font-family:inherit;resize:vertical;outline:none;line-height:1.5';
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:6px;margin-top:6px';
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.className = 'btn btn-primary btn-sm';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.className = 'btn btn-ghost btn-sm';
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(cancelBtn);
+  p.innerHTML = '';
+  p.appendChild(ta);
+  p.appendChild(btnRow);
+  ta.focus();
+  cancelBtn.onclick = function() {
+    p.innerHTML = current;
+    p.onclick = function(){ editAiDesc(photoId); };
+  };
+  saveBtn.onclick = function() {
+    const newText = ta.value.trim();
+    fetch('/photos/' + photoId + '/ai-description', { headers:{'X-CSRF-Token':getCsrf()},
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({description: newText})
+    }).then(r => r.json()).then(d => {
+      p.innerHTML = newText || 'No analysis yet — click 🤖 to analyze.';
+      p.onclick = function(){ editAiDesc(photoId); };
+    });
+  };
+}
+
+// ── AI Estimate ──
+// Render markdown-lite: bold, headers, pipe tables, line breaks
+function renderEstimate(text) {
+  // Escape HTML first
+  let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // H3 ### heading
+  s = s.replace(/^### (.+)$/gm, '<h4 style="font-size:.92rem;font-weight:700;color:#0a1628;margin:1rem 0 .3rem">$1</h4>');
+  // H2 ## heading
+  s = s.replace(/^## (.+)$/gm, '<h3 style="font-size:1rem;font-weight:800;color:#0a1628;margin:1.25rem 0 .4rem;border-bottom:1px solid #e2e8f0;padding-bottom:.25rem">$1</h3>');
+  // H1 # heading
+  s = s.replace(/^# (.+)$/gm, '<h2 style="font-size:1.1rem;font-weight:800;color:#0a1628;margin:1.5rem 0 .5rem">$1</h2>');
+  // Bold **text**
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Pipe table rows  | col | col |
+  s = s.replace(/^(\|.+\|)$/gm, function(row) {
+    // Skip separator rows like |---|---|
+    if (/^\|[\s\-:|]+\|$/.test(row)) return '';
+    let cells = row.split('|').filter((c,i,a) => i>0 && i<a.length-1);
+    let isHeader = /^\|\s*[A-Z]/.test(row);
+    let tag = isHeader ? 'th' : 'td';
+    let style = isHeader ? 'background:#f8fafc;font-weight:700;' : '';
+    return '<tr>' + cells.map(c => `<${tag} style="padding:.35rem .6rem;border:1px solid #e2e8f0;${style}">${c.trim()}</${tag}>`).join('') + '</tr>';
+  });
+  // Wrap consecutive <tr> blocks in a table
+  s = s.replace(/(<tr>.*<\/tr>\n?)+/gs, m => '<table style="border-collapse:collapse;width:100%;margin:.5rem 0;font-size:.82rem">'+m+'</table>');
+  // Bullet lines starting with - or *
+  s = s.replace(/^[-*] (.+)$/gm, '<li style="margin:.15rem 0;padding-left:.25rem">$1</li>');
+  s = s.replace(/(<li[^>]*>.*<\/li>\n?)+/gs, m => '<ul style="padding-left:1.25rem;margin:.4rem 0">'+m+'</ul>');
+  // Remaining line breaks → <br>
+  s = s.replace(/\n/g, '<br>');
+  // Clean up excess breaks around block elements
+  s = s.replace(/(<br>)+(<\/?(?:h[1-6]|ul|table|li|tr))/g, '$2');
+  s = s.replace(/(<\/(?:h[1-6]|ul|table)>)(<br>)+/g, '$1');
+  return s;
+}
+
+function extractTotal(text) {
+  // Try multiple patterns — handles plain text, markdown bold, all-caps, etc.
+  var patterns = [
+    /GRAND TOTAL[^$\d]*\$?([\d,]+(?:\.\d{2})?)/im,
+    /TOTAL RECOMMENDED CLAIM[^$\d]*\$?([\d,]+(?:\.\d{2})?)/im,
+    /Recommended Claim Amount[^$\d]*\$?([\d,]+(?:\.\d{2})?)/im,
+    /Final Recommended[^$\d]*\$?([\d,]+(?:\.\d{2})?)/im,
+    /\*\*GRAND TOTAL[^$\d]*\$?([\d,]+(?:\.\d{2})?)/im,
+    /\*\*Total Recommended[^$\d]*\$?([\d,]+(?:\.\d{2})?)/im,
+  ];
+  for (var i = 0; i < patterns.length; i++) {
+    var m = text.match(patterns[i]);
+    if (m) { var v = parseFloat(m[1].replace(/,/g,'')); if (v > 500) return v; }
+  }
+  return null;
+}
+
+var _estimatePollTimer = null;
+var _estimateSeconds = 0;
+
+function _estimateLoading(msg) {
+  document.getElementById('estimateContent').innerHTML =
+    '<div style="text-align:center;padding:2.5rem">' +
+    '<div style="font-size:2.5rem;margin-bottom:1rem">🤖</div>' +
+    '<p style="color:#64748b;font-size:.95rem">' + msg + '</p>' +
+    '<div id="estimateTimer" style="color:#94a3b8;font-size:.8rem;margin-top:.5rem">0s</div>' +
+    '</div>';
+}
+
+function _estimateShowResult(d) {
+  if (_estimatePollTimer) { clearInterval(_estimatePollTimer); _estimatePollTimer = null; }
+  if (!d.ok || d.status === 'error') {
+    document.getElementById('estimateContent').innerHTML =
+      '<p style="color:#ef4444">❌ ' + escHtml(d.error || 'Estimate failed') + '</p>';
+    return;
+  }
+  var estimate = d.estimate || '';
+  if (estimate.startsWith('Error:') || estimate.startsWith('AI Error:')) {
+    document.getElementById('estimateContent').innerHTML =
+      '<p style="color:#ef4444">❌ ' + escHtml(estimate) + '</p>';
+    return;
+  }
+  var rendered = renderEstimate(estimate);
+  var html = '<div style="font-size:.875rem;line-height:1.75">' + rendered + '</div>';
+  html += '<div style="margin-top:1.5rem;padding:1rem 1.25rem;background:#f0fdf4;border-radius:10px;border:1px solid #6ee7b7;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">';
+  if (d.current_total !== undefined)
+    html += '<span><strong style="color:#065f46">📊 Was: </strong>$' + parseFloat(d.current_total).toFixed(2) + '</span>';
+  html += '<span style="color:#94a3b8;font-size:.8rem">⏱ ' + _estimateSeconds + 's</span>';
+  html += '</div>';
+  document.getElementById('estimateContent').innerHTML = html;
+  var newTotal = extractTotal(estimate);
+  if (newTotal && newTotal > 0) {
+    fetch('/claims/{{ claim.id }}/update-estimate', { headers:{'X-CSRF-Token':getCsrf()},
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({total_estimate: newTotal})
+    }).then(r=>r.json()).then(upd=>{
+      if (upd.ok) {
+        var el = document.getElementById('claim-total-estimate');
+        if (el) el.textContent = '$' + newTotal.toLocaleString('en-US',{minimumFractionDigits:2});
+      }
+    }).catch(()=>{});
+  }
+}
+
+function runAIEstimate() {
+  document.getElementById('estimateModal').style.display = 'flex';
+  _estimateSeconds = 0;
+  _estimateLoading('Starting AI estimate job...');
+
+  fetch('/claims/{{ claim.id }}/ai-estimate', { headers:{'X-CSRF-Token':getCsrf()},
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include'
+  })
+  .then(r => {
+    if (r.status === 401) return {ok:false, error:'Session expired — please refresh and log in.'};
+    return r.json().catch(()=>({ok:false, error:'Unexpected response ('+r.status+')'}));
+  })
+  .then(d => {
+    if (!d.ok) { _estimateShowResult(d); return; }
+    var jobId = d.job_id;
+    _estimateLoading('Analyzing photos and building estimate…<br><small style="color:#94a3b8">Hang tight — this takes 20–60 seconds</small>');
+    // Start timer display
+    var timerEl = document.getElementById('estimateTimer');
+    var timerInt = setInterval(()=>{ _estimateSeconds++; if(timerEl) timerEl.textContent = _estimateSeconds+'s'; }, 1000);
+    // Poll every 3 seconds
+    var polls = 0;
+    _estimatePollTimer = setInterval(()=>{
+      polls++;
+      if (polls > 40) { // 2 min timeout
+        clearInterval(_estimatePollTimer); clearInterval(timerInt);
+        _estimateShowResult({ok:false, error:'Estimate timed out after 2 minutes. Try again.'});
+        return;
+      }
+      fetch('/claims/{{ claim.id }}/ai-estimate/' + jobId, {credentials:'include'})
+      .then(r=>r.json())
+      .then(poll=>{
+        if (poll.status === 'pending') return; // still working
+        clearInterval(_estimatePollTimer); clearInterval(timerInt);
+        _estimateShowResult(poll);
+      })
+      .catch(()=>{});
+    }, 3000);
+  })
+  .catch(e => {
+    _estimateShowResult({ok:false, error:'Network error: '+e.message});
+  });
+}
+function closeEstimateModal() {
+  document.getElementById('estimateModal').style.display = 'none';
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+
+<!-- AI Estimate Modal -->
+<div id="estimateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:.5rem">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:780px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:1.1rem;font-weight:800">🤖 AI Adjuster Estimate</div>
+        <div style="font-size:.78rem;color:#64748b">{{ claim.claim_number }} · {{ claim.client_name }}</div>
+      </div>
+      <button onclick="closeEstimateModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;line-height:1">×</button>
+    </div>
+    <div id="estimateContent" style="padding:1.5rem;overflow-y:auto;flex:1"></div>
+    <div style="padding:1rem 1.5rem;border-top:1px solid #e2e8f0;display:flex;gap:.75rem;justify-content:flex-end">
+      <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨️ Print</button>
+      <button onclick="closeEstimateModal()" class="btn btn-primary btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
