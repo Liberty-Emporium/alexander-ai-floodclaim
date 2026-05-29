@@ -54,7 +54,7 @@
 - Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29 — self-test still passes
 - Auth hardening: COMPLETE (rate limiting, password policy, endpoint protection) as of May 29
 - Display fixes: 6 of 8 resolved as of May 30 (M4 and M7 are data issues, not template bugs)
-- Git auth: BROKEN — 9 local commits unpushed (stuck since May 28)
+- Git auth: RESOLVED — all local commits pushed as of ~May 30 (confirmed by OWL cron: 0 unpushed, in sync with origin/main)
 
 ---
 
