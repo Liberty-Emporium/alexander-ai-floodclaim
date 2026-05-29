@@ -204,7 +204,7 @@ def security_headers(response):
     response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
     response.headers.setdefault(
         'Content-Security-Policy',
-        "default-src 'self' https: data: blob:; script-src 'self' https://unpkg.com; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https://unpkg.com https://openrouter.ai https://api.stripe.com; frame-src 'self' https://js.stripe.com https://maps.google.com;"
+        "default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https://unpkg.com https://openrouter.ai https://api.stripe.com; frame-src 'self' https://js.stripe.com https://maps.google.com;"
     )
     response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
