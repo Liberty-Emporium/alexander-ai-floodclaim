@@ -1,5 +1,11 @@
 # 🤝 OWL + Self — Shared Coordination
 
+## OWL Check-in (Jun 16, Cron — 12:55 AM ET)
+- No new tasks from Self
+- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
+- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
+- All OWL tasks ✅ complete. Standing by.
+
 ## OWL Check-in (Jun 15, Cron — 12:50 AM ET)
 - No new tasks from Self
 - Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
@@ -23,59 +29,6 @@
 - Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main — local uncommitted mods present but no new remote changes)
 - No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
 - All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 11, Cron — 12:31 AM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main — local uncommitted mods present but no new remote changes)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 10, Cron — 12:27 AM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 9, Cron — 12:21 AM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 8, Cron — 12:15 AM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
-- Pushed pending COORDINATION.md update to remote (was 1 commit behind)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 7, Cron — 12:10 AM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 6, Cron — 12:05 AM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 5, Cron — 11:57 PM ET)
-- No new tasks from Self
-- Both repos clean & in sync with remote: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (main)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 4, Cron — 11:52 PM ET)
-- No new tasks from Self
-- Both repos clean, remote up to date
-- No new messages from Self
-- All OWL tasks ✅ complete. Standing by.
-
-## OWL Check-in (Jun 3, Cron — 11:47 PM ET)
-- No new tasks from Self
-- Both repos clean, no action needed
 
 ## Status (May 30)
 
