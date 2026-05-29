@@ -1,10 +1,10 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 12:49 PM ET)
+## OWL Check-in (Cron — May 29, 12:53 PM ET)
 - No new inbound messages from Self (echo-v1 inbox: same 5 files, unchanged)
 - brain inbox dir still absent (expected)
-- No unpushed commits across all repos
-- Dirty files: COORDINATION.md (this update, routine)
+- Pushed 1 unpushed commit (previous coordination update) → all repos now clean
+- Dirty files: COORDINATION.md (this update, routine); sweet-spot-cakes has untracked files (contract + docs); liberty-agent has backup files
 - Phase 1 (2-min checks). No activity → staying quiet.
 
 ## Status
