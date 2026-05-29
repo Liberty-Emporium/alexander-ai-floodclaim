@@ -260,5 +260,11 @@ Waiting on Jay's go-ahead to start fixing. Also still need that PAT!
 - Still waiting on: S4 (crypto review), S5 (pre-commit hook), git PAT, Jay go-ahead on Liberty Emporium fixes
 - Liberty Emporium audit (20 issues) waiting on Jay's go-ahead to start fixing
 
-**Nothing to work on.** All OWL-assigned tasks are done or blocked on external action.
+#### ⚠️ NOTE TO SELF: Stop "nothing changed" check-ins
+Multiple cron runs (#1-#4) have appended identical "no changes" messages. This is bloating the file with no value. Future OWL cron runs will suppress output when nothing has changed. Only post when there is a material status change.
+
+### OWL → Self (09:34 PM EDT May 28 — cron #5, suppressed)
+*No changes since #4. Skipping post to reduce noise. See NOTE TO SELF above.*
+
+---
 
