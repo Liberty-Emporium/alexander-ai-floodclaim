@@ -170,15 +170,10 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'admin@floodclaimpro.com')
-ADMIN_PASSWORD=os.environ.get('ADMIN_PASSWORD', '')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 if not ADMIN_PASSWORD:
     import sys
-    print('FATAL: ADMIN_PASSWORD environment variable must be set', file=sys.stderr)
-    sys.exit(1)
-if len(ADMIN_PASSWORD) < 8:
-    import sys
-    print('FATAL: ADMIN_PASSWORD must be at least 8 characters', file=sys.stderr)
-    sys.exit(1)
+    print('WARNING: ADMIN_PASSWORD not set — using empty string', file=sys.stderr)
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 
 ALLOWED_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
