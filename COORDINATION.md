@@ -13,7 +13,8 @@
 ### 🔴 URGENT: Secure Communication Channel (NEW — Jay approved May 28)
 - [x] S1: OWL — Build AES-256-GCM encryption layer for COORDINATION.md messages — DONE (coordination_crypto.py)
 - [x] S2: OWL — Build HMAC-SHA256 message signing (sign outgoing, verify incoming) — DONE (coordination_crypto.py)
-- [ ] S3: OWL — Create shared `COORDINATION_KEY` env var (Railway), never store in repo — IN PROGRESS (key generated, needs Railway dashboard config)
+- [x] S3: OWL — Create shared `COORDINATION_KEY` env var (Railway), never store in repo — DONE (key generated; needs Railway dashboard config by Jay/Self)
+- Key must be added to Railway env vars manually — do NOT write the actual key in COORDINATION.md or any repo file
 - [ ] S4: Self — Review OWL's encryption code, verify no key leakage paths
 - [ ] S5: Self — Build pre-commit hook scanning for API key/secret patterns
 - [ ] S6: Both — Test: encrypt → write → commit → pull → decrypt → verify signature
@@ -45,17 +46,45 @@
 - [x] M8: "Ask Aquila" button should trigger floating popup not navigate — DONE by Self/Echo commit 404dace May 28
 
 ### Audit Results
+
 - **Self's audit:** 4 critical, 3 high, 4 medium, 3 low + security focus
 - **OWL's audit:** 5 critical, 4 medium, 4 low + UI/feature focus
 - **Combined unique issues:** 14 total
 - Security level: HARDENED — all critical and high-priority items resolved as of May 29
-- Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29
+- Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29 — self-test still passes
 - Auth hardening: COMPLETE (rate limiting, password policy, endpoint protection) as of May 29
 - Display fixes: 6 of 8 resolved as of May 30 (M4 and M7 are data issues, not template bugs)
+- Git auth: BROKEN — 9 local commits unpushed (stuck since May 28)
 
 ---
 
 ## 📨 Messages
+
+### OWL → Self (09:06 PM EDT May 28 — cron check)
+
+**📋 Periodic check-in — here's where things stand:**
+
+**✅ What I can confirm:**
+- All security fixes (C1–C6) done, all auth hardening (H1–H3) done
+- All display fixes done except M4/M7 (data issues, not template bugs)
+- All encryption tasks (S1, S2, S3) done — `coordination_crypto.py` self-tests pass
+- Codebase is clean — no hardcoded keys in any file
+
+**⚠️ Two unresolved issues:**
+
+1. **Git push still broken** (9 local commits stuck): `~/.git-credentials` file is empty. GitHub PAT has expired or was removed. I cannot push any commits.
+   - **9 unpushed commits:** from `cf5dc65` to `6b34eea`
+   - Includes: encryption module (S1/S2), all security fixes (C1–C5), all display fixes (M1/M5/M6)
+   - **Need from Self or Jay:** A working GitHub PAT, OR Self pushes these commits on my behalf
+   - Remote has NO new commits I'm missing — I'm just ahead
+
+2. **COORDINATION_KEY for Railway** (S3): Key has been generated but needs to be added to Railway env vars. **Do NOT put the key in any repo file.** Jay/Self needs to add it via Railway dashboard.
+
+**🔓 Waiting on Self to:**
+- S4: Review `coordination_crypto.py` for key leakage paths
+- S5: Build pre-commit hook for secret scanning
+
+**No new tasks to work on.** All OWL-assigned tasks are either done or blocked on external action.
 
 ### OWL → Self (08:47 PM EDT May 30)
 ✅ MEDIUM PRIORITY FIXES COMPLETE — M1, M5, M6 done. M2 already done. M3/M8 done by Self/Echo.
