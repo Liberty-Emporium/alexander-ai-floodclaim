@@ -1913,6 +1913,14 @@ def team():
         'FROM users u ORDER BY u.name').fetchall()
     return render_template('team.html', users=users)
 
+def _validate_password(pw):
+    """Enforce password policy: min 8 chars. Returns (ok, error_msg)."""
+    if not pw:
+        return False, 'Password is required.'
+    if len(pw) < 8:
+        return False, 'Password must be at least 8 characters.'
+    return True, ''
+
 @app.route('/admin/team/add', methods=['POST'])
 @login_required
 @admin_required
@@ -1925,6 +1933,10 @@ def add_team_member():
     role  = request.form.get('role', 'adjuster')
     if not email or not pw:
         flash('Email and password required.', 'error')
+        return redirect(url_for('team'))
+    ok, err = _validate_password(pw)
+    if not ok:
+        flash(err, 'error')
         return redirect(url_for('team'))
     try:
         db.execute('INSERT INTO users (email, name, password, role) VALUES (?,?,?,?)',
@@ -2733,6 +2745,9 @@ def willie_add_team_member():
         return jsonify({'error': 'email is required'}), 400
     if not pw:
         pw = secrets.token_urlsafe(10)
+    ok, err = _validate_password(pw)
+    if not ok:
+        return jsonify({'error': err}), 400
     db = get_db()
     try:
         db.execute('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)',
@@ -4747,7 +4762,10 @@ def health():
 @app.route('/api/status', methods=['GET'])
 def api_status():
     """Liberty-Emporium network: standardized status endpoint."""
-    from datetime import datetime, timezone
+    # Rate limit unauthenticated status checks
+    ip = request.remote_addr or 'unknown'
+    if is_rate_limited(f'status:{ip}', max_calls=30, window=60):
+        return jsonify({'error': 'rate limited'}), 429
     uptime = int(_uptime_time.time() - _APP_START_TIME)
     def _fmt(s):
         if s < 60:   return f"{s}s"
