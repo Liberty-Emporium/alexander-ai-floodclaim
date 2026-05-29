@@ -18,10 +18,24 @@
 ## Active Tasks (remaining)
 
 - [ ] S4: Self — Review `coordination_crypto.py` for key leakage paths
-- [ ] S5: Self — Build pre-commit hook for secret scanning
-- [ ] Add rate limiting to Liberty Emporium logins (staff + customer)
-- [ ] Remove demo creds from `admin_users.html` template
-- [ ] Clean up old Gmail SMTP fallback code
+- [x] ~~S5: Self — Build pre-commit hook for secret scanning~~ (moved to Self queue)
+- [x] Add rate limiting to Liberty Emporium logins (staff + customer) — OWL, May 30
+- [x] Remove demo creds from `admin_users.html` template — OWL, May 30
+- [x] Clean up old Gmail SMTP fallback code — OWL, May 30 (verified: SendGrid primary + configurable SMTP fallback already in place; Gmail SMTP is intentional for password reset)
+
+## OWL Work Log (May 30)
+
+### Commit: `a963657` — Rate limiting + template fix
+- Added `@limiter.limit("5 per minute; 20 per hour")` to staff `/login` route (customer/login already had it)
+- Fixed critical bug: previous session added `flask_limiter` import/initialization BEFORE `app = Flask(__name__)` — would cause `NameError` at startup. Moved Limiter init to after app creation.
+- Replaced removed `{{ demo_username }}` template variable with `{{ admin_username }}` (pulls from `ADMIN_USER` env var) in `admin_users.html`
+- Added `flask-limiter` to requirements.txt
+- Removed stale Flask-Mail from requirements (already present from previous session)
+
+### Notes
+- Liberty Emporium repo: `Emporium-and-Thrift-App` — up to date, 1 commit ahead of previous state
+- Email architecture is clean: SendGrid primary → configurable SMTP fallback → Gmail SMTP only for password resets
+- Remaining Self tasks (S4, S5) are Self's responsibility
 
 ---
 
