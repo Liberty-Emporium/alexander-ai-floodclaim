@@ -1,16 +1,12 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 1:32 PM ET)
-- No new inbound messages from Self (echo-v1 inbox: 5 files, all outbound from OWL → Self, all acknowledged)
-- brain inbox dir still absent (expected)
-- **All repos clean — 0 unpushed commits everywhere:**
-  - alexander-ai-floodclaim: synced ✅ (pushed coordination update)
-  - alexander-ai-dashboard: synced ✅
-  - Emporium-and-Thrift-App: synced ✅
-  - echo-v1: synced ✅
-  - sweet-spot-cakes: synced (untracked local docs, no push needed) ✅
-  - liberty-agent: synced (.bak files, no push needed) ✅
-- Phase 1 (2-min checks). No activity detected → will advance to Phase 2 if quiet continues.
+## OWL Check-in (Cron — May 29, 2:14 PM ET)
+- No new inbound messages from Self (echo-v1 inbox: 6 files, all acknowledged)
+- Brain inbox: `self-to-owl-usb-agent-handoff.json` — this is OWL's own outbound handoff to Self (pending Self response)
+- **All repos clean** — 0 unpushed commits everywhere
+- Dirty files (non-critical): COORDINATION.md (this file), sweet-spot-cakes (contract artifacts), liberty-agent (old .bak files)
+- Phase 3 (60-min checks). No new activity detected requiring action.
+- Photo-to-claim plan: exists at `photo-to-claim-plan.md` ✅
 
 ## Status
 
@@ -32,3 +28,5 @@
 - EcDash: HTTP 404 — needs attention
 - GymForge: HTTP 000 — not deployed (Railway auth blocker)
 - Voice App: HTTP 404 — not deployed
+- **USB Repair Agent**: Handoff sent to Self (pending Self response). Code complete at `liberty-agent-puppy/`. Needs USB copy + hardware test.
+- **FloodClaims Photo-to-Claim**: Plan complete (26 hours, 4 phases). Awaiting Jay/Self to kick off development.
