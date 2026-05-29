@@ -25,9 +25,9 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 
 BASE_URL  = 'https://billy-floods.up.railway.app'
-EMAIL     = 'admin@floodclaimpro.com'
-PASSWORD  = 'admin'
-OR_KEY    = os.getenv('OPENAI_API_KEY', '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')
+EMAIL     = os.getenv('BROWSER_TEST_EMAIL', '')
+PASSWORD   = os.getenv('BROWSER_TEST_PASSWORD', '')
+OR_KEY    = os.getenv('OPENAI_API_KEY', '')
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 GREEN  = '\033[92m'

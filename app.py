@@ -96,7 +96,7 @@ app.config['SESSION_COOKIE_SAMESITE']   = 'Lax'
 # Keep Secure=False — Railway's edge terminates TLS; the cookie travels over
 # plain HTTP between the edge and the app container, so Secure would silently
 # drop it. Railway enforces HTTPS at the edge already.
-app.config['SESSION_COOKIE_SECURE']     = False
+app.config['SESSION_COOKIE_SECURE']     = os.environ.get('RAILWAY_ENVIRONMENT') is not None
 
 # ── CSRF protection ───────────────────────────────────────────────────────────────
 def _get_csrf_token():
@@ -170,7 +170,15 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'admin@floodclaimpro.com')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin1234')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
+if not ADMIN_PASSWORD:
+    import sys
+    print('FATAL: ADMIN_PASSWORD environment variable must be set', file=sys.stderr)
+    sys.exit(1)
+if len(ADMIN_PASSWORD) < 8:
+    import sys
+    print('FATAL: ADMIN_PASSWORD must be at least 8 characters', file=sys.stderr)
+    sys.exit(1)
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 
 ALLOWED_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -201,8 +209,9 @@ def security_headers(response):
     response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
     response.headers.setdefault(
         'Content-Security-Policy',
-        "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval';"
+        "default-src 'self' https: data: blob:; script-src 'self' https://unpkg.com; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https://unpkg.com https://openrouter.ai https://api.stripe.com; frame-src 'self' https://js.stripe.com https://maps.google.com;"
     )
+    response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
 
 def init_db():

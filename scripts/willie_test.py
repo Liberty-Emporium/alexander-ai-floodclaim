@@ -16,7 +16,7 @@ import urllib.request, urllib.error
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DEFAULT_URL   = 'https://billy-floods.up.railway.app'
-DEFAULT_TOKEN = os.environ.get('WILLIE_TOKEN', 'S7LroZDvJSqzJZ304leqwQcxToJXRwF597gszWWarq4')
+DEFAULT_TOKEN = os.environ.get('WILLIE_TOKEN', '')
 
 PASS = '\033[92m✅\033[0m'
 FAIL = '\033[91m❌\033[0m'
