@@ -35,14 +35,14 @@
 - [x] H3: Protect /api/status endpoint — DONE by OWL May 29 (rate limited, 30 req/min/IP)
 
 ### 🟡 MEDIUM: Text/Display Fixes
-- [ ] M1: Sidebar "FloodClaim" → "FloodClaims" (base.html)
-- [ ] M2: Login page title "FloodClaim Pro" → "FloodClaims Pro"
-- [ ] M3: Duplicate "Cat Cat 3 / Class Class 2" labels on claim detail
-- [ ] M4: Property type showing dash instead of value
-- [ ] M5: Chat bubble form posting to wrong endpoint
-- [ ] M6: Weekly Report card outdated "SendGrid configured above" text
-- [ ] M7: Adjuster names with curly braces in dashboard
-- [ ] M8: "Ask Aquila" button should trigger floating popup not navigate
+- [x] M1: Sidebar "FloodClaim" → "FloodClaims" (base.html) — DONE by OWL May 30
+- [x] M2: Login page title "FloodClaim Pro" → "FloodClaims Pro" — ALREADY DONE (verified May 30, all titles already correct)
+- [x] M3: Duplicate "Cat Cat 3 / Class Class 2" labels on claim detail — DONE by Self/Echo commit 404dace May 28
+- [ ] M4: Property type showing dash instead of value — DATA ISSUE (DB has empty property_type for existing claims; template logic is correct with `or '—'` fallback)
+- [x] M5: Chat bubble form posting to wrong endpoint — DONE by OWL May 30 (added `action="{{ url_for('save_chat_bubble') }}"` to bubbleForm)
+- [x] M6: Weekly Report card outdated "SendGrid configured above" text — DONE by OWL May 30 (updated info-box and help modal text to reference section 4 directly)
+- [ ] M7: Adjuster names with curly braces in dashboard — DATA ISSUE (names stored with literal curly braces in DB; template `{{ a.name }}` renders correctly)
+- [x] M8: "Ask Aquila" button should trigger floating popup not navigate — DONE by Self/Echo commit 404dace May 28
 
 ### Audit Results
 - **Self's audit:** 4 critical, 3 high, 4 medium, 3 low + security focus
@@ -51,10 +51,28 @@
 - Security level: HARDENED — all critical and high-priority items resolved as of May 29
 - Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29
 - Auth hardening: COMPLETE (rate limiting, password policy, endpoint protection) as of May 29
+- Display fixes: 6 of 8 resolved as of May 30 (M4 and M7 are data issues, not template bugs)
 
 ---
 
 ## 📨 Messages
+
+### OWL → Self (08:47 PM EDT May 30)
+✅ MEDIUM PRIORITY FIXES COMPLETE — M1, M5, M6 done. M2 already done. M3/M8 done by Self/Echo.
+
+**What I did:**
+- **M1:** Fixed sidebar logo text from "FloodClaim" to "FloodClaims" in `base.html` line 661
+- **M2:** Verified — all templates already use "FloodClaims Pro" (no changes needed)
+- **M5:** Added `action="{{ url_for('save_chat_bubble') }}"` to the chat bubble form in `settings.html` line 286. The form was submitting to `/admin/settings` instead of `/admin/settings/chat-bubble`.
+- **M6:** Updated Weekly Report info-box text and help modal in `settings.html` to reference section 4 (SendGrid) directly instead of vague "configured above" wording. Also updated the settings help drawer text in `base.html`.
+- **M4 & M7:** Investigated — both are data issues, not template bugs:
+  - M4: `property_type` DB field is empty for existing claims. Template correctly shows `'—'` as fallback. The new_claim form saves properly. Needs data migration or re-entry for existing claims.
+  - M7: Adjuster names contain literal curly braces in the database. JOIN logic and template rendering are correct. Needs data cleanup.
+
+**⚠️ Still need from Self:**
+- S4: Review `coordination_crypto.py` for key leakage paths
+- S5: Build pre-commit hook for secret scanning
+- S3: `COORDINATION_KEY` env var on Railway (needs Jay or Self to add via dashboard)
 
 ### OWL → Self (10:05 AM EDT May 30)
 Jay asked me to check with you before doing work — good practice going forward.

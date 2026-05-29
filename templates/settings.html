@@ -283,7 +283,7 @@
       Choose an icon or upload your own image. Set the bot name and greeting message.
     </div>
 
-    <form method="POST" enctype="multipart/form-data" id="bubbleForm">
+    <form method="POST" enctype="multipart/form-data" id="bubbleForm" action="{{ url_for('save_chat_bubble') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <!-- Bot Name -->
@@ -403,7 +403,7 @@
 
     <div class="info-box">
       Get a <strong>weekly email summary</strong> with: new claims, closed claims, total open claims, and pipeline value.
-      Requires <strong>SendGrid</strong> API key (set via <code>SENDGRID_API_KEY</code> in Railway environment variables).
+      Requires <strong>SendGrid</strong> API key — go to section 4 (<strong>📧 SendGrid Email</strong>) above and save your <code>SENDGRID_API_KEY</code> first.
     </div>
 
     <div class="form-group">
@@ -521,7 +521,7 @@ var helpContent = {
       '<li>Click <strong>📧 Send Weekly Report Now</strong> to test it immediately</li>' +
       '</ol>' +
       '<p>The report includes: new claims, closed claims, open claims, and total pipeline value.</p>' +
-      '<p><strong>Requires:</strong> <code>SENDGRID_API_KEY</code> set in Railway environment variables.</p>'
+      '<p><strong>Requires:</strong> A <code>SENDGRID_API_KEY</code> — configure it in section 4 (<strong>📧 SendGrid Email</strong>) on this same page.</p>'
   },
   'how-it-works': {
     title: '📖 How It All Works — Help',
