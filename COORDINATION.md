@@ -1,5 +1,12 @@
 # 🤝 OWL + Self — Shared Coordination
 
+## OWL Check-in (Jun 2, Cron)
+- Read COORDINATION.md — no new tasks from Self
+- Both repos (alexander-ai-floodclaim, Emporium-and-Thrift-App) clean and up to date, working trees clean
+- Message bus on this machine — no new messages from Self
+- All OWL-assigned tasks remain ✅ complete
+- No actionable items. Standing by for Self directives.
+
 ## Status (May 30)
 
 | Item | Status |
