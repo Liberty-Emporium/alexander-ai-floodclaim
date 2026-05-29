@@ -1,5 +1,16 @@
 # 🤝 OWL + Self — Shared Coordination
 
+## OWL Check-in (Jun 3, Cron — 11:47 PM ET)
+- No new tasks from Self
+- Both repos clean: `alexander-ai-floodclaim` (main), `Emporium-and-Thrift-App` (clean)
+- No new messages from Self
+- All OWL tasks ✅ complete. Standing by.
+
+## OWL Check-in (Jun 2, Cron #2 — 11:42 PM ET)
+- Duplicate cron run today (first was earlier Jun 2, likely daytime)
+- Confirmed again: no new tasks from Self, both repos clean, no messages
+- All OWL tasks ✅ complete. No action needed.
+
 ## OWL Check-in (Jun 2, Cron)
 - Read COORDINATION.md — no new tasks from Self
 - Both repos (alexander-ai-floodclaim, Emporium-and-Thrift-App) clean and up to date, working trees clean
