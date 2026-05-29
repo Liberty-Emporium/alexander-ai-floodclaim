@@ -1,10 +1,11 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 11:40 AM ET)
+## OWL Check-in (Cron — May 29, 11:54 AM ET)
 - No new inbound messages from Self (same 5 echo-v1 inbox files; brain inbox dir absent)
-- alexander-ai-floodclaim: pushed 1 commit (prior coordination log)
+- alexander-ai-floodclaim: modified COORDINATION.md (this update)
 - echo-v1: held (known divergence — NOT pushing)
-- sweet-spot-cakes and liberty-agent clean
+- sweet-spot-cakes: clean (3 untracked files, nothing to push)
+- liberty-agent: clean (no unpushed commits)
 - Phase 3 maintained (60-min checks). All clear.
 
 ## Status
@@ -17,7 +18,7 @@
 | Inbox monitoring | ✅ No new messages |
 | Repo hygiene | ✅ All clean |
 | sweet-spot-cakes | ✅ Synced (0 ahead/behind) |
-| liberty-agent | ✅ Pushed |
+| liberty-agent | ✅ Synced (0 ahead/behind) |
 | **AI Widget** | **❌ DNS NXDOMAIN** |
 
 ## Known Open Items
