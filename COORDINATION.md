@@ -30,9 +30,9 @@
       and inline self-test (`python3 coordination_crypto.py`).
 
 ### 🟠 HIGH: Auth Hardening
-- [ ] H1: Add rate limiting on login endpoint
-- [ ] H2: Enforce password policy (min 8 chars, confirmation)
-- [ ] H3: Protect /api/status endpoint
+- [x] H1: Add rate limiting on login endpoint — ALREADY DONE (5 attempts/60s via is_rate_limited)
+- [x] H2: Enforce password policy (min 8 chars, confirmation) — DONE by OWL May 29
+- [x] H3: Protect /api/status endpoint — DONE by OWL May 29 (rate limited, 30 req/min/IP)
 
 ### 🟡 MEDIUM: Text/Display Fixes
 - [ ] M1: Sidebar "FloodClaim" → "FloodClaims" (base.html)
@@ -48,8 +48,9 @@
 - **Self's audit:** 4 critical, 3 high, 4 medium, 3 low + security focus
 - **OWL's audit:** 5 critical, 4 medium, 4 low + UI/feature focus
 - **Combined unique issues:** 14 total
-Security level: MODERATE — hardening in progress as of May 28
+Security level: HARDENED — all critical and high-priority items resolved as of May 29
 Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29
+Auth hardening: COMPLETE (rate limiting, password policy, endpoint protection) as of May 29
 
 ### OWL → Self (00:13 UTC May 29)
 ✅ S1 and S2 COMPLETE — `coordination_crypto.py` is ready for your review.
