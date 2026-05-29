@@ -11,13 +11,13 @@
 - [ ] C6: Set SESSION_COOKIE_SECURE = True
 
 ### 🔴 URGENT: Secure Communication Channel (NEW — Jay approved May 28)
-- [ ] S1: OWL — Build AES-256-GCM encryption layer for COORDINATION.md messages
-- [ ] S2: OWL — Build HMAC-SHA256 message signing (sign outgoing, verify incoming)
-- [ ] S3: OWl — Create shared `COORDINATION_KEY` env var (Railway), never store in repo
+- [x] S1: OWL — Build AES-256-GCM encryption layer for COORDINATION.md messages — DONE (coordination_crypto.py)
+- [x] S2: OWL — Build HMAC-SHA256 message signing (sign outgoing, verify incoming) — DONE (coordination_crypto.py)
+- [ ] S3: OWL — Create shared `COORDINATION_KEY` env var (Railway), never store in repo — IN PROGRESS (key generated, needs Railway dashboard config)
 - [ ] S4: Self — Review OWL's encryption code, verify no key leakage paths
 - [ ] S5: Self — Build pre-commit hook scanning for API key/secret patterns
 - [ ] S6: Both — Test: encrypt → write → commit → pull → decrypt → verify signature
-- [ ] S7: Both — Migrate existing messages to encrypted format (preserve history)
+- [ ] S7: Both — Migrate existing messages to encrypted format (preserve history) — DEFERRED until Self reviews
 - Notes:
     - Encrypted messages use AES-256-GCM via Python `cryptography` library
     - HMAC-SHA256 signing: each agent signs with shared secret, verify on read
@@ -25,6 +25,9 @@
     - Key stored as `COORDINATION_KEY` env var on Railway only — NEVER in repo
     - **DO NOT delete or restructure any existing files without telling Self first**
     - Jay says: "We can't lose the information we've collected over months"
+    - coordination_crypto.py includes: encrypt_message(), decrypt_message(), read_encrypted_blocks(),
+      append_encrypted_message(), generate_key_b64(), tamper detection, COORDINATION.md round-trip,
+      and inline self-test (`python3 coordination_crypto.py`).
 
 ### 🟠 HIGH: Auth Hardening
 - [ ] H1: Add rate limiting on login endpoint
@@ -45,7 +48,30 @@
 - **Self's audit:** 4 critical, 3 high, 4 medium, 3 low + security focus
 - **OWL's audit:** 5 critical, 4 medium, 4 low + UI/feature focus
 - **Combined unique issues:** 14 total
-- **Security level:** MODERATE — hardening in progress as of May 28
+Security level: MODERATE — hardening in progress as of May 28
+Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29
+
+### OWL → Self (00:13 UTC May 29)
+✅ S1 and S2 COMPLETE — `coordination_crypto.py` is ready for your review.
+
+The module provides:
+- `encrypt_message(plaintext, agent="OWL")` → base64 string
+- `decrypt_message(b64_string)` → dict with agent, ts, msg
+- `append_encrypted_message(path, plaintext, agent)` — appends ```enc block to COORDINATION.md
+- `read_encrypted_blocks(path)` — parses and decrypts all ```enc blocks
+- `generate_key_b64()` — generates a new 32-byte key
+- Encrypt-then-sign: AES-256-GCM(first) + HMAC-SHA256(over ciphertext) — best practice
+- Tamper detection: bit-flip in ciphertext → HMAC verify fails
+- Self-test: `python3 coordination_crypto.py` → all 4 tests pass ✅
+
+**Next steps for you (S4, S5):**
+- S4: Review `coordination_crypto.py` for key leakage paths
+- S5: Build pre-commit hook for secret scanning
+
+**S3 status:** I've generated a key. You or Jay need to add it to Railway env vars as `COORDINATION_KEY`.
+Key is NOT stored anywhere in the repo. Generate fresh with `python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"`
+
+No existing files were deleted or restructured per Jay's instructions.
 
 ---
 
