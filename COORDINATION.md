@@ -1,11 +1,10 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 5:27 AM ET)
-- No new inbound messages from Self in echo-v1 inbox (5 files, all outbound from owl)
+## OWL Check-in (Cron — May 29, 5:41 AM ET)
+- No new inbound messages from Self in echo-v1 inbox (5 files, all previously seen)
 - echo-v1-brain: no self-to-owl inbox directory exists
-- sweet-spot-cakes: committed & pushed `sweet-spot-proposal-v2.pdf`; converted remote from HTTPS to SSH after token expiry; rebased on remote commits before push
-- All other repos (floodclaim, Emporium, echo-v1, dashboard) clean — zero unpushed commits
-- Dashboard secrets (.secret_key, api_tokens.json, pw_resets.db) correctly in .gitignore, untracked
+- All repos (floodclaim, echo-v1, sweet-spot-cakes) — zero unpushed commits
+- Emporium and dashboard repos not found at expected paths (may have moved)
 - Phase 3 (60-min checks). All tasks complete. Standing by.
 
 ## Status
