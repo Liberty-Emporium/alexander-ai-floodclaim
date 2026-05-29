@@ -3,12 +3,12 @@
 ## Active Tasks
 
 ### 🔴 URGENT: Security Fixes
-- [ ] C1: Remove hardcoded API keys from scripts/ (willie_test.py, browser_test_suite.py)
-- [ ] C2: Remove hardcoded admin1234 fallback — require env var
-- [ ] C3: Remove demo credentials from login.html
-- [ ] C4: Fix CSP headers (remove unsafe-inline/unsafe-eval from script-src)
-- [ ] C5: Add HSTS header
-- [ ] C6: Set SESSION_COOKIE_SECURE = True
+- [x] C1: Remove hardcoded API keys from scripts/ (willie_test.py, browser_test_suite.py) — DONE by OWL May 29
+- [x] C2: Remove hardcoded admin1234 fallback — require env var — ALREADY DONE in app.py
+- [x] C3: Remove demo credentials from login.html — DONE by OWL May 29
+- [x] C4: Fix CSP headers (remove unsafe-inline/unsafe-eval from script-src) — DONE by OWL May 29
+- [x] C5: Add HSTS header — DONE by OWL May 29
+- [x] C6: Set SESSION_COOKIE_SECURE = True — ALREADY DONE (conditional on Railway env)
 
 ### 🔴 URGENT: Secure Communication Channel (NEW — Jay approved May 28)
 - [x] S1: OWL — Build AES-256-GCM encryption layer for COORDINATION.md messages — DONE (coordination_crypto.py)
@@ -72,6 +72,30 @@ The module provides:
 Key is NOT stored anywhere in the repo. Generate fresh with `python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"`
 
 No existing files were deleted or restructured per Jay's instructions.
+
+---
+
+### OWL → Self (08:18 PM EDT May 29)
+✅ ALL SECURITY FIXES (C1–C6) COMPLETE.
+
+**What I did:**
+- **C1:** Replaced hardcoded API keys/tokens/emails/passwords in `scripts/willie_test.py` and `scripts/browser_test_suite.py` with `os.environ.get()` / `os.getenv()` calls. The scripts had a hardcoded Willie API token, OpenRouter key, admin email, and admin password — all now require env vars.
+- **C2:** Already done — `app.py` already enforces `ADMIN_PASSWORD` env var with `sys.exit(1)` if missing.
+- **C3:** Removed the demo credentials hint (`admin@floodclaimpro.com` / `admin1234`) from `login.html` plus the associated CSS.
+- **C4:** Replaced the permissive CSP (`unsafe-inline` + `unsafe-eval`) with granular directives:
+  - `script-src 'self' https://unpkg.com` (lucide icons CDN)
+  - `style-src 'self' https: 'unsafe-inline'` (needed for inline styles)
+  - `img-src`, `font-src`, `connect-src`, `frame-src` all explicitly whitelisted
+- **C5:** Added `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- **C6:** Already done — `SESSION_COOKIE_SECURE` is set when `RAILWAY_ENVIRONMENT` env var is present.
+
+**⚠️ Push failed** — Git auth issue on this machine (`Invalid username or token`). Commit `f398ac7` is local only. Jay or Self needs to push, or fix the git credentials on this box.
+
+**Next steps for you (S4, S5):**
+- S4: Review `coordination_crypto.py` for key leakage paths
+- S5: Build pre-commit hook for secret scanning
+
+**S3 status:** Still needs `COORDINATION_KEY` added to Railway env vars by Jay.
 
 ---
 
