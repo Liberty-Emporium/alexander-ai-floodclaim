@@ -1,0 +1,399 @@
+<!-- ============================================================
+     PHOTO-TO-CLAIM: Batch Room Scan Section
+     Add this block to claim_detail.html AFTER the existing 
+     single-photo upload card (line 291) and BEFORE the 
+     Rooms & Damage section (line 293)
+     ============================================================ -->
+
+<!-- Batch Room Scan (NEW — Photo-to-Claim) -->
+<div class="card" id="batch-scan-card">
+  <div class="card-header">
+    <div class="card-title">📷 Scan Room — AI Batch Analysis</div>
+    <span style="font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6">BETA</span>
+  </div>
+  
+  <div id="batch-upload-ui">
+    <!-- Room selector -->
+    <div style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:end;margin-bottom:1rem">
+      <div class="form-group" style="margin:0">
+        <label>Room to Scan</label>
+        <select class="form-control" id="batch-room-select">
+          <option value="">— Select Room —</option>
+          {% for rd in room_data %}
+          <option value="{{ rd.room.id }}">{{ rd.room.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="font-size:.72rem;color:#64748b;white-space:nowrap">
+        💡 Take 5-20 photos of the room
+      </div>
+    </div>
+
+    <!-- Upload zone -->
+    <div class="batch-upload-zone" id="batch-drop-zone" onclick="document.getElementById('batch-file-input').click()">
+      <input type="file" id="batch-file-input" multiple accept="image/*" capture="environment" style="display:none" onchange="handleBatchFiles(this.files)">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">📸</div>
+      <div style="font-weight:600;margin-bottom:.25rem">Tap to take or choose photos</div>
+      <div style="font-size:.78rem;color:#64748b">Upload 5-20 photos of a single room for AI analysis</div>
+      <div id="batch-file-count" style="display:none;margin-top:.5rem;font-size:.75rem;font-weight:700;color:#06D6C7"></div>
+    </div>
+
+    <!-- Preview grid -->
+    <div class="batch-preview-grid" id="batch-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;margin-top:1rem"></div>
+
+    <!-- Selected files list -->
+    <div id="batch-file-list" style="margin-top:.75rem;font-size:.78rem;color:#64748b"></div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:.75rem;margin-top:1rem">
+      <button class="btn btn-primary" id="batch-analyze-btn" onclick="startBatchAnalysis()" disabled>
+        🤖 Analyze Room with AI
+      </button>
+      <button class="btn btn-ghost" onclick="clearBatchFiles()" id="batch-clear-btn" style="display:none">
+        ✕ Clear All
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div id="batch-progress" style="display:none;margin-top:1rem">
+      <div style="font-size:.82rem;color:#64748b;margin-bottom:.5rem" id="batch-progress-text">🤖 AI is analyzing your photos…</div>
+      <div style="height:6px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden">
+        <div id="batch-progress-fill" style="height:100%;background:linear-gradient(90deg,#06D6C7,#3B7BFF);border-radius:999px;width:0%;transition:width .3s"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Results (populated after analysis) -->
+  <div id="batch-results" style="display:none;margin-top:1.5rem">
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem">
+      🤖 AI Room Analysis
+      <span id="batch-results-room-name" style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(16,185,129,.1);color:#10b981"></span>
+    </div>
+
+    <!-- Summary -->
+    <div id="ai-room-summary" style="font-size:.82rem;color:#475569;background:rgba(6,214,199,.05);border:1px solid rgba(6,214,199,.15);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;line-height:1.6"></div>
+
+    <!-- Detected items -->
+    <div id="ai-detected-items" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem"></div>
+
+    <!-- Water category/class -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+      <div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:.75rem">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3b82f6;margin-bottom:.25rem">Water Category</div>
+        <div id="ai-water-category" style="font-size:1.5rem;font-weight:800"></div>
+      </div>
+      <div style="background:rgba(139,92,246,.05);border:1px solid rgba(139,92,246,.15);border-radius:10px;padding:.75rem">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8b5cf6;margin-bottom:.25rem">Water Class</div>
+        <div id="ai-water-class" style="font-size:1.5rem;font-weight:800"></div>
+      </div>
+    </div>
+
+    <!-- High-value flags -->
+    <div id="ai-high-value-flags" style="display:none;margin-bottom:1rem;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:.75rem 1rem">
+      <div style="font-size:.75rem;font-weight:700;color:#f59e0b;margin-bottom:.5rem">💎 HIGH-VALUE ITEMS DETECTED — Take Close-Up Photos</div>
+      <div id="ai-high-value-list" style="font-size:.82rem;color:#92400e;line-height:1.6"></div>
+    </div>
+
+    <!-- Action: Approve all -->
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="approveAllAiItems()">
+        ✓ Approve All & Add to Claim
+      </button>
+      <button class="btn btn-ghost" onclick="clearBatchResults()">
+        ✕ Discard Results
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.batch-upload-zone {
+  border: 2px dashed rgba(59,130,246,.3);
+  border-radius: 14px;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: rgba(59,130,246,.03);
+}
+.batch-upload-zone:hover, .batch-upload-zone.dragover {
+  border-color: #3b82f6;
+  background: rgba(59,130,246,.07);
+}
+.batch-preview-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+.batch-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.batch-preview-remove {
+  position: absolute;
+  top: .25rem;
+  right: .25rem;
+  background: rgba(239,68,68,.9);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: .7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-item-card {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  transition: all .15s;
+}
+.ai-item-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.ai-item-card.high-value {
+  border-color: rgba(251,191,36,.4);
+  background: rgba(251,191,36,.04);
+}
+.ai-item-badge {
+  font-size: .6rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+</style>
+
+<script>
+let batchFiles = [];
+let batchAnalysisResult = null;
+
+function handleBatchFiles(files) {
+  const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  batchFiles = [...batchFiles, ...validFiles];
+  renderBatchPreviews();
+}
+
+function renderBatchPreviews() {
+  const grid = document.getElementById('batch-preview-grid');
+  const count = document.getElementById('batch-file-count');
+  const btn = document.getElementById('batch-analyze-btn');
+  const clearBtn = document.getElementById('batch-clear-btn');
+  
+  grid.innerHTML = '';
+  batchFiles.forEach((f, i) => {
+    const url = URL.createObjectURL(f);
+    const div = document.createElement('div');
+    div.className = 'batch-preview-item';
+    div.innerHTML = `<img src="${url}"><button class="batch-preview-remove" onclick="removeBatchFile(${i})">✕</button>`;
+    grid.appendChild(div);
+  });
+  
+  count.style.display = batchFiles.length ? 'block' : 'none';
+  count.textContent = batchFiles.length + ' photo' + (batchFiles.length !== 1 ? 's' : '') + ' selected';
+  btn.disabled = batchFiles.length < 2;
+  clearBtn.style.display = batchFiles.length ? 'inline-flex' : 'none';
+}
+
+function removeBatchFile(idx) {
+  batchFiles.splice(idx, 1);
+  renderBatchPreviews();
+}
+
+function clearBatchFiles() {
+  batchFiles = [];
+  renderBatchPreviews();
+  document.getElementById('batch-file-input').value = '';
+}
+
+function clearBatchResults() {
+  document.getElementById('batch-results').style.display = 'none';
+  document.getElementById('batch-upload-ui').style.display = 'block';
+  clearBatchFiles();
+  batchAnalysisResult = null;
+}
+
+async function startBatchAnalysis() {
+  const roomId = document.getElementById('batch-room-select').value;
+  if (!roomId) {
+    alert('Please select a room first.');
+    return;
+  }
+  if (batchFiles.length < 2) {
+    alert('Please upload at least 2 photos for batch analysis.');
+    return;
+  }
+
+  // Show progress
+  document.getElementById('batch-upload-ui').style.display = 'none';
+  document.getElementById('batch-progress').style.display = 'block';
+  const fill = document.getElementById('batch-progress-fill');
+  const txt = document.getElementById('batch-progress-text');
+
+  // Fake progress animation
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + 5, 85);
+    fill.style.width = pct + '%';
+  }, 300);
+
+  // Build form data
+  const fd = new FormData();
+  batchFiles.forEach(f => fd.append('photos', f));
+  fd.append('room_id', roomId);
+
+  try {
+    const claimId = window.location.pathname.split('/claim/')[1]?.split('/')[0];
+    const resp = await fetch(`/claim/${claimId}/room/${roomId}/batch-analyze`, {
+      method: 'POST',
+      body: fd
+    });
+    const data = await resp.json();
+    clearInterval(iv);
+    fill.style.width = '100%';
+
+    if (data.error) {
+      txt.textContent = '❌ ' + data.error;
+      setTimeout(() => {
+        document.getElementById('batch-progress').style.display = 'none';
+        document.getElementById('batch-upload-ui').style.display = 'block';
+      }, 2000);
+      return;
+    }
+
+    batchAnalysisResult = data;
+    renderBatchResults(data);
+    
+    txt.textContent = '✅ Analysis complete! Review the results below.';
+    setTimeout(() => {
+      document.getElementById('batch-progress').style.display = 'none';
+      document.getElementById('batch-results').style.display = 'block';
+    }, 800);
+
+  } catch(e) {
+    clearInterval(iv);
+    txt.textContent = '❌ Analysis failed. Please try again.';
+    setTimeout(() => {
+      document.getElementById('batch-progress').style.display = 'none';
+      document.getElementById('batch-upload-ui').style.display = 'block';
+    }, 2000);
+  }
+}
+
+function renderBatchResults(data) {
+  // Room name
+  const roomSelect = document.getElementById('batch-room-select');
+  const roomName = roomSelect.options[roomSelect.selectedIndex].text;
+  document.getElementById('batch-results-room-name').textContent = roomName;
+
+  // Summary
+  document.getElementById('ai-room-summary').textContent = data.summary || 'No summary available.';
+
+  // Detected items
+  const itemsContainer = document.getElementById('ai-detected-items');
+  itemsContainer.innerHTML = '';
+  
+  const items = data.items || [];
+  items.forEach((item, idx) => {
+    const isHighValue = item.priority === 'HIGH_VALUE_FLAG' || item.category === 'personal_property_high_value';
+    const card = document.createElement('div');
+    card.className = 'ai-item-card' + (isHighValue ? ' high-value' : '');
+    card.id = 'ai-item-' + idx;
+    card.innerHTML = `
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+          ${isHighValue ? '<span class="ai-item-badge" style="background:rgba(251,191,36,.15);color:#d97706">💎 HIGH VALUE</span>' : ''}
+          <span class="ai-item-badge" style="background:rgba(59,130,246,.1);color:#3b82f6">${item.category || 'other'}</span>
+        </div>
+        <div style="font-weight:600;font-size:.85rem">${item.description || 'Unknown item'}</div>
+        <div style="font-size:.75rem;color:#64748b;margin-top:.15rem">
+          ${item.quantity || 1} ${item.unit || 'each'}
+          ${item.estimated_area ? ' · ' + item.estimated_area : ''}
+        </div>
+        <div style="font-size:.78rem;color:#475569;margin-top:.25rem">${item.condition || ''}</div>
+      </div>
+      <div style="display:flex;gap:.25rem">
+        <button onclick="approveAiItem(${idx})" style="background:#10b981;border:none;color:#fff;border-radius:8px;padding:.4rem .7rem;font-size:.7rem;font-weight:600;cursor:pointer">✓</button>
+        <button onclick="discardAiItem(${idx})" style="background:#ef4444;border:none;color:#fff;border-radius:8px;padding:.4rem .7rem;font-size:.7rem;font-weight:600;cursor:pointer">✕</button>
+      </div>
+    `;
+    itemsContainer.appendChild(card);
+  });
+
+  // Water category/class
+  document.getElementById('ai-water-category').textContent = 'Cat ' + (data.water_category || '—');
+  document.getElementById('ai-water-class').textContent = 'Class ' + (data.water_class || '—');
+
+  // High value flags
+  const hvFlags = data.needs_closeup || [];
+  if (hvFlags.length > 0) {
+    document.getElementById('ai-high-value-flags').style.display = 'block';
+    document.getElementById('ai-high-value-list').innerHTML = hvFlags.map(i => '• ' + i).join('<br>');
+  } else {
+    document.getElementById('ai-high-value-flags').style.display = 'none';
+  }
+}
+
+function approveAiItem(idx) {
+  const card = document.getElementById('ai-item-' + idx);
+  if (card) {
+    card.style.opacity = '.5';
+    card.querySelector('button').disabled = true;
+  }
+}
+
+function discardAiItem(idx) {
+  const card = document.getElementById('ai-item-' + idx);
+  if (card) {
+    card.style.display = 'none';
+  }
+}
+
+async function approveAllAiItems() {
+  if (!batchAnalysisResult || !batchAnalysisResult.items) return;
+  
+  const claimId = window.location.pathname.split('/claim/')[1]?.split('/')[0];
+  const roomId = document.getElementById('batch-room-select').value;
+  
+  try {
+    const resp = await fetch(`/claim/${claimId}/ai-populate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        room_id: roomId,
+        items: batchAnalysisResult.items,
+        batch_id: batchAnalysisResult.batch_id || ''
+      })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      // Reload claim page to show new line items
+      window.location.reload();
+    } else {
+      alert('Failed to save items: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) {
+    alert('Failed to save items. Please try again.');
+  }
+}
+
+// Drag & drop for batch zone
+const batchZone = document.getElementById('batch-drop-zone');
+['dragenter','dragover'].forEach(evt => {
+  batchZone.addEventListener(evt, e => { e.preventDefault(); batchZone.classList.add('dragover'); });
+});
+['dragleave','drop'].forEach(evt => {
+  batchZone.addEventListener(evt, e => { e.preventDefault(); batchZone.classList.remove('dragover'); });
+});
+batchZone.addEventListener('drop', e => { handleBatchFiles(e.dataTransfer.files); });
+</script>
