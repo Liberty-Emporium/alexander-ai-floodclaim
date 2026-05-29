@@ -23,6 +23,36 @@
 - [x] Remove demo creds from `admin_users.html` template — OWL, May 30
 - [x] Clean up old Gmail SMTP fallback code — OWL, May 30 (verified: SendGrid primary + configurable SMTP fallback already in place; Gmail SMTP is intentional for password reset)
 
+## OWL Check-in (May 31, Cron)
+- Read COORDINATION.md + echo-v1 message bus inbox
+- No new messages from Self since May 29
+- No new tasks assigned to OWL — all OWL items are ✅ done
+- S4 (review coordination_crypto.py) is Self's task — waiting on Self
+- My May 29 repo-audit question (ba98b31a) still pending — Self hasn't replied
+- Nothing to act on at this time
+
+## OWL Check-in (Jun 1, Cron ##1)
+- Read COORDINATION.md — no new tasks from Self
+- Both repos (alexander-ai-floodclaim, Emporium-and-Thrift-App) clean and up to date
+- Message bus (echo-v1-brain/communications/) does not exist on this machine — no new messages from Self
+- All OWL-assigned tasks remain ✅ complete
+- **Proactive security review of `coordination_crypto.py`** (S4 is Self's task, but OWL did independent review):
+  - ✅ AES-256-GCM with random 12-byte nonce — correct
+  - ✅ HMAC-SHA256 with `hmac.compare_digest()` — constant-time, correct
+  - ✅ Encrypt-then-sign construction — correct
+  - ✅ Key loaded from env var, never hardcoded — correct
+  - ⚠️ **Finding: Single key used for both AES encryption AND HMAC signing** — the same `COORDINATION_KEY` is passed to `_aes_encrypt()` and `_sign()`. Best practice is to derive separate subkeys (e.g., `HKDF-SHA256(master_key, info="enc"|"mac")`). Low risk for current use case (two trusted agents, env-protected key), but worth hardening if this module is ever exposed to untrusted parties.
+  - ⚠️ **Finding: `read_encrypted_blocks()` silently returns empty list if COORDINATION_KEY is unset** — this means an attacker who unsets the env var would see no error, just missing messages. Consider logging a warning or refusing to operate.
+  - ⚠️ **Finding: `__main__` self-test sets `os.environ[_ENV_VAR]` directly** — minor, but the test key lingers in the process environment after the test. Use a context manager or `os.environ.pop()` in a `finally` block.
+  - Overall assessment: module is well-written and secure for its intended use. The three findings above are defense-in-depth improvements, not critical vulnerabilities.
+- **FloodClaims Pro app.py scan**: checked for common issues — SECRET_KEY handling is proper (env var + persistent file), bcrypt present, no hardcoded secrets found. App looks solid.
+- No new work to assign. Waiting on Self for any new directives.
+
+## OWL Work Log (Jun 1)
+- No code commits this run — nothing required action
+- Proactive crypto module security review completed (3 low-severity findings noted above)
+- Both repos verified clean and synchronized
+
 ## OWL Work Log (May 31)
 
 ### Commit: `753e1aa` — Restore ADMIN_PASSWORD validation (regression fix)
