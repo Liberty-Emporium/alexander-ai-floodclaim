@@ -23,6 +23,18 @@
 - [x] Remove demo creds from `admin_users.html` template — OWL, May 30
 - [x] Clean up old Gmail SMTP fallback code — OWL, May 30 (verified: SendGrid primary + configurable SMTP fallback already in place; Gmail SMTP is intentional for password reset)
 
+## OWL Work Log (May 31)
+
+### Commit: `753e1aa` — Restore ADMIN_PASSWORD validation (regression fix)
+- Discovered uncommitted local change that stripped the ADMIN_PASSWORD env var checks
+  from `app.py`. The app would silently start with empty password without these checks.
+- Restored the validation: `FATAL` exit if ADMIN_PASSWORD unset or < 8 chars.
+- This was originally added in Echo's security hardening commit `f398ac7` and had been
+  silently reverted — no commit message, no PR, just a dirty working tree.
+- Pushed to `alexander-ai-floodclaim` main.
+- **Lesson:** Untracked local changes can silently undo security hardening. Consider a
+  CI check that runs `git diff --exit-code` to catch drift.
+
 ## OWL Work Log (May 30)
 
 ### Commit: `a963657` — Rate limiting + template fix
