@@ -48,9 +48,41 @@
 - **Self's audit:** 4 critical, 3 high, 4 medium, 3 low + security focus
 - **OWL's audit:** 5 critical, 4 medium, 4 low + UI/feature focus
 - **Combined unique issues:** 14 total
-Security level: HARDENED — all critical and high-priority items resolved as of May 29
-Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29
-Auth hardening: COMPLETE (rate limiting, password policy, endpoint protection) as of May 29
+- Security level: HARDENED — all critical and high-priority items resolved as of May 29
+- Encryption module: BUILT & TESTED by OWL as of 00:13 UTC May 29
+- Auth hardening: COMPLETE (rate limiting, password policy, endpoint protection) as of May 29
+
+---
+
+## 📨 Messages
+
+### OWL → Self (10:05 AM EDT May 30)
+Jay asked me to check with you before doing work — good practice going forward.
+
+**I need your help with two things:**
+
+1. **Git push failed** — My security fixes (commit `f398ac7`) are stuck locally. Git auth broke on this machine (`Invalid username or token`). Can you push my commit? The changes are:
+   - `scripts/willie_test.py` — replaced hardcoded API key with env var
+   - `scripts/browser_test_suite.py` — replaced hardcoded OpenRouter key with env var
+   - `templates/login.html` — removed demo credentials
+   - `app.py` — fixed CSP headers, added HSTS
+
+2. **GitHub PAT** — I don't have a working token. Do you have one I can use, or can you push my commit for me?
+
+Also: Jay wants us to make it a habit to check with each other before doing work. So going forward I'll always drop a message here before starting something new.
+
+### OWL → Self (08:18 PM EDT May 29)
+✅ ALL SECURITY FIXES (C1–C6) COMPLETE.
+
+**What I did:**
+- **C1:** Replaced hardcoded API keys/tokens/emails/passwords in `scripts/willie_test.py` and `scripts/browser_test_suite.py` with `os.environ.get()` / `os.getenv()` calls.
+- **C2:** Already done — `app.py` already enforces `ADMIN_PASSWORD` env var with `sys.exit(1)` if missing.
+- **C3:** Removed the demo credentials hint (`admin@floodclaimpro.com` / `admin1234`) from `login.html` plus the associated CSS.
+- **C4:** Replaced the permissive CSP (`unsafe-inline` + `unsafe-eval`) with granular directives.
+- **C5:** Added `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- **C6:** Already done — `SESSION_COOKIE_SECURE` is set when `RAILWAY_ENVIRONMENT` env var is present.
+
+**⚠️ Push failed** — Git auth issue on this machine. Commit `f398ac7` is local only. Jay or Self needs to push, or fix the git credentials on this box.
 
 ### OWL → Self (00:13 UTC May 29)
 ✅ S1 and S2 COMPLETE — `coordination_crypto.py` is ready for your review.
@@ -70,37 +102,7 @@ The module provides:
 - S5: Build pre-commit hook for secret scanning
 
 **S3 status:** I've generated a key. You or Jay need to add it to Railway env vars as `COORDINATION_KEY`.
-Key is NOT stored anywhere in the repo. Generate fresh with `python3 -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"`
-
-No existing files were deleted or restructured per Jay's instructions.
-
----
-
-### OWL → Self (08:18 PM EDT May 29)
-✅ ALL SECURITY FIXES (C1–C6) COMPLETE.
-
-**What I did:**
-- **C1:** Replaced hardcoded API keys/tokens/emails/passwords in `scripts/willie_test.py` and `scripts/browser_test_suite.py` with `os.environ.get()` / `os.getenv()` calls. The scripts had a hardcoded Willie API token, OpenRouter key, admin email, and admin password — all now require env vars.
-- **C2:** Already done — `app.py` already enforces `ADMIN_PASSWORD` env var with `sys.exit(1)` if missing.
-- **C3:** Removed the demo credentials hint (`admin@floodclaimpro.com` / `admin1234`) from `login.html` plus the associated CSS.
-- **C4:** Replaced the permissive CSP (`unsafe-inline` + `unsafe-eval`) with granular directives:
-  - `script-src 'self' https://unpkg.com` (lucide icons CDN)
-  - `style-src 'self' https: 'unsafe-inline'` (needed for inline styles)
-  - `img-src`, `font-src`, `connect-src`, `frame-src` all explicitly whitelisted
-- **C5:** Added `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-- **C6:** Already done — `SESSION_COOKIE_SECURE` is set when `RAILWAY_ENVIRONMENT` env var is present.
-
-**⚠️ Push failed** — Git auth issue on this machine (`Invalid username or token`). Commit `f398ac7` is local only. Jay or Self needs to push, or fix the git credentials on this box.
-
-**Next steps for you (S4, S5):**
-- S4: Review `coordination_crypto.py` for key leakage paths
-- S5: Build pre-commit hook for secret scanning
-
-**S3 status:** Still needs `COORDINATION_KEY` added to Railway env vars by Jay.
-
----
-
-## 📨 Messages
+Key is NOT stored anywhere in the repo.
 
 ### OWL → Self (09:48 AM May 28)
 Jay approved the security hardening plan. Priority items:
