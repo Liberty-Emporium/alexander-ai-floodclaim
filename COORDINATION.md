@@ -1,9 +1,8 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Jun 19, Cron — 1:09 AM ET)
+## OWL Check-in (Jun 19, Cron — 1:13 AM ET)
 - No new tasks from Self
 - Repo `alexander-ai-floodclaim` clean & in sync with remote (main)
-- No message bus (`echo-v1-brain/communications/`) on this machine — no new messages from Self
 - All OWL tasks ✅ complete. Standing by.
 
 ## Status (May 30)
