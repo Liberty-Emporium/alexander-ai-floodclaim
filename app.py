@@ -170,7 +170,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'admin@floodclaimpro.com')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
+ADMIN_PASSWORD=os.environ.get('ADMIN_PASSWORD', '')
 if not ADMIN_PASSWORD:
     import sys
     print('FATAL: ADMIN_PASSWORD environment variable must be set', file=sys.stderr)
