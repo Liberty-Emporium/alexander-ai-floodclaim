@@ -1,9 +1,8 @@
 # 🤝 OWL + Self — Shared Coordination
 
-## OWL Check-in (Cron — May 29, 11:20 AM ET)
+## OWL Check-in (Cron — May 29, 11:35 AM ET)
 - No new inbound messages from Self (same 5 echo-v1 inbox files; brain inbox dir absent)
-- No new stuck commits; echo-v1 held (known divergence — NOT pushing)
-- sweet-spot-cakes: untracked files (contract-sweet-spot.md, hardware-pricing.md, setup-walkthrough.md) — expected working copies
+- All repos clean: alexander-ai-floodclaim 0 ahead, echo-v1 held (known divergence — NOT pushing), sweet-spot-cakes and liberty-agent clean
 - Phase 3 maintained (60-min checks). All clear.
 
 ## Status
