@@ -338,6 +338,7 @@
       <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;flex-wrap:wrap;">
         <button type="button" class="btn btn-primary btn-sm" onclick="saveBrainFiles()">💾 Save All Changes</button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="loadBrainFiles()">🔄 Reload</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="initBrainFiles()" style="font-size:.7rem;padding:4px 10px;color:var(--gray-400);" title="Reset brain files to comprehensive defaults about FloodClaims Pro">🧠 Initialize Brain</button>
         <span id="brain-save-status" style="font-size:.82rem;"></span>
       </div>
     </div>
@@ -659,6 +660,7 @@ function loadBrainFiles() {
     document.getElementById('brain-soul').value     = d.brain_soul_md || '';
     document.getElementById('brain-memory').value   = d.brain_memory_md || '';
     document.getElementById('brain-system').value   = d.brain_system_prompt || '';
+    document.getElementById('brain-photo-prompt').value = d.brain_photo_prompt || '';
     status.textContent = '✅ Loaded brain files';
     status.style.color = '#065f46';
   })
@@ -765,6 +767,35 @@ function testPhotoAnalysis() {
   .catch(function(err) {
     btn.disabled = false;
     status.textContent = '❌ Error: ' + err.message;
+  });
+}
+
+function initBrainFiles() {
+  if (!confirm('This will reset all brain files to comprehensive defaults about FloodClaims Pro. Your current brain data will be overwritten. Continue?')) return;
+  var status = document.getElementById('brain-save-status');
+  status.textContent = '⏳ Initializing...';
+  status.style.color = '#64748b';
+  var csrfEl = document.querySelector('meta[name="csrf"]');
+  fetch('/admin/api/init-brain', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfEl ? csrfEl.content : ''},
+    body: 'csrf_token=' + encodeURIComponent(csrfEl ? csrfEl.content : '')
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      status.textContent = '✅ Brain initialized! Loading...';
+      status.style.color = '#065f46';
+      loadBrainFiles();
+    } else {
+      status.textContent = '❌ ' + (d.error || 'Init failed');
+      status.style.color = '#ef4444';
+    }
+  })
+  .catch(e => {
+    status.textContent = '❌ Error: ' + e.message;
+    status.style.color = '#ef4444';
   });
 }
 
