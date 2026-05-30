@@ -1876,18 +1876,12 @@ def report(claim_id):
 def settings():
     if request.method == 'POST':
         # API key is managed via Railway env var OPENROUTER_API_KEY only — not stored in DB
-        selected_model = request.form.get('ai_model', '').strip()
-        if selected_model:
-            set_setting('ai_model', selected_model)
-        # New: separate vision and chat model settings
+        # Aquila Chat is always locked to OWL Alpha — not user-configurable
+        # Vision model selection
         ai_vision_model = request.form.get('ai_vision_model', '').strip()
         if ai_vision_model:
             set_setting('ai_vision_model', ai_vision_model)
-        ai_chat_model = request.form.get('ai_chat_model', '').strip()
-        if ai_chat_model:
-            set_setting('ai_chat_model', ai_chat_model)
-            # Also update legacy ai_model for backward compat
-            set_setting('ai_model', ai_chat_model)
+        # Fallback model for chat (also locked to OWL Alpha compatible models)
         fallback_model = request.form.get('ai_fallback_model', '').strip()
         if fallback_model:
             set_setting('ai_fallback_model', fallback_model)
@@ -1913,6 +1907,65 @@ def settings():
                            current_vision_model=current_vision_model,
                            current_chat_model=current_chat_model,
                            current_fallback=current_fallback)
+
+# ── Free Models API ─────────────────────────────────────────────────────────────
+
+@app.route('/admin/api/free-models')
+@login_required
+@admin_required
+def api_free_models():
+    """Fetch latest free models from OpenRouter with 1024+ context."""
+    import urllib.request as _req
+    import json as _json
+    try:
+        req = _req.Request('https://openrouter.ai/api/v1/models', headers={
+            'User-Agent': 'FloodClaims-Pro/1.0'
+        })
+        resp = _req.urlopen(req, timeout=10)
+        data = _json.loads(resp.read())
+        models = data.get('data', data) if isinstance(data, dict) else data
+        free_models = []
+        for m in models:
+            mid = m.get('id', '')
+            pricing = m.get('pricing', {})
+            prompt_price = pricing.get('prompt', '0')
+            # Check if free (prompt price is 0 or very close to 0)
+            try:
+                is_free = float(prompt_price) <= 0
+            except (ValueError, TypeError):
+                is_free = False
+            if not is_free:
+                continue
+            # Check context length >= 1024
+            ctx = m.get('context_length', 0)
+            try:
+                ctx = int(ctx)
+            except (ValueError, TypeError):
+                ctx = 0
+            if ctx < 1024:
+                continue
+            # Check if vision-capable
+            architecture = m.get('architecture', {})
+            modality = architecture.get('modality', m.get('modality', ''))
+            input_mods = architecture.get('input_modalities', [])
+            is_vision = ('image' in str(modality).lower() or 
+                        'image' in str(input_mods).lower() or
+                        'vision' in mid.lower())
+            free_models.append({
+                'id': mid,
+                'name': mid.split('/')[-1].replace('-', ' ').title(),
+                'provider': mid.split('/')[0] if '/' in mid else 'Unknown',
+                'context': ctx,
+                'vision': is_vision,
+                'prompt_price': prompt_price,
+                'completion_price': pricing.get('completion', '0'),
+            })
+        # Sort by context length descending
+        free_models.sort(key=lambda x: x['context'], reverse=True)
+        return jsonify({'ok': True, 'models': free_models, 'count': len(free_models)})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
 
 # ── Admin: Team Management ────────────────────────────────────────────────────
 

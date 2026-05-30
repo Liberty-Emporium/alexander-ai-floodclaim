@@ -54,8 +54,27 @@
   .tag-best    { background: rgba(245,158,11,.15); color: #92400e; }
   .tag-vision  { background: rgba(6,182,212,.12);  color: #164e63; }
   .tag-free    { background: rgba(16,185,129,.2);  color: #065f46; }
+  .tag-paid    { background: rgba(245,158,11,.15); color: #92400e; }
 
-  /* Help modal */
+  /* Locked model badge */
+  .locked-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .3rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700;
+    background: rgba(16,185,129,.12); color: #065f46;
+  }
+
+  /* Free models loading spinner */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(6,182,212,.3); border-top-color: var(--cyan);
+    border-radius: 50%; animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (min-width: 768px) {
+    .model-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 500px) {
   .help-modal-overlay {
     display: none; position: fixed; inset: 0; z-index: 10000;
     background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
@@ -137,114 +156,114 @@
 
     <div class="info-box">
       <strong>OpenRouter</strong> powers two things:<br>
-      <strong>1.</strong> <em>AI Photo Analysis</em> — analyzes damage photos on every claim.<br>
-      <strong>2.</strong> <em>Aquila Chat</em> — the AI assistant (chat bubble) that can create claims, add rooms, look up FEMA zones, check compliance, and more.<br><br>
+      <strong>1.</strong> <em>AI Photo Analysis</em> — analyzes damage photos on every claim using a vision-capable model (free or premium).<br>
+      <strong>2.</strong> <em>Aquila Chat — Your Agentic AI Assistant</em> — locked to <strong>OWL Alpha</strong> for full agent capabilities. Aquila doesn't just chat — he <em>acts</em>. He can create claims, add/edit fields (client name, property address, dates), add rooms and line items, look up FEMA zones, check NFIP compliance, assign adjusters, add new team members, and perform any action inside FloodClaims Pro. Powered by Aquila's tool-calling agent system.<br><br>
       Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab.<br>
       Get a key at <strong>openrouter.ai</strong> (free sign-up, pay-as-you-go).
     </div>
 
-    <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-      <!-- ── Vision Model (Photo Analysis) ── -->
-      <div class="form-group" style="margin-bottom:.5rem">
-        <label style="margin-bottom:.3rem;display:block;font-size:.9rem;">📷 Vision Model <span style="font-weight:400;color:var(--gray-400);">— for analyzing damage photos</span></label>
-        <div class="model-grid">
-          {% set vision_models = [
-            ('openrouter/auto',               'Auto (Recommended)', 'OpenRouter', ['vision','auto','smart']),
-            ('anthropic/claude-sonnet-4-5',    'Claude Sonnet 4.5',  'Anthropic',   ['smart','vision']),
-            ('anthropic/claude-opus-4',        'Claude Opus 4',      'Anthropic',   ['best','vision']),
-            ('openai/gpt-4o',                 'GPT-4o',             'OpenAI',      ['smart','vision']),
-            ('openai/gpt-4o-mini',            'GPT-4o Mini',        'OpenAI',      ['fast','vision']),
-            ('google/gemini-2.5-pro',         'Gemini 2.5 Pro',     'Google',      ['best','vision']),
-            ('google/gemini-2.5-flash',       'Gemini 2.5 Flash',   'Google',      ['fast','vision']),
-            ('meta-llama/llama-4-maverick',   'Llama 4 Maverick',   'Meta',        ['vision','free']),
-          ] %}
-          {% for model_id, model_name, provider, tags in vision_models %}
-          <label style="display:contents">
-            <input class="model-option" type="radio" name="ai_vision_model"
-                   value="{{ model_id }}"
-                   {% if current_vision_model == model_id %}checked{% endif %}/>
-            <div class="model-card">
-              <span class="m-provider">{{ provider }}</span>
-              <span class="m-name">{{ model_name }}</span>
-              <div class="m-tags">
-                {% for tag in tags %}
-                <span class="m-tag tag-{{ tag }}">{{ tag }}</span>
-                {% endfor %}
-              </div>
-            </div>
-          </label>
-          {% endfor %}
+    <!-- ── Aquila Chat Model (Locked) ── -->
+    <div class="form-group" style="margin-bottom:.5rem">
+      <label style="margin-bottom:.3rem;display:block;font-size:.9rem;">💬 Aquila Chat Model <span style="font-weight:400;color:var(--gray-400);">— agentic AI assistant (locked to OWL Alpha)</span></label>
+      <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:rgba(16,185,129,.07);border:2px solid rgba(16,185,129,.25);border-radius:10px;">
+        <span style="font-size:1.2rem;">🦉</span>
+        <div>
+          <div style="font-weight:700;color:#065f46;font-size:.85rem;">OWL Alpha — OpenRouter</div>
+          <div style="font-size:.72rem;color:#065f63;">Locked — always enabled for Aquila agentic capabilities. Can create claims, add/edit any field, manage team members, perform any action in FloodClaims Pro.</div>
         </div>
+        <span class="key-status key-set" style="margin-left:auto;">✅ Always Active</span>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- ── Vision Models ── -->
+    <div class="form-group" style="margin-bottom:.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <label style="font-size:.9rem;">📷 Vision Model <span style="font-weight:400;color:var(--gray-400);">— for analyzing damage photos</span></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-fetch-free-models" onclick="fetchFreeModels()" style="font-size:.7rem;padding:3px 10px;">
+          🔄 Check for Latest Free Models
+        </button>
       </div>
 
-      <hr class="divider">
-
-      <!-- ── Chat Model (Aquila Chat) ── -->
-      <div class="form-group" style="margin-top:.5rem;margin-bottom:.5rem">
-        <label style="margin-bottom:.3rem;display:block;font-size:.9rem;">💬 Chat Model <span style="font-weight:400;color:var(--gray-400);">— for Aquila chat assistant</span></label>
-        <div class="model-grid">
-          {% set chat_models = [
-            ('openrouter/owl-alpha',          'OWL Alpha',          'OpenRouter',  ['best','smart']),
-            ('anthropic/claude-sonnet-4-5',    'Claude Sonnet 4.5',  'Anthropic',   ['smart','fallback']),
-            ('anthropic/claude-opus-4',        'Claude Opus 4',      'Anthropic',   ['best']),
-            ('openai/gpt-4o',                 'GPT-4o',             'OpenAI',      ['smart']),
-            ('openai/gpt-4o-mini',            'GPT-4o Mini',        'OpenAI',      ['fast']),
-            ('openai/o3-mini',                'o3-mini',            'OpenAI',      ['fast','smart']),
-            ('google/gemini-2.5-pro',         'Gemini 2.5 Pro',     'Google',      ['best']),
-            ('google/gemini-2.5-flash',       'Gemini 2.5 Flash',   'Google',      ['fast','smart']),
-            ('deepseek/deepseek-r1',          'DeepSeek R1',        'DeepSeek',    ['best','smart']),
-            ('meta-llama/llama-4-maverick',   'Llama 4 Maverick',   'Meta',        ['smart','free']),
-          ] %}
-          {% for model_id, model_name, provider, tags in chat_models %}
-          <label style="display:contents">
-            <input class="model-option" type="radio" name="ai_chat_model"
-                   value="{{ model_id }}"
-                   {% if current_chat_model == model_id %}checked{% endif %}/>
-            <div class="model-card">
-              <span class="m-provider">{{ provider }}</span>
-              <span class="m-name">{{ model_name }}</span>
-              <div class="m-tags">
-                {% for tag in tags %}
-                <span class="m-tag tag-{{ tag }}">{{ tag }}</span>
-                {% endfor %}
-              </div>
+      <!-- Free Vision Models -->
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#065f46;margin:.5rem .0 .3rem;">🆓 Free Vision Models</div>
+      <div class="model-grid" id="free-vision-models">
+        {% set free_vision_models = [
+          ('openrouter/auto',               'Auto (Recommended)', 'OpenRouter', ['vision','auto','smart','free']),
+          ('openai/gpt-4o-mini',            'GPT-4o Mini',        'OpenAI',      ['fast','vision','free']),
+          ('google/gemini-2.5-flash',       'Gemini 2.5 Flash',   'Google',      ['fast','vision','free']),
+          ('google/gemini-2.0-flash',       'Gemini 2.0 Flash',   'Google',      ['fast','vision','free']),
+          ('meta-llama/llama-4-maverick',   'Llama 4 Maverick',   'Meta',        ['vision','free']),
+          ('meta-llama/llama-4-scout',      'Llama 4 Scout',      'Meta',        ['vision','free']),
+          ('mistralai/mistral-small-3.2',   'Mistral Small 3.2',  'Mistral',     ['fast','vision','free']),
+          ('qwen/qwen3-32b',                'Qwen3 32B',          'Qwen',        ['vision','free']),
+        ] %}
+        {% for model_id, model_name, provider, tags in free_vision_models %}
+        <label style="display:contents">
+          <input class="model-option" type="radio" name="ai_vision_model"
+                 value="{{ model_id }}"
+                 {% if current_vision_model == model_id %}checked{% endif %}/>
+          <div class="model-card" style="border-color:rgba(16,185,129,.2);">
+            <span class="m-provider">{{ provider }}</span>
+            <span class="m-name">{{ model_name }}</span>
+            <div class="m-tags">
+              {% for tag in tags %}
+              <span class="m-tag tag-{{ tag }}">{{ tag }}</span>
+              {% endfor %}
             </div>
-          </label>
-          {% endfor %}
-        </div>
+          </div>
+        </label>
+        {% endfor %}
       </div>
 
-      <!-- Fallback Model Picker -->
-      <div class="form-group" style="margin-top:1rem;margin-bottom:1.25rem">
-        <label style="margin-bottom:.6rem;display:block;">🔄 Fallback Model <span style="font-weight:400;color:var(--gray-400);">(auto-switches if primary chat model is down)</span></label>
-        <div class="model-grid">
-          {% for model_id, model_name, provider, tags in chat_models %}
-          <label style="display:contents">
-            <input class="model-option" type="radio" name="ai_fallback_model"
-                   value="{{ model_id }}"
-                   {% if current_fallback == model_id %}checked{% endif %}/>
-            <div class="model-card">
-              <span class="m-provider">{{ provider }}</span>
-              <span class="m-name">{{ model_name }}</span>
-              <div class="m-tags">
-                {% for tag in tags %}
-                <span class="m-tag tag-{{ tag }}">{{ tag }}</span>
-                {% endfor %}
-              </div>
+      <!-- Premium Vision Models -->
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#92400e;margin:1rem 0 .3rem;">💎 Premium Vision Models <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.68rem;color:#b45309;">(costs apply — see pricing below)</span></div>
+      <div class="model-grid" id="premium-vision-models">
+        {% set premium_vision_models = [
+          ('anthropic/claude-opus-4',        'Claude Opus 4',      'Anthropic',   ['best','vision','paid']),
+          ('anthropic/claude-sonnet-4-5',    'Claude Sonnet 4.5',  'Anthropic',   ['smart','vision','paid']),
+          ('openai/gpt-4o',                 'GPT-4o',             'OpenAI',      ['smart','vision','paid']),
+          ('google/gemini-2.5-pro',         'Gemini 2.5 Pro',     'Google',      ['best','vision','paid']),
+        ] %}
+        {% for model_id, model_name, provider, tags in premium_vision_models %}
+        <label style="display:contents">
+          <input class="model-option" type="radio" name="ai_vision_model"
+                 value="{{ model_id }}"
+                 {% if current_vision_model == model_id %}checked{% endif %}/>
+          <div class="model-card" style="border-color:rgba(245,158,11,.2);">
+            <span class="m-provider">{{ provider }}</span>
+            <span class="m-name">{{ model_name }}</span>
+            <div class="m-tags">
+              {% for tag in tags %}
+              <span class="m-tag tag-{{ tag }}">{{ tag }}</span>
+              {% endfor %}
             </div>
-          </label>
-          {% endfor %}
-        </div>
+          </div>
+        </label>
+        {% endfor %}
       </div>
 
-      <hr class="divider">
-
-      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
-        <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+      <!-- Pricing info box -->
+      <div style="margin-top:.5rem;padding:.6rem .75rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:.75rem;color:#92400e;line-height:1.6;">
+        <strong>💡 Premium Model Pricing (approximate, per 1M tokens):</strong><br>
+        Claude Opus 4: ~$15 input / $75 output &nbsp;|&nbsp; Claude Sonnet 4.5: ~$3 input / $15 output<br>
+        GPT-4o: ~$2.50 input / $10 output &nbsp;|&nbsp; Gemini 2.5 Pro: ~$1.25 input / $10 output<br>
+        <em>Prices vary — check <strong>openrouter.ai</strong> for current rates. Free models have rate limits.</em>
       </div>
-    </form>
+    </div>
+
+    <hr class="divider">
+
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+      <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+    </div>
+
+    <!-- Free models results container -->
+    <div id="free-models-results" style="margin-top:1rem;display:none;">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#065f46;margin-bottom:.3rem;">🆓 Latest Free Models from OpenRouter <span id="free-models-count" style="font-weight:400;text-transform:none;letter-spacing:0;"></span></div>
+      <div id="free-models-list" class="model-grid"></div>
+    </div>
 
     {% if not env_key_set %}
     <div style="margin-top:1rem;font-size:.85rem;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;">
@@ -684,5 +703,101 @@ function clearUpload() {
 document.addEventListener('DOMContentLoaded', function() {
   loadBrainFiles();
 });
+
+// ── Free Models Fetcher ───────────────────────────────────────────────────────
+function fetchFreeModels() {
+  var btn = document.getElementById('btn-fetch-free-models');
+  var results = document.getElementById('free-models-results');
+  var list = document.getElementById('free-models-list');
+  var count = document.getElementById('free-models-count');
+
+  btn.innerHTML = '<span class="spinner"></span> Fetching...';
+  btn.disabled = true;
+  results.style.display = 'none';
+  list.innerHTML = '';
+
+  fetch('/admin/api/free-models', { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.innerHTML = '🔄 Check for Latest Free Models';
+      btn.disabled = false;
+
+      if (!data.ok || !data.models || data.models.length === 0) {
+        list.innerHTML = '<div style="grid-column:1/-1;padding:1rem;text-align:center;color:#94a3b8;font-size:.85rem;">No free models found or API error: ' + (data.error || 'unknown') + '</div>';
+        results.style.display = 'block';
+        return;
+      }
+
+      count.textContent = '(' + data.models.length + ' models, sorted by context length)';
+
+      data.models.forEach(function(m) {
+        var ctx_k = Math.round(m.context / 1000);
+        var visionTag = m.vision ? '<span class="m-tag tag-vision">vision</span>' : '';
+        var freeTag = '<span class="m-tag tag-free">free</span>';
+        var ctxTag = '<span class="m-tag tag-fast">' + ctx_k + 'K ctx</span>';
+        var escapedId = m.id.replace(/'/g, "\\'");
+
+        var card = document.createElement('div');
+        card.style.cssText = 'display:flex;flex-direction:column;gap:.2rem;border:2px solid rgba(16,185,129,.25);border-radius:10px;padding:.6rem .8rem;background:rgba(16,185,129,.04);';
+        card.innerHTML =
+          '<div style="font-size:.65rem;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;">' + m.provider + '</div>' +
+          '<div style="font-size:.82rem;font-weight:700;color:var(--gray-800);">' + m.name + '</div>' +
+          '<div style="display:flex;gap:.3rem;flex-wrap:wrap;">' + freeTag + ctxTag + visionTag + '</div>' +
+          '<div style="font-size:.68rem;color:#64748b;word-break:break-all;">' + m.id + '</div>' +
+          '<button type="button" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:2px 8px;margin-top:.2rem;" onclick="selectFreeModel(\'' + escapedId + '\')">Use This Model</button>';
+        list.appendChild(card);
+      });
+
+      // Also add vision filter
+      var visionOnly = data.models.filter(function(m) { return m.vision; });
+      if (visionOnly.length > 0) {
+        count.textContent += ' · ' + visionOnly.length + ' support vision';
+      }
+
+      results.style.display = 'block';
+      results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    })
+    .catch(function(err) {
+      btn.innerHTML = '🔄 Check for Latest Free Models';
+      btn.disabled = false;
+      list.innerHTML = '<div style="grid-column:1/-1;padding:1rem;text-align:center;color:#ef4444;font-size:.85rem;">Error fetching models: ' + err.message + '</div>';
+      results.style.display = 'block';
+    });
+}
+
+function selectFreeModel(modelId) {
+  // Find and click the matching radio button
+  var radios = document.querySelectorAll('input[name="ai_vision_model"]');
+  var found = false;
+  radios.forEach(function(r) {
+    if (r.value === modelId) {
+      r.checked = true;
+      found = true;
+    }
+  });
+  // If not in the predefined list, we need to add it dynamically
+  if (!found) {
+    // Add a hidden input so it gets submitted
+    var form = document.querySelector('form');
+    var existing = document.getElementById('dynamic-vision-model');
+    if (existing) existing.remove();
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'ai_vision_model';
+    input.value = modelId;
+    input.id = 'dynamic-vision-model';
+    form.appendChild(input);
+  }
+  // Visual feedback
+  var btn = document.getElementById('btn-fetch-free-models');
+  btn.innerHTML = '✅ Model selected — click Save';
+  btn.style.borderColor = 'rgba(16,185,129,.4)';
+  btn.style.background = 'rgba(16,185,129,.1)';
+  setTimeout(function() {
+    btn.innerHTML = '🔄 Check for Latest Free Models';
+    btn.style.borderColor = '';
+    btn.style.background = '';
+  }, 3000);
+}
 </script>
 {% endblock %}
