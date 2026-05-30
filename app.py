@@ -220,6 +220,7 @@ def init_db():
             name        TEXT NOT NULL DEFAULT '',
             password    TEXT NOT NULL,
             role        TEXT NOT NULL DEFAULT 'adjuster',
+            is_active   INTEGER DEFAULT 1,
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS claims (
@@ -307,6 +308,10 @@ def init_db():
     if not cur.fetchone():
         db.execute('INSERT INTO users (email, name, password, role) VALUES (?,?,?,?)',
                    (ADMIN_EMAIL, 'Admin', hash_pw(ADMIN_PASSWORD), 'admin'))
+    # Migration: add is_active column if missing (existing databases)
+    cols = [row[1] for row in db.execute('PRAGMA table_info(users)').fetchall()]
+    if 'is_active' not in cols:
+        db.execute('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1')
     db.commit()
     db.close()
 
@@ -574,8 +579,18 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get('role') != 'admin':
+        if session.get('role') not in ('admin', 'manager'):
             flash('Admin access required.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+def manager_required(f):
+    """Manager can manage team and adjusters but not change app settings."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('role') not in ('admin', 'manager'):
+            flash('Manager access required.', 'error')
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated
@@ -1412,6 +1427,10 @@ def login():
         user  = db.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
         if not user or not check_pw(pw, user['password']):
             flash('Invalid email or password.', 'error')
+            return render_template('login.html')
+        # Check if user is active (managers/admins can be deactivated by admin)
+        if not user.get('is_active', 1):
+            flash('Your account has been deactivated. Contact your administrator.', 'error')
             return render_template('login.html')
         # Transparent bcrypt upgrade: if stored hash is legacy sha256, re-hash now
         if BCRYPT_OK and user['password'] and not user['password'].startswith('$2'):
@@ -2364,18 +2383,17 @@ def api_test_photo_analysis():
 @login_required
 @admin_required
 def team():
-    users = get_db().execute(
+    db = get_db()
+    users = db.execute(
         'SELECT u.*, (SELECT COUNT(*) FROM claims WHERE adjuster_id=u.id) as claim_count '
         'FROM users u ORDER BY u.name').fetchall()
-    return render_template('team.html', users=users)
-
-def _validate_password(pw):
-    """Enforce password policy: min 8 chars. Returns (ok, error_msg)."""
-    if not pw:
-        return False, 'Password is required.'
-    if len(pw) < 8:
-        return False, 'Password must be at least 8 characters.'
-    return True, ''
+    adjusters = db.execute(
+        '''SELECT u.*,
+           (SELECT COUNT(*) FROM claims WHERE adjuster_id=u.id AND status NOT IN ('Closed','Submitted')) as active_claims,
+           (SELECT COUNT(*) FROM claims WHERE adjuster_id=u.id AND status IN ('Closed','Submitted')) as completed_claims,
+           COALESCE(u.is_active, 1) as is_active
+           FROM users u WHERE u.role='adjuster' ORDER BY u.name''').fetchall()
+    return render_template('team.html', users=users, adjusters=adjusters)
 
 @app.route('/admin/team/add', methods=['POST'])
 @login_required
@@ -2387,6 +2405,8 @@ def add_team_member():
     name  = request.form.get('name', '').strip()
     pw    = request.form.get('password', '').strip()
     role  = request.form.get('role', 'adjuster')
+    if role not in ('adjuster', 'manager', 'admin'):
+        role = 'adjuster'
     if not email or not pw:
         flash('Email and password required.', 'error')
         return redirect(url_for('team'))
@@ -2395,10 +2415,10 @@ def add_team_member():
         flash(err, 'error')
         return redirect(url_for('team'))
     try:
-        db.execute('INSERT INTO users (email, name, password, role) VALUES (?,?,?,?)',
+        db.execute('INSERT INTO users (email, name, password, role, is_active) VALUES (?,?,?,?,1)',
                    (email, name, hash_pw(pw), role))
         db.commit()
-        flash(f'Team member {name} added!', 'success')
+        flash(f'Team member {name} added as {role}!', 'success')
     except sqlite3.IntegrityError:
         flash('Email already exists.', 'error')
     return redirect(url_for('team'))
@@ -2413,15 +2433,21 @@ def edit_team_member(user_id):
     name  = request.form.get('name', '').strip()
     pw    = request.form.get('password', '').strip()
     role  = request.form.get('role', 'adjuster')
+    if role not in ('adjuster', 'manager', 'admin'):
+        role = 'adjuster'
     if not email:
         flash('Email is required.', 'error')
         return redirect(url_for('team'))
-    # If password provided, validate it
     if pw:
         ok, err = _validate_password(pw)
         if not ok:
             flash(err, 'error')
             return redirect(url_for('team'))
+    # Only admin can change role to/from admin
+    if session.get('role') != 'admin':
+        # Managers can't create/edit admins — preserve existing role if trying to set admin
+        if role == 'admin':
+            role = 'manager'
     try:
         if pw:
             db.execute('UPDATE users SET email=?, name=?, password=?, role=? WHERE id=?',
@@ -2444,12 +2470,43 @@ def delete_team_member(user_id):
         flash("Can't delete yourself.", 'error')
         return redirect(url_for('team'))
     db = get_db()
-    # Unassign their claims first to avoid FK constraint error
+    # Don't allow deleting the last admin
+    target = db.execute('SELECT role FROM users WHERE id=?', (user_id,)).fetchone()
+    if target and target['role'] == 'admin':
+        admin_count = db.execute("SELECT COUNT(*) as c FROM users WHERE role='admin'").fetchone()['c']
+        if admin_count <= 1:
+            flash("Can't delete the last admin.", 'error')
+            return redirect(url_for('team'))
     db.execute('UPDATE claims SET adjuster_id=NULL WHERE adjuster_id=?', (user_id,))
     db.execute('DELETE FROM willie_conversations WHERE user_id=?', (user_id,))
     db.execute('DELETE FROM users WHERE id=?', (user_id,))
     db.commit()
     flash('Team member removed.', 'success')
+    return redirect(url_for('team'))
+
+@app.route('/admin/team/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def deactivate_adjuster(user_id):
+    db = get_db()
+    user = db.execute('SELECT name, role FROM users WHERE id=?', (user_id,)).fetchone()
+    if user and user['role'] == 'adjuster':
+        db.execute('UPDATE users SET is_active=0 WHERE id=?', (user_id,))
+        db.commit()
+        flash(f'Adjuster {user["name"] or user_id} deactivated.', 'success')
+    return redirect(url_for('team'))
+
+@app.route('/admin/team/<int:user_id>/reactivate', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def reactivate_adjuster(user_id):
+    db = get_db()
+    user = db.execute('SELECT name FROM users WHERE id=?', (user_id,)).fetchone()
+    db.execute('UPDATE users SET is_active=1 WHERE id=?', (user_id,))
+    db.commit()
+    flash(f'Adjuster {user["name"] if user else user_id} reactivated.', 'success')
     return redirect(url_for('team'))
 
 

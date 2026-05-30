@@ -420,6 +420,7 @@
     text-transform: uppercase; letter-spacing: 0.07em;
   }
   .role-admin    { background: rgba(59,123,255,0.15); color: var(--blue); }
+  .role-manager  { background: rgba(168,85,247,0.15); color: #a855f7; }
   .role-adjuster { background: rgba(52,211,153,0.12); color: var(--green); }
 
   /* ══════════════════════════════════════
@@ -684,7 +685,7 @@
       <i data-lucide="bell" class="nav-link-icon"></i> Notifications
     </a>
 
-    {% if session.role == 'admin' %}
+    {% if session.role in ('admin', 'manager') %}
     <div class="nav-section">Admin</div>
     <a href="{{ url_for('recruit') }}" class="nav-link {% if request.endpoint=='recruit' %}active{% endif %}">
       <i data-lucide="user-plus" class="nav-link-icon"></i> Recruit
@@ -692,15 +693,17 @@
     <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
       <i data-lucide="users" class="nav-link-icon"></i> Team
     </a>
+    {% if session.role == 'admin' %}
     <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint=='settings' %}active{% endif %}">
       <i data-lucide="settings" class="nav-link-icon"></i> Settings
     </a>
+    {% endif %}
     {% endif %}
   </nav>
 
   <div class="sidebar-footer">
     <div class="sidebar-user-name">{{ session.name or session.email }}</div>
-    <span class="role-badge {% if session.role=='admin' %}role-admin{% else %}role-adjuster{% endif %}">
+    <span class="role-badge {% if session.role=='admin' %}role-admin{% elif session.role=='manager' %}role-manager{% else %}role-adjuster{% endif %}">
       {{ session.role }}
     </span>
     <br>
