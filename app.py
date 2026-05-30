@@ -3057,6 +3057,79 @@ def contractor_detail(app_id):
     return render_template('contractor_detail.html', app=app)
 
 
+
+# ── Recruitment Invitations ─────────────────────────────────────────────────────
+
+@app.route('/admin/recruit/send-invite', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def send_recruit_invite():
+    """Send a recruitment invitation email to a prospective adjuster."""
+    to_email = request.form.get('invite_email', '').strip().lower()
+    invite_name = request.form.get('invite_name', '').strip()
+    if not to_email:
+        flash('Email address is required.', 'error')
+        return redirect(url_for('recruit'))
+
+    sg_key = get_setting('sendgrid_api_key') or os.environ.get('SENDGRID_API_KEY', '')
+    if not sg_key or not SENDGRID_OK:
+        flash('⚠️ SendGrid not configured. Set your API key in AI Integration settings first.', 'error')
+        return redirect(url_for('recruit'))
+
+    from_email = get_setting('from_email') or os.environ.get('FROM_EMAIL', '')
+    if not from_email:
+        flash('⚠️ No "From" email set. Set it below before sending invitations.', 'error')
+        return redirect(url_for('recruit'))
+
+    join_url = request.host_url.rstrip('/') + url_for('become_agent')
+    name_greeting = f"Hi {invite_name}," if invite_name else "Hi there,"
+
+    html_body = f'''<div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:600px;margin:0 auto;color:#1e293b">
+        <div style="background:linear-gradient(135deg,#06D6C7,#3B7BFF);padding:28px;border-radius:16px 16px 0 0;text-align:center;">
+            <div style="font-size:40px;margin-bottom:8px;">🌊</div>
+            <h1 style="color:#fff;margin:0;font-size:1.6rem;font-weight:800;">FloodClaims Pro</h1>
+            <p style="color:rgba(255,255,255,.85);margin:4px 0 0;font-size:.85rem;">Professional Flood Damage Assessment</p>
+        </div>
+        <div style="padding:28px;background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+            <p style="font-size:1rem;margin:0 0 12px;">{name_greeting}</p>
+            <p style="font-size:.9rem;line-height:1.7;color:#475569;margin:0 0 16px;">
+                You\'ve been invited to join a flood damage adjustment team on <strong>FloodClaims Pro</strong>.
+                Whether you\'re an experienced adjuster or looking to get licensed, we make it easy to get started.
+            </p>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+                <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0369a1;margin-bottom:8px;">What you can do</div>
+                <ul style="font-size:.82rem;color:#475569;margin:0;padding-left:18px;line-height:1.8;">
+                    <li>Manage flood damage claims end-to-end</li>
+                    <li>AI-powered photo damage analysis</li>
+                    <li>NFIP &amp; FEMA compliance tools</li>
+                    <li>Free training & certification pathway</li>
+                    <li>Work from anywhere</li>
+                </ul>
+            </div>
+            <div style="text-align:center;margin-bottom:20px;">
+                <a href="{join_url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#06D6C7,#3B7BFF);color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:.95rem;">🚀 Get Started — It\'s Free</a>
+            </div>
+            <p style="font-size:.78rem;color:#94a3b8;margin:0;line-height:1.6;">
+                If the button doesn\'t work, copy this link: <br>
+                <a href="{join_url}" style="color:#3B7BFF;word-break:break-all;">{join_url}</a>
+            </p>
+            <hr style="margin:20px 0;border:none;border-top:1px solid #e2e8f0;">
+            <p style="font-size:.72rem;color:#94a3b8;margin:0;">
+                FloodClaims Pro · Professional Flood Damage Assessment Platform<br>
+                You received this email because an admin invited you to join their team.
+            </p>
+        </div>
+    </div>'''
+
+    sent = send_email(to_email, "🌊 You\'re Invited — Join FloodClaims Pro", html_body)
+    if sent:
+        flash(f'✅ Invitation sent to {to_email}', 'success')
+    else:
+        flash(f'❌ Failed to send invitation to {to_email}. Check SendGrid configuration.', 'error')
+    return redirect(url_for('recruit'))
+
+
 # ── Aquila Chat ────────────────────────────────────────────────────────────────
 
 @app.route('/willie')
@@ -4062,6 +4135,23 @@ def settings_data():
 @login_required
 @admin_required
 @csrf_required
+
+@app.route('/admin/settings/save', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def save_setting():
+    """Generic single-setting save endpoint."""
+    key = request.form.get('setting_key', '').strip()
+    value = request.form.get('setting_value', '').strip()
+    if not key:
+        flash('Setting key missing.', 'error')
+        return redirect(request.referrer or url_for('settings'))
+    set_setting(key, value)
+    flash(f'Setting "{key}" saved.', 'success')
+    return redirect(request.referrer or url_for('settings'))
+
+
 def save_chat_bubble():
     """Save chat bubble appearance settings."""
     set_setting('bubble_bot_name', request.form.get('bubble_bot_name', 'Aquila').strip())

@@ -24,6 +24,64 @@
 {% endblock %}
 {% block content %}
 
+<!-- ═══ RECRUITMENT EMAIL SETTINGS + INVITE ═══ -->
+<div class="card" style="max-width:960px;margin-bottom:1.5rem;">
+  <div class="card-header">
+    <div class="card-title">📧 Recruitment Email Settings</div>
+  </div>
+  <p style="font-size:.85rem;color:var(--gray-600);line-height:1.6;margin-bottom:1rem;">
+    Set the email address that recruitment invitations are sent from. Invite prospective adjusters to join your team — they'll get a professional email with a link to your public recruitment page.
+  </p>
+
+  <!-- From Email Setting -->
+  <form method="POST" action="{{ url_for('save_setting') }}" style="margin-bottom:1.25rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="setting_key" value="from_email">
+    <div class="form-group" style="margin-bottom:.5rem;">
+      <label>From Email Address <span style="font-weight:400;color:var(--gray-400);">(the "from" name on recruitment emails)</span></label>
+      <div style="display:flex;gap:.5rem;align-items:center;">
+        <input class="form-control" type="email" name="setting_value" id="fromEmail"
+               value="{{ get_setting('from_email') or '' }}"
+               placeholder="yourname@yourdomain.com"
+               style="max-width:360px;">
+        <button type="submit" class="btn btn-primary btn-sm" style="font-size:.75rem;padding:6px 14px;white-space:nowrap;">💾 Save</button>
+      </div>
+      {% if get_setting('sendgrid_api_key') %}
+      <div style="font-size:.72rem;color:#065f46;margin-top:.3rem;">✅ SendGrid configured — emails will be sent via SendGrid.</div>
+      {% else %}
+      <div style="font-size:.72rem;color:#92400e;margin-top:.3rem;">⚠️ SendGrid API key not set. Go to 🤖 AI Integration → SendGrid to configure email sending.</div>
+      {% endif %}
+    </div>
+  </form>
+
+  <hr style="border:none;border-top:1px solid var(--gray-200);margin:1.25rem 0;">
+
+  <!-- Send Invitation -->
+  <form method="POST" action="{{ url_for('send_recruit_invite') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);margin-bottom:.5rem;">Send Recruitment Invitation</div>
+    <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;">
+        <label style="font-size:.72rem;font-weight:700;color:var(--gray-400);margin-bottom:.3rem;display:block;">Recipient Name <span style="font-weight:400;">(optional)</span></label>
+        <input class="form-control" type="text" name="invite_name" placeholder="John Smith" style="font-size:.85rem;">
+      </div>
+      <div style="flex:2;min-width:200px;">
+        <label style="font-size:.72rem;font-weight:700;color:var(--gray-400);margin-bottom:.3rem;display:block;">Recipient Email <span style="font-weight:400;">*</span></label>
+        <input class="form-control" type="email" name="invite_email" placeholder="john@example.com" required style="font-size:.85rem;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;font-weight:700;color:transparent;margin-bottom:.3rem;display:block;">&nbsp;</label>
+        <button type="submit" class="btn btn-primary btn-sm" style="font-size:.75rem;padding:6px 16px;white-space:nowrap;">
+          ✉️ Send Invite
+        </button>
+      </div>
+    </div>
+    <div style="font-size:.72rem;color:var(--gray-400);margin-top:.5rem;line-height:1.5;">
+      Recipient gets a professional email with a link to your public <strong>Become an Adjuster</strong> page where they can apply, take training, and get certified.
+    </div>
+  </form>
+</div>
+
 <div class="recruit-grid">
 
   <!-- ═══ LEFT: Adjuster Recruitment ═══ -->
