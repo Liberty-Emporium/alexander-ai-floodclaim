@@ -778,7 +778,7 @@ def ai_estimate(claim_id):
     claim = dict(claim)  # convert sqlite3.Row → dict so .get() works
 
     key   = get_setting('openrouter_api_key') or OPENROUTER_KEY
-    model = get_setting('ai_model') or 'openai/gpt-4o-mini'
+    model = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
     if not key:
         return jsonify({'ok': False, 'error': 'OpenRouter API key not configured. Go to Settings and add your key.'}), 400
 
@@ -1342,8 +1342,12 @@ def ai_describe_photo(image_path):
             img_b64 = base64.b64encode(f.read()).decode()
         ext  = image_path.rsplit('.', 1)[-1].lower()
         mime = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
-        # Use a vision-capable model (owl-alpha is text-only)
-        model = get_setting('ai_vision_model') or get_setting('ai_model', 'openai/gpt-4o-mini')
+        # Use a vision-capable model — owl-alpha is text-only
+        model = get_setting('ai_vision_model') or get_setting('ai_model', 'openrouter/auto')
+        # If the configured model is known text-only, force a vision-capable one
+        text_only_models = {'openrouter/owl-alpha', 'openrouter/owl', 'openai/o3-mini', 'deepseek/deepseek-r1'}
+        if model in text_only_models:
+            model = 'openrouter/auto'
         result = call_openrouter(
             messages=[{
                 'role': 'user',
@@ -1875,6 +1879,15 @@ def settings():
         selected_model = request.form.get('ai_model', '').strip()
         if selected_model:
             set_setting('ai_model', selected_model)
+        # New: separate vision and chat model settings
+        ai_vision_model = request.form.get('ai_vision_model', '').strip()
+        if ai_vision_model:
+            set_setting('ai_vision_model', ai_vision_model)
+        ai_chat_model = request.form.get('ai_chat_model', '').strip()
+        if ai_chat_model:
+            set_setting('ai_chat_model', ai_chat_model)
+            # Also update legacy ai_model for backward compat
+            set_setting('ai_model', ai_chat_model)
         fallback_model = request.form.get('ai_fallback_model', '').strip()
         if fallback_model:
             set_setting('ai_fallback_model', fallback_model)
@@ -1891,10 +1904,14 @@ def settings():
 
     env_key_set       = bool(OPENROUTER_KEY)
     current_model     = get_setting('ai_model', 'openai/gpt-4o-mini')
+    current_vision_model = get_setting('ai_vision_model', 'openrouter/auto')
+    current_chat_model   = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
     current_fallback  = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
     return render_template('settings.html',
                            env_key_set=env_key_set,
                            current_model=current_model,
+                           current_vision_model=current_vision_model,
+                           current_chat_model=current_chat_model,
                            current_fallback=current_fallback)
 
 # ── Admin: Team Management ────────────────────────────────────────────────────
@@ -2238,7 +2255,7 @@ Always be helpful, concise, and professional. Use your knowledge of NFIP rules a
     messages = [{'role': 'system', 'content': live_context}] + history[-8:]
 
     try:
-        selected_model   = get_setting('ai_model', 'openai/gpt-4o-mini')
+        selected_model   = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
         fallback_model   = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
         openrouter_key   = OPENROUTER_KEY
         if not openrouter_key:
@@ -2314,7 +2331,11 @@ def api_analyze_photo():
     if not key:
         return jsonify({'description': ''})
     try:
-        selected_model = get_setting('ai_model', 'openai/gpt-4o-mini')
+        selected_model = get_setting('ai_vision_model') or get_setting('ai_model', 'openrouter/auto')
+        # Ensure vision-capable
+        _text_only = {'openrouter/owl-alpha', 'openrouter/owl', 'openai/o3-mini', 'deepseek/deepseek-r1'}
+        if selected_model in _text_only:
+            selected_model = 'openrouter/auto'
         r = _req.post(
             'https://openrouter.ai/api/v1/chat/completions',
             headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
@@ -2400,7 +2421,7 @@ def willie_generate_estimate(claim_id):
     claim = dict(claim)  # convert sqlite3.Row → dict so .get() works
 
     key = get_setting('openrouter_api_key') or OPENROUTER_KEY
-    model = get_setting('ai_model') or 'openai/gpt-4o-mini'
+    model = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
     if not key:
         return jsonify({'error': 'OpenRouter API key not configured. Add it in Settings.'}), 400
 
