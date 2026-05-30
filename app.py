@@ -4131,11 +4131,6 @@ def settings_data():
     return jsonify({r['key']: r['value'] for r in rows})
 
 
-@app.route('/admin/settings/chat-bubble', methods=['POST'])
-@login_required
-@admin_required
-@csrf_required
-
 @app.route('/admin/settings/save', methods=['POST'])
 @login_required
 @admin_required
@@ -4152,6 +4147,10 @@ def save_setting():
     return redirect(request.referrer or url_for('settings'))
 
 
+@app.route('/admin/settings/chat-bubble', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
 def save_chat_bubble():
     """Save chat bubble appearance settings."""
     set_setting('bubble_bot_name', request.form.get('bubble_bot_name', 'Aquila').strip())
