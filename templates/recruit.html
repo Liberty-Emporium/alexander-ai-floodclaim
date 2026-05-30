@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}Recruit — FloodClaims Pro{% endblock %}
+{% block page_title %}🎯 Recruit & Onboard{% endblock %}
+{% block extra_css %}
+<style>
+  .recruit-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 960px; }
+  @media(max-width:700px) { .recruit-grid { grid-template-columns: 1fr; } }
+  .recruit-card { border-radius: 16px; padding: 1.5rem; }
+  .recruit-card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: .5rem; }
+  .recruit-card p { font-size: .85rem; color: var(--gray-600); line-height: 1.6; margin-bottom: 1rem; }
+  .step-list { list-style: none; padding: 0; margin: 0 0 1rem; }
+  .step-list li { display: flex; gap: .6rem; align-items: flex-start; padding: .5rem 0; font-size: .82rem; color: var(--gray-700); border-bottom: 1px solid var(--gray-100); }
+  .step-list li:last-child { border-bottom: none; }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+  .badge-status { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border-radius: 999px; font-size: .7rem; font-weight: 700; }
+  .badge-pending { background: rgba(245,158,11,.12); color: #92400e; }
+  .badge-approved { background: rgba(16,185,129,.12); color: #065f46; }
+  .badge-rejected { background: rgba(239,68,68,.12); color: #991b1b; }
+  .app-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .app-table th { text-align: left; padding: .5rem .75rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gray-400); border-bottom: 1px solid var(--gray-200); }
+  .app-table td { padding: .6rem .75rem; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+  .app-table tr:last-child td { border-bottom: none; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="recruit-grid">
+
+  <!-- ═══ LEFT: Adjuster Recruitment ═══ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Recruit Licensed Adjusters</div>
+    </div>
+    <p>Experienced flood adjusters can join your team immediately by verifying their license. No extra training required — they already know the business.</p>
+
+    <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);margin-bottom:.5rem;">How it works</h4>
+    <ul class="step-list">
+      <li><span class="step-num" style="background:rgba(59,130,246,.12);color:#1e40af;">1</span> <span>You send an invitation link or they apply via the recruitment page</span></li>
+      <li><span class="step-num" style="background:rgba(59,130,246,.12);color:#1e40af;">2</span> <span>They provide their <strong>state adjuster license number</strong> and select their state</span></li>
+      <li><span class="step-num" style="background:rgba(59,130,246,.12);color:#1e40af;">3</span> <span>System <strong>auto-verifies</strong> the license against state databases where available</span></li>
+      <li><span class="step-num" style="background:rgba(59,130,246,.12);color:#1e40af;">4</span> <span>If verified → they're <strong>automatically added</strong> to your team as an Adjuster</span></li>
+      <li><span class="step-num" style="background:rgba(59,130,246,.12);color:#1e40af;">5</span> <span>If verification is pending → you <strong>manually approve</strong> after reviewing</span></li>
+    </ul>
+
+    <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;">
+      <div style="font-size:.75rem;font-weight:700;color:#065f46;margin-bottom:.3rem;">✅ Licensed Adjuster Benefits</div>
+      <div style="font-size:.75rem;color:#065f46;line-height:1.6;">
+        • Instant access to assigned claims<br>
+        • Can create and edit claims immediately<br>
+        • Full access to Aquila AI assistant<br>
+        • No training module required
+      </div>
+    </div>
+
+    <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);margin-bottom:.5rem;">Pending Applications</h4>
+    {% if adjuster_apps %}
+    <div style="overflow-x:auto;">
+    <table class="app-table">
+      <thead><tr><th>Name</th><th>Email</th><th>License</th><th>State</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for a in adjuster_apps %}
+      <tr>
+        <td style="font-weight:600">{{ a.name }}</td>
+        <td>{{ a.email }}</td>
+        <td>{{ a.license_number }}</td>
+        <td>{{ a.state }}</td>
+        <td><span class="badge-status badge-{{ a.status }}">{{ a.status|title }}</span></td>
+        <td>
+          {% if a.status == 'pending' %}
+          <form method="POST" action="{{ url_for('approve_application', app_id=a.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm" style="font-size:.68rem;padding:2px 8px;">✓ Approve</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:1.5rem;color:var(--gray-400);font-size:.8rem;background:var(--gray-50);border-radius:10px;">
+      No pending adjuster applications.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══ RIGHT: Contractor → Adjuster Pipeline ═══ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🔧 Recruit Contractors → Adjusters</div>
+    </div>
+    <p>Contractors who want to become flood adjusters go through a structured onboarding pipeline: license verification, training modules, and certification testing.</p>
+
+    <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);margin-bottom:.5rem;">Onboarding Pipeline</h4>
+    <ul class="step-list">
+      <li><span class="step-num" style="background:rgba(245,158,11,.12);color:#92400e;">1</span> <span>Contractor <strong>applies</strong> with their current contractor license & experience</span></li>
+      <li><span class="step-num" style="background:rgba(245,158,11,.12);color:#92400e;">2</span> <span>You <strong>review</strong> their background and approve them into training</span></li>
+      <li><span class="step-num" style="background:rgba(245,158,11,.12);color:#92400e;">3</span> <span>They complete <strong>training modules</span>:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• Flood damage assessment fundamentals<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• Water categories & classification<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• NFIP & FEMA guidelines<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• Xactimate / estimating basics<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;• FloodClaims Pro platform training</span></li>
+      <li><span class="step-num" style="background:rgba(245,158,11,.12);color:#92400e;">4</span> <span>They take the <strong>certification test</strong> (must score 80%+)</span></li>
+      <li><span class="step-num" style="background:rgba(245,158,11,.12);color:#92400e;">5</span> <span>Upon passing → you <strong>activate</strong> them as a licensed adjuster on your team</span></li>
+    </ul>
+
+    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;">
+      <div style="font-size:.75rem;font-weight:700;color:#92400e;margin-bottom:.3rem;">📘 Training & Licensing Notes</div>
+      <div style="font-size:.75rem;color:#92400e;line-height:1.6;">
+        • Contractor license is verified but does <strong>not</strong> substitute for an adjuster license<br>
+        • Each state has different adjuster licensing requirements<br>
+        • Training modules are self-paced — typically 2-4 weeks<br>
+        • Certification test can be retaken after 7 days<br>
+        • Until certified, they have <strong>read-only</strong> access to claims
+      </div>
+    </div>
+
+    <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);margin-bottom:.5rem;">Contractor Applicants</h4>
+    {% if contractor_apps %}
+    <div style="overflow-x:auto;">
+    <table class="app-table">
+      <thead><tr><th>Name</th><th>Email</th><th>License Type</th><th>Progress</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for c in contractor_apps %}
+      <tr>
+        <td style="font-weight:600">{{ c.name }}</td>
+        <td>{{ c.email }}</td>
+        <td>{{ c.license_type }}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:.4rem;">
+            <div style="flex:1;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden;">
+              <div style="width:{{ c.progress }}%;height:100%;background:linear-gradient(90deg,#06D6C7,#3B7BFF);border-radius:3px;"></div>
+            </div>
+            <span style="font-size:.68rem;color:var(--gray-400);">{{ c.progress }}%</span>
+          </div>
+        </td>
+        <td><span class="badge-status badge-{{ c.status }}">{{ c.status|title }}</span></td>
+        <td>
+          <a href="{{ url_for('contractor_detail', app_id=c.id) }}" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:2px 8px;">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:1.5rem;color:var(--gray-400);font-size:.8rem;background:var(--gray-50);border-radius:10px;">
+      No contractor applications yet.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

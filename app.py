@@ -2061,6 +2061,170 @@ def delete_team_member(user_id):
     flash('Team member removed.', 'success')
     return redirect(url_for('team'))
 
+
+# ── Admin: Recruitment ─────────────────────────────────────────────────────────
+
+def _migrate_recruitment_tables():
+    """Create recruitment application tables if they don't exist."""
+    db = sqlite3.connect(DB_PATH)
+    db.executescript('''
+        CREATE TABLE IF NOT EXISTS adjuster_applications (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            email           TEXT NOT NULL,
+            phone           TEXT DEFAULT '',
+            license_number  TEXT NOT NULL,
+            state           TEXT NOT NULL,
+            status          TEXT DEFAULT 'pending',
+            notes           TEXT DEFAULT '',
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at     TEXT DEFAULT NULL,
+            reviewed_by     INTEGER DEFAULT NULL
+        );
+        CREATE TABLE IF NOT EXISTS contractor_applications (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            email           TEXT NOT NULL,
+            phone           TEXT DEFAULT '',
+            license_type    TEXT DEFAULT '',
+            license_number  TEXT DEFAULT '',
+            state           TEXT NOT NULL,
+            experience_years TEXT DEFAULT '',
+            status          TEXT DEFAULT 'pending',
+            progress        INTEGER DEFAULT 0,
+            training_completed TEXT DEFAULT '',
+            test_score      INTEGER DEFAULT NULL,
+            notes           TEXT DEFAULT '',
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at     TEXT DEFAULT NULL,
+            reviewed_by     INTEGER DEFAULT NULL
+        );
+    ''')
+    db.commit()
+    db.close()
+
+_migrate_recruitment_tables()
+
+
+@app.route('/admin/recruit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def recruit():
+    db = get_db()
+    if request.method == 'POST':
+        app_type = request.form.get('app_type', '')
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        phone = request.form.get('phone', '').strip()
+        state = request.form.get('state', '').strip()
+        if not name or not email:
+            flash('Name and email are required.', 'error')
+            return redirect(url_for('recruit'))
+        if app_type == 'adjuster':
+            license_number = request.form.get('license_number', '').strip()
+            if not license_number:
+                flash('License number is required for adjuster applications.', 'error')
+                return redirect(url_for('recruit'))
+            try:
+                db.execute(
+                    'INSERT INTO adjuster_applications (name, email, phone, license_number, state, status) VALUES (?,?,?,?,?,?)',
+                    (name, email, phone, license_number, state, 'pending'))
+                db.commit()
+                flash(f'Adjuster application submitted for {name}. Review and approve below.', 'success')
+            except Exception as e:
+                flash(f'Error submitting application: {e}', 'error')
+        elif app_type == 'contractor':
+            license_type = request.form.get('license_type', '').strip()
+            license_number = request.form.get('license_number', '').strip()
+            experience = request.form.get('experience_years', '').strip()
+            try:
+                db.execute(
+                    'INSERT INTO contractor_applications (name, email, phone, license_type, license_number, state, experience_years, status) VALUES (?,?,?,?,?,?,?,?)',
+                    (name, email, phone, license_type, license_number, state, experience, 'pending'))
+                db.commit()
+                flash(f'Contractor application submitted for {name}. They will need training and certification.', 'success')
+            except Exception as e:
+                flash(f'Error submitting application: {e}', 'error')
+        return redirect(url_for('recruit'))
+
+    adjuster_apps = db.execute(
+        'SELECT * FROM adjuster_applications ORDER BY created_at DESC').fetchall()
+    contractor_apps = db.execute(
+        'SELECT * FROM contractor_applications ORDER BY created_at DESC').fetchall()
+    return render_template('recruit.html', adjuster_apps=adjuster_apps, contractor_apps=contractor_apps)
+
+
+@app.route('/admin/recruit/adjuster/<int:app_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def approve_adjuster_application(app_id):
+    db = get_db()
+    app = db.execute('SELECT * FROM adjuster_applications WHERE id=?', (app_id,)).fetchone()
+    if not app:
+        flash('Application not found.', 'error')
+        return redirect(url_for('recruit'))
+    # Check if user already exists
+    existing = db.execute('SELECT id FROM users WHERE email=?', (app['email'],)).fetchone()
+    if existing:
+        flash('A user with this email already exists.', 'error')
+        return redirect(url_for('recruit'))
+    # Create user account
+    import secrets as _secrets
+    temp_pw = _secrets.token_urlsafe(10)
+    db.execute(
+        'INSERT INTO users (email, name, password, role) VALUES (?,?,?,?)',
+        (app['email'], app['name'], hash_pw(temp_pw), 'adjuster'))
+    # Mark application approved
+    db.execute(
+        'UPDATE adjuster_applications SET status=?, reviewed_at=CURRENT_TIMESTAMP, reviewed_by=? WHERE id=?',
+        ('approved', session['user_id'], app_id))
+    db.commit()
+    flash(f'✅ {app["name"]} approved and added to team as Adjuster. Temp password: {temp_pw}', 'success')
+    return redirect(url_for('recruit'))
+
+
+@app.route('/admin/recruit/contractor/<int:app_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def contractor_detail(app_id):
+    db = get_db()
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        if action == 'approve_training':
+            db.execute("UPDATE contractor_applications SET status='training', reviewed_at=CURRENT_TIMESTAMP, reviewed_by=? WHERE id=?",
+                       (session['user_id'], app_id))
+            db.commit()
+            flash('Contractor approved for training.', 'success')
+        elif action == 'update_progress':
+            progress = int(request.form.get('progress', 0))
+            db.execute('UPDATE contractor_applications SET progress=? WHERE id=?', (progress, app_id))
+            db.commit()
+            flash(f'Progress updated to {progress}%.', 'success')
+        elif action == 'certify':
+            # Convert contractor to adjuster
+            app = db.execute('SELECT * FROM contractor_applications WHERE id=?', (app_id,)).fetchone()
+            if app:
+                existing = db.execute('SELECT id FROM users WHERE email=?', (app['email'],)).fetchone()
+                if not existing:
+                    import secrets as _secrets
+                    temp_pw = _secrets.token_urlsafe(10)
+                    db.execute(
+                        'INSERT INTO users (email, name, password, role) VALUES (?,?,?,?)',
+                        (app['email'], app['name'], hash_pw(temp_pw), 'adjuster'))
+                db.execute("UPDATE contractor_applications SET status='certified', progress=100, reviewed_at=CURRENT_TIMESTAMP, reviewed_by=? WHERE id=?",
+                           (session['user_id'], app_id))
+                db.commit()
+                flash(f'✅ {app["name"]} certified and added to team as Adjuster!', 'success')
+        return redirect(url_for('contractor_detail', app_id=app_id))
+
+    app = db.execute('SELECT * FROM contractor_applications WHERE id=?', (app_id,)).fetchone()
+    if not app:
+        flash('Application not found.', 'error')
+        return redirect(url_for('recruit'))
+    return render_template('contractor_detail.html', app=app)
+
+
 # ── Aquila Chat ────────────────────────────────────────────────────────────────
 
 @app.route('/willie')
