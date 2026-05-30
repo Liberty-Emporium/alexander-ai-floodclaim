@@ -1342,8 +1342,8 @@ def ai_describe_photo(image_path):
             img_b64 = base64.b64encode(f.read()).decode()
         ext  = image_path.rsplit('.', 1)[-1].lower()
         mime = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
-        # Use the same model + fallback logic
-        model = get_setting('ai_model', 'openrouter/owl-alpha')
+        # Use a vision-capable model (owl-alpha is text-only)
+        model = get_setting('ai_vision_model') or get_setting('ai_model', 'openai/gpt-4o-mini')
         result = call_openrouter(
             messages=[{
                 'role': 'user',
@@ -1890,7 +1890,7 @@ def settings():
         return redirect(url_for('settings'))
 
     env_key_set       = bool(OPENROUTER_KEY)
-    current_model     = get_setting('ai_model', 'openrouter/owl-alpha')
+    current_model     = get_setting('ai_model', 'openai/gpt-4o-mini')
     current_fallback  = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
     return render_template('settings.html',
                            env_key_set=env_key_set,
@@ -2206,7 +2206,7 @@ Always be helpful, concise, and professional. Use your knowledge of NFIP rules a
     messages = [{'role': 'system', 'content': live_context}] + history[-8:]
 
     try:
-        selected_model   = get_setting('ai_model', 'openrouter/owl-alpha')
+        selected_model   = get_setting('ai_model', 'openai/gpt-4o-mini')
         fallback_model   = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
         openrouter_key   = OPENROUTER_KEY
         if not openrouter_key:
@@ -4953,8 +4953,8 @@ def batch_analyze_claim_room(claim_id, room_id):
 
             # Insert photo record
             db.execute(
-                'INSERT INTO photos (claim_id, room_id, filename, ai_description, room_id, customer_submitted) VALUES (?, ?, ?, ?, ?, ?)',
-                (claim_id, room_id, filename, '', room_id, 0)
+                'INSERT INTO photos (claim_id, room_id, filename, ai_description, customer_submitted) VALUES (?, ?, ?, ?, ?)',
+                (claim_id, room_id, filename, '', 0)
             )
             saved_paths.append(filepath)
 
@@ -5043,6 +5043,21 @@ def ai_populate_claim(claim_id):
         'items_added': len(items_added),
         'items': items_added
     })
+
+
+@app.route('/customer/upload/<token>', methods=['GET'])
+def customer_upload_page(token):
+    """Render the customer upload page (no auth required)."""
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    portal = db.execute(
+        'SELECT * FROM client_portal_tokens WHERE token=? AND used=0',
+        (token,)
+    ).fetchone()
+    db.close()
+    if not portal:
+        return render_template('portal_invalid.html'), 403
+    return render_template('customer_upload.html', token=token)
 
 
 @app.route('/customer/upload/<token>', methods=['POST'])
