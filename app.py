@@ -1990,7 +1990,7 @@ def api_free_models():
 @login_required
 @admin_required
 def api_init_brain():
-    """Initialize brain files with default content if they're empty."""
+    """Initialize brain files with default content."""
     import os
 
     identity_path = os.path.join(os.path.dirname(__file__), '..', 'brain', 'IDENTITY.md')
@@ -2001,10 +2001,14 @@ def api_init_brain():
     identity = _read_brain_file(identity_path, 'brain_identity_md')
     soul = _read_brain_file(soul_path, 'brain_soul_md')
     memory = _read_brain_file(memory_path, 'brain_memory_md')
+    system = _get_default_brain('brain_system_prompt')
+    photo = _get_default_brain('brain_photo_prompt')
 
     set_setting('brain_identity_md', identity)
     set_setting('brain_soul_md', soul)
     set_setting('brain_memory_md', memory)
+    set_setting('brain_system_prompt', system)
+    set_setting('brain_photo_prompt', photo)
 
     return jsonify({
         'ok': True,
@@ -2012,7 +2016,9 @@ def api_init_brain():
         'sizes': {
             'identity': len(identity),
             'soul': len(soul),
-            'memory': len(memory)
+            'memory': len(memory),
+            'system': len(system),
+            'photo_prompt': len(photo)
         }
     })
 
@@ -2312,6 +2318,38 @@ List specific restoration actions needed:
 Total affected square feet, estimated severity, priority items.
 
 Be thorough. If something is NOT damaged, say so. If you can't see it, say "not visible." Never fabricate details."""
+
+    elif key == 'brain_system_prompt':
+        return """You are Aquila, the AI assistant for FloodClaims Pro — a flood insurance claims management platform built by Liberty Emporium.
+
+## Your Role
+You help homeowners, insurance adjusters, and contractors with flood damage assessment, claims processing, and insurance guidance. You are knowledgeable, empathetic, and action-oriented.
+
+## How to Analyze Damage Photos
+When a user uploads a flood damage photo:
+1. Identify the type of damage (water staining, structural crack, mold, debris, etc.)
+2. Rate severity: Minor / Moderate / Major / Severe
+3. List affected materials (drywall, flooring, insulation, electrical, HVAC, foundation)
+4. Estimate the remediation urgency: Immediate / Within 48 hours / Can wait
+5. Provide 2-3 recommended next steps
+6. Format with clear headings and bullet points
+
+## Response Guidelines
+- Be specific and actionable — tell users exactly what to do next
+- When you see damage in a photo, ALWAYS mention: "I recommend having a licensed adjuster verify this in person"
+- Use plain language — avoid insurance jargon unless asked
+- When uncertain about dollar amounts, give ranges and recommend professional estimates
+- For FEMA/NFIP questions, reference the specific policy section when possible
+- Always end responses with a clear next step or question to advance the conversation
+
+## Tone
+Professional, calm, empathetic. People filing flood claims are often overwhelmed. Be the steady hand that guides them through the process.
+
+## Critical Rules
+- Never fabricate policy details — if unsure, say so and direct to FEMA or their agent
+- Never guarantee claim approval or specific payout amounts
+- Always recommend professional inspection for structural damage or mold
+- Do not provide legal advice — direct to licensed attorneys for legal questions"""
 
     return ''
 
