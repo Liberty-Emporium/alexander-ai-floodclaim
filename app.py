@@ -170,10 +170,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'admin@floodclaimpro.com')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
-if not ADMIN_PASSWORD:
-    import sys
-    print('WARNING: ADMIN_PASSWORD not set — using empty string', file=sys.stderr)
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'FloodAdmin2026!')
 OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 
 ALLOWED_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -312,6 +309,11 @@ def init_db():
     cols = [row[1] for row in db.execute('PRAGMA table_info(users)').fetchall()]
     if 'is_active' not in cols:
         db.execute('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1')
+    # Migration: ensure admin user has a proper password
+    admin = db.execute('SELECT id FROM users WHERE email=?', (ADMIN_EMAIL,)).fetchone()
+    if admin:
+        db.execute('UPDATE users SET password=? WHERE id=?',
+                   (hash_pw(ADMIN_PASSWORD), admin['id']))
     db.commit()
     db.close()
 
