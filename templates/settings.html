@@ -107,8 +107,11 @@
 
   /* Chat bubble icon picker */
   .icon-grid {
-    display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px;
     margin: .5rem 0;
+  }
+  .icon-cell-wrapper {
+    display: flex; align-items: center; justify-content: center;
   }
   .icon-opt {
     display: none;
@@ -116,6 +119,7 @@
   .icon-cell {
     text-align: center; padding: 8px 4px; border-radius: 8px; cursor: pointer;
     font-size: 1.3rem; border: 2px solid transparent; transition: all .15s;
+    display: block; width: 100%;
   }
   .icon-cell:hover { background: rgba(59,130,246,.1); }
   .icon-opt:checked + .icon-cell {
@@ -395,12 +399,13 @@
         <label>Or Choose an Emoji Icon</label>
         <div class="icon-grid" id="iconGrid">
           {% for e in ['🌊','💧','🌀','🏠','🔧','📋','🤖','👷','🛡️','⚡','🔥','🌧️','💦','🏗️','📊','🗺️','💼','🎯','🧠','💪'] %}
-          <label style="display:contents">
+          <div class="icon-cell-wrapper">
             <input class="icon-opt" type="radio" name="bubble_emoji_icon" value="{{ e }}"
+                   id="emoji_{{ loop.index }}"
                    {% if e == '🌊' %}checked{% endif %}
                    onchange="document.getElementById('bubbleEmojiPreview').textContent='{{ e }}';clearUpload();">
-            <div class="icon-cell">{{ e }}</div>
-          </label>
+            <label class="icon-cell" for="emoji_{{ loop.index }}">{{ e }}</label>
+          </div>
           {% endfor %}
         </div>
       </div>
