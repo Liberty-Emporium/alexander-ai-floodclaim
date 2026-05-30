@@ -685,19 +685,25 @@
       <i data-lucide="bell" class="nav-link-icon"></i> Notifications
     </a>
 
-    {% if session.role in ('admin', 'manager') %}
+    {% if session.role == 'admin' %}
     <div class="nav-section">Admin</div>
-    <a href="{{ url_for('recruit') }}" class="nav-link {% if request.endpoint=='recruit' %}active{% endif %}">
-      <i data-lucide="user-plus" class="nav-link-icon"></i> Recruit
-    </a>
     <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
       <i data-lucide="users" class="nav-link-icon"></i> Team
     </a>
-    {% if session.role == 'admin' %}
+    <a href="{{ url_for('recruit') }}" class="nav-link {% if request.endpoint=='recruit' %}active{% endif %}">
+      <i data-lucide="target" class="nav-link-icon"></i> Recruit
+    </a>
     <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint=='settings' %}active{% endif %}">
       <i data-lucide="settings" class="nav-link-icon"></i> Settings
     </a>
-    {% endif %}
+    {% elif session.role == 'manager' %}
+    <div class="nav-section">Management</div>
+    <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
+      <i data-lucide="users" class="nav-link-icon"></i> Team
+    </a>
+    <a href="{{ url_for('recruit') }}" class="nav-link {% if request.endpoint=='recruit' %}active{% endif %}">
+      <i data-lucide="target" class="nav-link-icon"></i> Recruit
+    </a>
     {% endif %}
   </nav>
 
