@@ -4,7 +4,7 @@
 
 {% block extra_css %}
 <style>
-  .settings-section { max-width: 680px; }
+  .settings-section { max-width: 960px; }
   .key-status {
     display: inline-flex; align-items: center; gap: .4rem;
     padding: .3rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700;
@@ -22,7 +22,10 @@
 
   /* Model picker */
   .model-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .5rem;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-top: .5rem;
+  }
+  @media (max-width: 900px) {
+    .model-grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 500px) {
     .settings-section { max-width: 100%; }
