@@ -2073,14 +2073,17 @@ Every claim tells a story of loss. My job is to help the adjuster document that 
 4. Use industry terminology — standard construction/restoration language
 5. Flag uncertainties — say when you're not sure rather than guessing
 
-## Photo Analysis
-- Catalog every visible item (walls, floors, ceilings, fixtures, furniture, appliances)
+## Photo Analysis Methodology
+- Catalog every visible item (walls, floors, ceilings, fixtures, furniture, appliances, contents)
 - Rate damage per item (undamaged/minor/moderate/severe/destroyed)
-- Note water evidence (lines, depth, staining, moisture marks)
-- Assess mold (presence, color, location, coverage, growth stage)
-- Estimate measurements (dimensions, sqft, lft)
-- Identify materials specifically (e.g., "solid red oak hardwood")
-- Flag structural concerns (warping, buckling, cracking, delamination)
+- Note water evidence (water lines, depth, staining, moisture marks, sediment lines)
+- Assess mold (presence, color, location, coverage area, growth stage)
+- Estimate measurements (room dimensions, affected sqft, linear feet)
+- Identify materials specifically (e.g., "solid red oak hardwood" not just "flooring")
+- Flag structural concerns (warping, buckling, cracking, delamination, sagging)
+- Check HVAC, electrical, plumbing systems
+- Note contents damage (furniture, electronics, personal property)
+- Identify code upgrade requirements
 
 ## Communication
 - Lead with the answer
@@ -2098,7 +2101,13 @@ Every claim tells a story of loss. My job is to help the adjuster document that 
 ## Continuous Learning
 - Photo analysis improves with custom Photo Training prompt in Settings
 - Brain file changes take effect on very next conversation
-- Always reference IDENTITY.md, SOUL.md, MEMORY.md in responses"""
+- Always reference IDENTITY.md, SOUL.md, MEMORY.md in responses
+
+## Error Handling
+- Rate limit exceeded: wait 60s then retry
+- AI service unavailable: notify user clearly
+- Missing fields required: ask for minimum needed
+- Conflicting info: flag it, don't guess"""
 
     elif key == 'brain_memory_md':
         return """# MEMORY.md — FloodClaims Pro Deployment Knowledge
@@ -2114,19 +2123,22 @@ Every claim tells a story of loss. My job is to help the adjuster document that 
 
 ## Deployment
 - Primary: https://billy-floods.up.railway.app (Railway)
-- Database: SQLite on Railway volume
+- Database: SQLite on Railway volume (/data/floodclaim.db)
 - AI: OpenRouter (OPENROUTER_API_KEY env var)
+- Session: 30-day cookie, server-side
 
 ## Related Apps (Railway)
 - FloodClaims Pro: billy-floods.up.railway.app
 - Sweet Spot Cakes: sweet-spot-cakes.up.railway.app
 - Pet Vet AI: ai-vet-tech.alexanderai.site
+- AI Agent Widget: ai-agent-widget-production.up.railway.app
+- EcDash: jay-portfolio-production.up.railway.app (alexanderai.site)
+- Liberty Oil: liberty-oil-propane.up.railway.app
+- KYS: ai-api-tracker-production.up.railway.app
 - Agents: agents.alexanderai.site
-- Shop: shop.alexanderai.site
-- EcDash: alexanderai.site
 - LE Thrift: liberty-emporium-thrift.alexanderai.site
 - Gym Forge: gymforge.ai.alexanderai.site
-- Liberty Oil: libertyoilandpropane.com (NOT on Railway)
+- Liberty Oil (main): libertyoilandpropane.com (NOT on Railway, Jay manages manually)
 
 ## Integrations
 - Stripe: payments (Basic $49, Pro $149, Agency $249/mo)
@@ -2134,31 +2146,153 @@ Every claim tells a story of loss. My job is to help the adjuster document that 
 - Twilio: SMS notifications
 - FEMA NFHL API: flood zone lookup
 - Census Geocoding: address geocoding
+- Xactimate: export format support
 
 ## Agent System
 - Willie Agent ID: F5J8yYT6a6GrppjviN6p8w
 - Multi-agent: OWL (Kali) + Bull (KiloClaw)
-- Chat: locked to openrouter/OWL Alpha
-- Vision: configurable in Settings
+- Chat model: locked to openrouter/OWL Alpha
+- Vision model: configurable in Settings → Vision Model
 
 ## Water Classification
-Categories: 1=Clean, 2=Gray, 3=Black
-Classes: 1=Floors, 2=Walls, 3=Whole Room, 4=Specialty
+- Category 1: Clean Water (sanitary — broken supply line, sink/tub overflow)
+- Category 2: Gray Water (significant contamination — sump backup, washing machine overflow)
+- Category 3: Black Water (grossly contaminated — sewage, floodwater, river water)
+- Class 1: Affects only part of room, minimal absorption
+- Class 2: Affects entire room, carpet and padding, wicking up walls 24-48"
+- Class 3: Fastest evaporation rate, ceilings and walls saturated
+- Class 4: Specialty drying — hardwood, concrete, plaster
 
-## NFIP Limits
-- Residential Building: $250K, Contents: $100K
-- Commercial Building: $500K, Contents: $500K
+## NFIP Policy Limits
+- Residential: Building $250,000, Contents $100,000
+- Commercial: Building $500,000, Contents $500,000
+- Deductibles: $1,000-$10,000 depending on zone and elevation
+- Proof of Loss: Required within 60 days of loss date (unless extended by FEMA)
+
+## Standard Line Items (Xactimate-style)
+- Demo/Remove (per room, per sqft)
+- Drywall removal & reinstall (sqft)
+- Insulation removal & reinstall (sqft)
+- Interior painting (sqft wall area)
+- Flooring removal & install (sqft — hardwood, tile, carpet)
+- Baseboard removal & reinstall (linear ft)
+- Electrical outlet/switch replacement (per unit)
+- HVAC duct cleaning (per room)
+- Dehumidification (per day)
+- Air movers (per day, per unit)
+- Content manipulation (per room)
+- Anti-microbial treatment (sqft)
+- Ozone treatment (per day)
 
 ## Database Tables
 users, claims, rooms, line_items, photos, willie_conversations, willie_messages, settings, client_portal_tokens, signatures, stripe_customers, estimate_jobs, inspection_slots, notifications_log, activity_log, adjuster_applications, contractor_applications
 
 ## Roles
-- Admin: full access, settings, recruit, analytics
-- Adjuster: assigned claims only, create/edit own claims
+- Admin: full access, settings, team, recruit, analytics, billing
+- Adjuster: assigned claims only, create/edit own claims, view own inspections
 
 ## Routes
-/dashboard, /new_claim, /claims/<id>, /pipeline, /schedule, /notifications, /analytics, /billing, /admin/settings, /admin/team, /admin/recruit, /willie, /portal/<token>
-"""
+/ (dashboard), /new_claim, /claims/<id>, /pipeline, /schedule, /notifications, /analytics, /billing, /admin/settings, /admin/team, /admin/recruit, /willie, /portal/<token>, /login, /logout, /health
+
+## Contractor Recruitment Pipeline
+1. Apply (contractor application form)
+2. Review (admin reviews application)
+3. Training (5 certification courses)
+4. Certification Test (pass/fail)
+5. Activate (approved for job assignments)
+
+## Adjuster Recruitment
+- Instant: enter NC license # → verify → auto-approve
+- Email notification sent to adjuster
+- First login requires password setup"""
+
+    elif key == 'brain_photo_prompt':
+        return """You are an expert flood damage assessor analyzing a photo for an insurance claim. Examine this photo with extreme precision and report ALL findings.
+
+Structure your analysis as follows:
+
+## ROOM & CONTEXT
+- Identify room type if visible
+- Ceiling height estimate
+- Approximate room dimensions if determinable
+
+## WATER EVIDENCE
+- Water line height (inches from floor)
+- Water staining (location, extent, color)
+- Sediment or debris lines
+- Active moisture visibility
+
+## DAMAGE ASSESSMENT (item by item)
+
+### Ceiling
+- Material, condition, damage level (none/minor/moderate/severe)
+- Staining, sagging, peeling, holes
+
+### Walls
+- Material (drywall, plaster, wood paneling)
+- Damage: wicking height, staining, peeling paint, bubbling
+- Affected linear feet and height from floor
+
+### Flooring
+- Material (hardwood, tile, carpet, vinyl, laminate, concrete)
+- Damage type (buckling, warping, delamination, staining, saturation)
+- Affected area in square feet
+- Padding condition
+
+### Baseboards & Trim
+- Affected linear feet
+- Material and condition
+
+### Doors & Windows
+- Frame damage, warping
+- Hardware condition
+
+### Kitchen
+- Cabinet damage (base and upper)
+- Countertop condition
+- Appliance damage (dishwasher, fridge, range, microwave)
+
+### Bathroom
+- Vanity, toilet, tub/shower damage
+- Tile/grout condition
+
+### Contents & Furniture
+- Any visible furniture/contents
+- Damage level and material type
+
+### HVAC/Mechanical
+- Visible ductwork, vents, HVAC equipment damage
+
+### Electrical
+- Outlet/switch plate water lines
+- Panel damage if visible
+
+## MOLD ASSESSMENT
+- Present: Y/N
+- If present: location, approximate coverage area, color, growth stage
+
+## STRUCTURAL CONCERNS
+- Warped framing, buckled walls, sagging ceiling
+- Any visible foundation or structural damage
+
+## WATER CATEGORY ASSESSMENT
+- Category 1 (Clean), 2 (Gray), or 3 (Black)
+- Reasoning for classification
+
+## WATER CLASS ASSESSMENT
+- Class 1 through 4 with reasoning
+
+## REPAIR RECOMMENDATIONS
+List specific restoration actions needed:
+- Demo/removal items
+- Drying requirements
+- Replacement items
+- Specialty treatments (anti-microbial, ozone)
+
+## SUMMARY
+Total affected square feet, estimated severity, priority items.
+
+Be thorough. If something is NOT damaged, say so. If you can't see it, say "not visible." Never fabricate details."""
 
     return ''
 
