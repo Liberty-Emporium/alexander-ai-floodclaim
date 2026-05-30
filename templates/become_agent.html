@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block title %}Become a Flood Adjuster — FloodClaims Pro{% endblock %}
+{% block page_title %}🎯 Become a Flood Adjuster{% endblock %}
+{% block extra_css %}
+<style>
+  .hero-section { text-align:center; padding:2.5rem 1rem 2rem; max-width:800px; margin:0 auto; }
+  .hero-section h2 { font-size:1.8rem; font-weight:800; margin-bottom:.75rem; }
+  .hero-section p { font-size:.95rem; color:var(--gray-600); line-height:1.7; max-width:600px; margin:0 auto 1.5rem; }
+  .path-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.25rem; max-width:960px; margin:0 auto 2rem; }
+  .path-card { border-radius:16px; padding:1.5rem; border:1px solid var(--gray-200); background:#fff; transition:all .2s; }
+  .path-card:hover { box-shadow:0 8px 30px rgba(0,0,0,.08); transform:translateY(-2px); }
+  .path-card .icon { font-size:2rem; margin-bottom:.75rem; }
+  .path-card h3 { font-size:1.05rem; font-weight:700; margin-bottom:.5rem; }
+  .path-card p { font-size:.82rem; color:var(--gray-600); line-height:1.6; margin-bottom:1rem; }
+  .module-list { max-width:800px; margin:0 auto 2rem; }
+  .module-item { display:flex; align-items:center; gap:1rem; padding:1rem; border:1px solid var(--gray-200); border-radius:12px; margin-bottom:.75rem; background:#fff; transition:all .15s; text-decoration:none; color:inherit; }
+  .module-item:hover { border-color:var(--blue-light); background:rgba(59,130,246,.03); }
+  .module-num { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#3B7BFF,#06D6C7); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.85rem; flex-shrink:0; }
+  .module-info h4 { font-size:.9rem; font-weight:600; margin-bottom:.15rem; }
+  .module-info span { font-size:.75rem; color:var(--gray-400); }
+  .exam-section { max-width:600px; margin:0 auto 2rem; text-align:center; padding:2rem; background:linear-gradient(135deg,rgba(59,130,246,.05),rgba(6,214,199,.05)); border:1px solid rgba(59,130,246,.15); border-radius:16px; }
+  .exam-section h3 { font-size:1.2rem; font-weight:700; margin-bottom:.5rem; }
+  .exam-section p { font-size:.85rem; color:var(--gray-600); margin-bottom:1.25rem; line-height:1.6; }
+  .cert-links { max-width:700px; margin:0 auto 2rem; }
+  .cert-link { display:flex; align-items:center; gap:.75rem; padding:.85rem 1rem; border:1px solid var(--gray-200); border-radius:10px; margin-bottom:.5rem; text-decoration:none; color:inherit; font-size:.85rem; background:#fff; transition:all .15s; }
+  .cert-link:hover { border-color:var(--blue-light); background:rgba(59,130,246,.03); }
+  .cert-link .cl-icon { font-size:1.2rem; }
+  .cert-link strong { display:block; font-size:.88rem; margin-bottom:.1rem; }
+  .cert-link span { font-size:.75rem; color:var(--gray-400); }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="hero-section">
+  <h2>Start Your Career as a Flood Adjuster</h2>
+  <p>FloodClaims Pro makes it easy to become a certified flood claims adjuster. Take free training classes, practice with AI-generated exams, and get connected with agencies looking for adjusters — all from one place.</p>
+  <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+    <a href="#training" class="btn btn-primary">📚 Start Free Training</a>
+    <a href="{{ url_for('practice_exam') }}" class="btn btn-ghost">🧪 Take Practice Exam</a>
+    <a href="{{ url_for('apply_adjuster') }}" class="btn btn-ghost">📝 Apply Now</a>
+  </div>
+</div>
+
+<!-- Path Options -->
+<div class="path-grid" style="margin-bottom:2.5rem;">
+  <div class="path-card">
+    <div class="icon">🎓</div>
+    <h3>New to the Industry?</h3>
+    <p>Start with our free training modules. Learn flood damage assessment, water categories, NFIP guidelines, and more. No experience needed.</p>
+    <a href="#training" class="btn btn-primary btn-sm">Start Learning</a>
+  </div>
+  <div class="path-card">
+    <div class="icon">📋</div>
+    <h3>Already Licensed?</h3>
+    <p>If you already have an adjuster license, skip the training. Take the practice exam to prove your knowledge, then apply directly.</p>
+    <a href="{{ url_for('apply_adjuster') }}" class="btn btn-primary btn-sm">Apply as Licensed</a>
+  </div>
+  <div class="path-card">
+    <div class="icon">🏗️</div>
+    <h3>Contractor Looking to Switch?</h3>
+    <p>Contractors understand the damage — now learn to assess it for insurance. Our pipeline trains you from contractor to certified adjuster.</p>
+    <a href="#training" class="btn btn-primary btn-sm">Start Training</a>
+  </div>
+</div>
+
+<!-- Training Modules -->
+<h3 style="text-align:center;font-size:1.3rem;font-weight:700;margin-bottom:.25rem;">📚 Free Training Classes</h3>
+<p style="text-align:center;font-size:.85rem;color:var(--gray-500);margin-bottom:1.25rem;">Self-paced modules covering everything you need to know</p>
+
+<div class="module-list">
+  {% if modules %}
+    {% for m in modules %}
+    <a href="{{ url_for('training_module', slug=m.slug) }}" class="module-item">
+      <div class="module-num">{{ m.module_num }}</div>
+      <div class="module-info" style="flex:1;">
+        <h4>{{ m.title }}</h4>
+        <span>⏱ {{ m.duration_min }} min read</span>
+      </div>
+      <span style="color:var(--gray-300);font-size:1.2rem;">→</span>
+    </a>
+    {% endfor %}
+  {% else %}
+    <!-- Default modules shown when DB is empty -->
+    <a href="#" class="module-item">
+      <div class="module-num">1</div>
+      <div class="module-info" style="flex:1;">
+        <h4>Flood Damage Fundamentals</h4>
+        <span>⏱ 30 min — Understanding flood events, damage patterns, and the restoration industry</span>
+      </div>
+    </a>
+    <a href="#" class="module-item">
+      <div class="module-num">2</div>
+      <div class="module-info" style="flex:1;">
+        <h4>Water Categories & Classes</h4>
+        <span>⏱ 25 min — Category 1/2/3 and Class 1/2/3/4 classification system</span>
+      </div>
+    </a>
+    <a href="#" class="module-item">
+      <div class="module-num">3</div>
+      <div class="module-info" style="flex:1;">
+        <h4>NFIP & FEMA Guidelines</h4>
+        <span>⏱ 40 min — National Flood Insurance Program policies, coverage limits, and claims process</span>
+      </div>
+    </a>
+    <a href="#" class="module-item">
+      <div class="module-num">4</div>
+      <div class="module-info" style="flex:1;">
+        <h4>Damage Assessment & Documentation</h4>
+        <span>⏱ 35 min — Room-by-room inspection, photo documentation, and damage reporting</span>
+      </div>
+    </a>
+    <a href="#" class="module-item">
+      <div class="module-num">5</div>
+      <div class="module-info" style="flex:1;">
+        <h4>Adjuster Licensing & Certification</h4>
+        <span>⏱ 20 min — State licensing requirements, exam prep, and career paths</span>
+      </div>
+    </a>
+  {% endif %}
+</div>
+
+<!-- Practice Exam -->
+<div class="exam-section" style="margin-bottom:2.5rem;">
+  <h3>🧪 Practice Exam</h3>
+  <p>Test your knowledge with 20 randomly generated questions every time. No sign-up required. Get instant results and see which topics you need to study more.</p>
+  <a href="{{ url_for('practice_exam') }}" class="btn btn-primary" style="font-size:1rem;padding:.6rem 1.5rem;">Start Practice Exam →</a>
+</div>
+
+<!-- Certification Links -->
+<h3 style="text-align:center;font-size:1.3rem;font-weight:700;margin-bottom:.25rem;">🔗 Get Certified</h3>
+<p style="text-align:center;font-size:.85rem;color:var(--gray-500);margin-bottom:1.25rem;">Official resources for adjuster licensing and certification</p>
+
+<div class="cert-links">
+  <a href="https://www.fema.gov/flood-insurance" target="_blank" class="cert-link">
+    <span class="cl-icon">🏛️</span>
+    <div>
+      <strong>FEMA Flood Insurance</strong>
+      <span>Official NFIP information, policy details, and claims guidance — fema.gov</span>
+    </div>
+  </a>
+  <a href="https://www.fema.gov/flood-maps" target="_blank" class="cert-link">
+    <span class="cl-icon">🗺️</span>
+    <div>
+      <strong>FEMA Flood Map Service</strong>
+      <span>Look up flood zones, elevation data, and risk assessments for any property</span>
+    </div>
+  </a>
+  <a href="https://training.fema.gov/is/" target="_blank" class="cert-link">
+    <span class="cl-icon">🎓</span>
+    <div>
+      <strong>FEMA Emergency Management Institute</strong>
+      <span>Free online courses including floodplain management and insurance topics</span>
+    </div>
+  </a>
+  <a href="https://www.iii.org/article/flood-insurance" target="_blank" class="cert-link">
+    <span class="cl-icon">📖</span>
+    <div>
+      <strong>Insurance Information Institute</strong>
+      <span>Comprehensive flood insurance guide and state-by-state licensing info</span>
+    </div>
+  </a>
+  <a href="https://www.naic.org/producer.htm" target="_blank" class="cert-link">
+    <span class="cl-icon">📋</span>
+    <div>
+      <strong>NAIC Producer Lookup</strong>
+      <span>Verify adjuster licenses and find your state's Department of Insurance</span>
+    </div>
+  </a>
+</div>
+
+<!-- Apply CTA -->
+<div style="text-align:center;padding:2rem;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(6,214,199,.06));border-radius:16px;max-width:600px;margin:0 auto 2rem;">
+  <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:.5rem;">Ready to Join?</h3>
+  <p style="font-size:.85rem;color:var(--gray-600);margin-bottom:1.25rem;">Submit your application and get connected with agencies hiring flood adjusters.</p>
+  <a href="{{ url_for('apply_adjuster') }}" class="btn btn-primary" style="font-size:1rem;padding:.6rem 1.5rem;">📝 Apply to Become an Adjuster</a>
+</div>
+
+{% endblock %}

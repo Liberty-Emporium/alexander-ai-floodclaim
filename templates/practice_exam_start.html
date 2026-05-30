@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Practice Exam — FloodClaims Pro{% endblock %}
+{% block page_title %}🧪 Practice Exam{% endblock %}
+{% block extra_css %}
+<style>
+  .exam-container { max-width:600px; margin:0 auto; padding:1.5rem; }
+  .exam-intro { text-align:center; padding:2rem; background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(6,214,199,.06)); border-radius:16px; margin-bottom:1.5rem; }
+  .exam-intro h2 { font-size:1.4rem; font-weight:700; margin-bottom:.5rem; }
+  .exam-intro p { font-size:.85rem; color:var(--gray-600); line-height:1.6; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="exam-container">
+  <div class="exam-intro">
+    <h2>🧪 Flood Adjuster Practice Exam</h2>
+    <p>Test your knowledge with 20 randomly generated questions. Questions cover water categories, NFIP guidelines, damage assessment, licensing, and more. You'll get your score immediately after completing the exam.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;margin-top:1rem;flex-wrap:wrap;font-size:.78rem;color:var(--gray-500);">
+      <span>📝 20 Questions</span>
+      <span>⏱ No Time Limit</span>
+      <span>🎯 Instant Results</span>
+      <span>🔄 Different Each Time</span>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:480px;margin:0 auto;">
+    <div class="card-header"><div class="card-title">Start Your Exam</div></div>
+    <form method="POST" action="{{ url_for('practice_exam') }}">
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" name="name" class="form-control" placeholder="John Smith" required>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="john@example.com" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Start Exam →</button>
+    </form>
+  </div>
+
+  <div style="text-align:center;margin-top:1.5rem;">
+    <a href="{{ url_for('become_an_agent') }}" style="font-size:.82rem;color:var(--blue-light);text-decoration:none;">← Back to Training</a>
+  </div>
+</div>
+
+{% endblock %}

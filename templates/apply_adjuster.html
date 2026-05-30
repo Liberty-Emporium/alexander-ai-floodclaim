@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Apply — Become a Flood Adjuster{% endblock %}
+{% block page_title %}📝 Apply to Become an Adjuster{% endblock %}
+{% block extra_css %}
+<style>
+  .apply-container { max-width:600px; margin:0 auto; padding:1.5rem; }
+  .apply-intro { text-align:center; padding:1.5rem; background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(6,214,199,.06)); border-radius:16px; margin-bottom:1.5rem; }
+  .apply-intro h2 { font-size:1.3rem; font-weight:700; margin-bottom:.5rem; }
+  .apply-intro p { font-size:.85rem; color:var(--gray-600); line-height:1.6; }
+  .form-section { margin-bottom:1.25rem; padding:1rem; background:#fff; border:1px solid var(--gray-200); border-radius:12px; }
+  .form-section h4 { font-size:.85rem; font-weight:700; margin-bottom:.75rem; color:var(--gray-800); }
+  .checkbox-group { display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem; }
+  .checkbox-group input { accent-color:var(--blue-light); width:18px; height:18px; }
+  .checkbox-group label { font-size:.85rem; color:var(--gray-700); cursor:pointer; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="apply-container">
+  <div class="apply-intro">
+    <h2>📝 Adjuster Application</h2>
+    <p>Fill out the form below to get connected with agencies looking for flood adjusters. If you're not yet licensed, we'll help you get there.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('apply_adjuster') }}">
+    <div class="form-section">
+      <h4>👤 Your Information</h4>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" name="name" class="form-control" required>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" name="phone" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>State *</label>
+        <select name="state" class="form-control" required>
+          <option value="">Select your state</option>
+          {% for s in ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'] %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>📋 Licensing Status</h4>
+      <div class="checkbox-group">
+        <input type="checkbox" name="licensed" id="licensed" value="1" ontoggle="document.getElementById('license_fields').style.display=this.checked?'':'none'">
+        <label for="licensed">I already have an adjuster license</label>
+      </div>
+      <div id="license_fields" style="display:none;">
+        <div class="form-group">
+          <label>License Number</label>
+          <input type="text" name="license_number" class="form-control" placeholder="Enter your adjuster license number">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Practice Exam Score (optional)</label>
+        <input type="number" name="exam_score" class="form-control" min="0" max="100" placeholder="If you took the practice exam, enter your score">
+        <div style="font-size:.72rem;color:var(--gray-400);margin-top:.25rem;">Take the <a href="{{ url_for('practice_exam') }}" style="color:var(--blue-light);">practice exam</a> first if you haven't yet.</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;padding:.75rem;font-size:1rem;">Submit Application</button>
+  </form>
+
+  <div style="text-align:center;margin-top:1rem;">
+    <a href="{{ url_for('become_an_agent') }}" style="font-size:.82rem;color:var(--blue-light);text-decoration:none;">← Back to Training & Exams</a>
+  </div>
+</div>
+
+<script>
+document.getElementById('licensed').addEventListener('change', function(){
+  document.getElementById('license_fields').style.display = this.checked ? '' : 'none';
+});
+</script>
+
+{% endblock %}

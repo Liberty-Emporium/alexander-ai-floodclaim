@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Exam Results — FloodClaims Pro{% endblock %}
+{% block page_title %}📊 Exam Results{% endblock %}
+{% block extra_css %}
+<style>
+  .results-container { max-width:700px; margin:0 auto; padding:1.5rem; }
+  .score-card { text-align:center; padding:2rem; background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(6,214,199,.06)); border-radius:16px; margin-bottom:1.5rem; }
+  .score-big { font-size:3.5rem; font-weight:800; line-height:1; }
+  .score-label { font-size:.9rem; color:var(--gray-500); margin-top:.5rem; }
+  .result-item { background:#fff; border:1px solid var(--gray-200); border-radius:12px; padding:1rem; margin-bottom:.75rem; }
+  .result-item.correct { border-left:4px solid #10B981; }
+  .result-item.wrong { border-left:4px solid #EF4444; }
+  .result-item .q-text { font-size:.85rem; font-weight:600; margin-bottom:.4rem; }
+  .result-item .your-ans { font-size:.78rem; }
+  .correct-ans { color:#065f46; }
+  .wrong-ans { color:#991b1b; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="results-container">
+  <div class="score-card">
+    <div class="score-big {% if score >= 80 %}correct-ans{% else %}wrong-ans{% endif %}">{{ score }}%</div>
+    <div class="score-label">{{ correct }} out of {{ total }} questions correct</div>
+    {% if score >= 80 %}
+    <div style="margin-top:.75rem;font-size:1rem;font-weight:700;color:#065f46;">🎉 Great Score!</div>
+    <div style="font-size:.82rem;color:#065f46;margin-top:.25rem;">You're ready to apply as a flood adjuster.</div>
+    {% elif score >= 60 %}
+    <div style="margin-top:.75rem;font-size:1rem;font-weight:700;color:#92400e;">📚 Almost There</div>
+    <div style="font-size:.82rem;color:#92400e;margin-top:.25;">Review the training modules and try again.</div>
+    {% else %}
+    <div style="margin-top:.75rem;font-size:1rem;font-weight:700;color:#991b1b;">📖 Keep Studying</div>
+    <div style="font-size:.82rem;color:#991b1b;margin-top:.25rem;">Go through the training modules and come back.</div>
+    {% endif %}
+  </div>
+
+  <h3 style="font-size:1rem;font-weight:700;margin-bottom:.75rem;">Review Your Answers</h3>
+  {% for q in questions %}
+  {% set qid = q.id|string %}
+  {% set user_ans = answers.get(qid, '') %}
+  {% set is_correct = user_ans == q.answer %}
+  <div class="result-item {% if is_correct %}correct{% else %}wrong{% endif %}">
+    <div class="q-text">{{ loop.index }}. {{ q.q }}</div>
+    <div class="your-ans">
+      Your answer: <strong class="{% if is_correct %}correct-ans{% else %}wrong-ans{% endif %}">
+        {% if user_ans %}{{ user_ans }}. {{ q.options[['A','B','C','D'].index(user_ans)] }}{% else %}Not answered{% endif %}
+      </strong>
+      {% if not is_correct %}
+      &nbsp;&nbsp;|&nbsp;&nbsp;Correct: <strong class="correct-ans">{{ q.answer }}. {{ q.options[['A','B','C','D'].index(q.answer)] }}</strong>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div style="text-align:center;margin-top:1.5rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+    <a href="{{ url_for('practice_exam') }}" class="btn btn-ghost">🔄 Retake Exam</a>
+    <a href="{{ url_for('become_an_agent') }}" class="btn btn-ghost">📚 Training Modules</a>
+    {% if score >= 70 %}
+    <a href="{{ url_for('apply_adjuster') }}" class="btn btn-primary">📝 Apply Now</a>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

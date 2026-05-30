@@ -2589,8 +2589,354 @@ def _migrate_recruitment_tables():
     db.commit()
     db.close()
 
-_migrate_recruitment_tables()
+def _migrate_training_tables():
+    """Create training and exam tables."""
+    db = sqlite3.connect(DB_PATH)
+    db.executescript('''
+        CREATE TABLE IF NOT EXISTS training_modules (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            module_num  INTEGER NOT NULL,
+            title       TEXT NOT NULL,
+            slug        TEXT NOT NULL UNIQUE,
+            content     TEXT NOT NULL,
+            duration_min INTEGER DEFAULT 30,
+            sort_order  INTEGER DEFAULT 0,
+            is_active   INTEGER DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS exam_sessions (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_name  TEXT NOT NULL,
+            candidate_email TEXT NOT NULL,
+            session_token   TEXT UNIQUE NOT NULL,
+            questions_json  TEXT NOT NULL,
+            answers_json    TEXT DEFAULT '{}',
+            score           INTEGER DEFAULT NULL,
+            total_questions INTEGER DEFAULT 0,
+            is_completed    INTEGER DEFAULT 0,
+            is_practice     INTEGER DEFAULT 1,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            completed_at    TEXT DEFAULT NULL
+        );
+        CREATE TABLE IF NOT EXISTS adjuster_applications_v2 (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            email           TEXT NOT NULL,
+            phone           TEXT DEFAULT '',
+            state           TEXT NOT NULL,
+            licensed        INTEGER DEFAULT 0,
+            license_number  TEXT DEFAULT '',
+            exam_score      INTEGER DEFAULT NULL,
+            exam_session_id INTEGER DEFAULT NULL,
+            status          TEXT DEFAULT 'interested',
+            invited_by      TEXT DEFAULT '',
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at     TEXT DEFAULT NULL,
+            reviewed_by     INTEGER DEFAULT NULL
+        );
+    ''')
+    db.commit()
+    db.close()
 
+_migrate_training_tables()
+
+def _seed_training_modules():
+    """Seed default training modules if table is empty."""
+    db = sqlite3.connect(DB_PATH)
+    count = db.execute('SELECT COUNT(*) FROM training_modules').fetchone()[0]
+    if count > 0:
+        db.close()
+        return
+    modules = [
+        (1, "Flood Damage Fundamentals", "flood-damage-fundamentals", """<h2>Flood Damage Fundamentals</h2>
+<p>Welcome to the first module in your flood adjuster training. This course covers the essential knowledge you need to begin assessing flood damage professionally.</p>
+<h3>What is Flood Damage?</h3>
+<p>Flood damage refers to the destruction caused by water entering a building from external sources — river overflow, storm surge, heavy rainfall, or rapid snowmelt. Unlike internal water damage, flood water contacts the ground and may carry contaminants.</p>
+<h3>The Restoration Industry</h3>
+<p>The flood restoration industry includes emergency services (water extraction, board-up), drying & dehumidification, demolition, reconstruction, and contents cleaning.</p>
+<h3>Key Terminology</h3>
+<ul>
+<li><strong>NFIP:</strong> National Flood Insurance Program — FEMA's flood insurance program</li>
+<li><strong>WYO:</strong> Write Your Own — private insurers that sell NFIP policies</li>
+<li><strong>ICC:</strong> Increased Cost of Compliance — coverage for elevation/floodproofing (up to $30K)</li>
+<li><strong>SFHA:</strong> Special Flood Hazard Area — zones A and V</li>
+<li><strong>BFE:</strong> Base Flood Elevation — computed floodwater elevation</li>
+<li><strong>RCBAP:</strong> Residential Condominium Building Association Policy</li>
+</ul>
+<h3>Types of Flood Events</h3>
+<ul>
+<li><strong>Riverine:</strong> Rivers overflowing — slow onset, widespread</li>
+<li><strong>Flash:</strong> Rapid onset from intense rainfall — very dangerous</li>
+<li><strong>Coastal:</strong> Storm surge from hurricanes</li>
+<li><strong>Urban:</strong> Overwhelmed drainage systems</li>
+</ul>
+<h3>Major NC Flood Events</h3>
+<p>Hurricane Floyd (1999), Matthew (2016), Florence (2018), Dorian (2019), Helene (2024). NC has the 3rd most repetitive loss properties in the US.</p>""", 30, 1),
+        (2, "Water Categories & Classes", "water-categories-classes", """<h2>Water Categories & Classes</h2>
+<p>Understanding water classification is critical for proper damage assessment and determining remediation procedures.</p>
+<h3>Water Categories (Contamination Level)</h3>
+<ul>
+<li><strong>Category 1 — Clean Water:</strong> From a broken water line, faucet, or rainwater. No significant contamination. Lowest risk.</li>
+<li><strong>Category 2 — Grey Water:</strong> Contains significant chemical, biological, or physical contamination. Toilet overflow (urine only), dishwasher overflow, sump pump failure. Can cause discomfort or illness if consumed.</li>
+<li><strong>Category 3 — Black Water:</strong> Grossly contaminated. Sewage, floodwater, river water, storm surge, standing water that has become bacterial. Can cause serious illness or death.</li>
+</ul>
+<h3>Water Classes (Amount of Water & Evaporation Rate)</h3>
+<ul>
+<li><strong>Class 1 — Least Water:</strong> Only a portion of a room affected. Materials have absorbed minimal moisture. Fastest drying time.</li>
+<li><strong>Class 2 — Large Amount:</strong> Carpets and cushions affected. Water wicked up walls 12-24 inches. Moisture in structural materials.</li>
+<li><strong>Class 3 — Greatest Amount:</strong> Water from above. Ceiling, walls, insulation, carpet, subfloor — everything is saturated.</li>
+<li><strong>Class 4 — Specialty Drying:</strong> Materials with low permeability — hardwood, concrete, plaster, gypcrete. Requires specialized low-humidity drying.</li>
+</ul>
+<h3>How They're Used Together</h3>
+<p>A single claim may have multiple category/class combinations across different rooms. For example: a basement with Category 3 water would require full PPE and anti-microbial treatment, while a kitchen with Category 2 water from a dishwasher needs less aggressive remediation.</p>""", 25, 2),
+        (3, "NFIP & FEMA Guidelines", "nfip-fema-guidelines", """<h2>NFIP & FEMA Guidelines</h2>
+<p>The National Flood Insurance Program is the primary source of flood insurance in the United States. As an adjuster, you must understand how it works.</p>
+<h3>NFIP Policy Basics</h3>
+<ul>
+<li><strong>Residential coverage limits:</strong> $250,000 building / $100,000 contents</li>
+<li><strong>Commercial coverage limits:</strong> $500,000 building / $500,000 contents</li>
+<li><strong>Waiting period:</strong> 30 days for new policies to take effect (exceptions: renewals, map changes, mortgage closings)</li>
+<li><strong>Deductibles:</strong> Separate building and contents deductibles. Higher deductibles in SFHAs</li>
+</ul>
+<h3>WYO Companies</h3>
+<p>Write Your Own companies are private insurers that sell and service NFIP policies. The federal government underwrites the risk. Major WYO companies include Allstate, USAA, Assurant, and others.</p>
+<h3>Claims Process</h3>
+<ol>
+<li>Policyholder contacts insurer to report loss</li>
+<li>Insurance company assigns adjuster</li>
+<li>Adjuster inspects property, documents damage</li>
+<li>Proof of Loss filed within 60 days</li>
+<li>Claim settled and payment issued</li>
+</ol>
+<h3>ICC Coverage</h3>
+<p>Increased Cost of Compliance — up to $30,000 for buildings declared substantially damaged. Covers elevation, relocation, or demolition to bring building into compliance with current floodplain regulations.</p>
+<h3>Flood Zones</h3>
+<ul>
+<li><strong>Zone V:</strong> Coastal high-risk (wave action)</li>
+<li><strong>Zone VE:</strong> Coastal high-risk with detailed mapping</li>
+<li><strong>Zone A:</strong> Inland high-risk</li>
+<li><strong>Zone AE:</strong> Inland high-risk with detailed mapping</li>
+<li><strong>Zone X:</strong> Moderate to low risk</li>
+</ul>""", 40, 3),
+        (4, "Damage Assessment & Documentation", "damage-assessment", """<h2>Damage Assessment & Documentation</h2>
+<p>Thorough documentation is the foundation of every successful flood claim. Missing details can result in underpayment or denied claims.</p>
+<h3>Initial Inspection Steps</h3>
+<ol>
+<li><strong>Safety first:</strong> Check for structural damage, electrical hazards, gas leaks, mold</li>
+<li><strong>Establish water source:</strong> Where did the water come from? Category determination</li>
+<li><strong>Document the water line:</strong> Photograph and measure water stains on walls</li>
+<li><strong>Room-by-room survey:</strong> Systematic documentation of every affected room</li>
+</ol>
+<h3>Photo Documentation</h3>
+<ul>
+<li>Wide shots of each room showing overall damage</li>
+<li>Close-ups of specific damage areas</li>
+<li>Water line measurements with tape measure visible</li>
+<li>Serial numbers on damaged appliances and equipment</li>
+<li>Before photos if available</li>
+</ul>
+<h3>Building Materials to Identify</h3>
+<ul>
+<li><strong>Drywall:</strong> Note wicking height, staining, bubbling paint</li>
+<li><strong>Flooring:</strong> Material type, damage type (buckling, warping, delamination), affected sqft</li>
+<li><strong>Insulation:</strong> Fiberglass (unsalvageable if wet), spray foam (ok), cellulose (replace)</li>
+<li><strong>Electrical:</li>
+<li><strong>HVAC:</strong> Ductwork, air handler, thermostat damage</li>
+<li><strong>Cabinets:</strong> Base vs. upper, material, water line height</li>
+</ul>
+<h3>Mold Assessment</h3>
+<p>Mold can begin growing in 24-48 hours. Document any visible mold — location, color, coverage area, growth stage. Recommend professional mold remediation for Category 3 or large areas.</p>""", 35, 4),
+        (5, "Adjuster Licensing & Certification", "adjuster-licensing", """<h2>Adjuster Licensing & Certification</h2>
+<p>Each state has its own requirements for insurance adjuster licensing. Here's what you need to know to get started.</p>
+<h3>State Licensing</h3>
+<p>Most states require adjusters to be licensed through the state Department of Insurance. Requirements typically include:</p>
+<ul>
+<li>Complete a pre-licensing education course (20-40 hours)</li>
+<li>Pass the state adjuster licensing exam</li>
+<li>Submit application and fees</li>
+<li>Background check (some states)</li>
+<li>Maintain continuing education (typically 24 hours every 2 years)</li>
+</ul>
+<h3>Designated Home State (DHS)</h3>
+<p>If you're licensed in your home state, most other states will grant you a license through reciprocity. The National Insurance Producer Registry (NIPR) handles multi-state licensing.</p>
+<h3>FEMA Adjuster Exam</h3>
+<p>FEMA doesn't license adjusters, but they do offer training and certification for adjusters who work on NFIP claims. The FEMA adjuster exam covers NFIP policy details, claims procedures, and documentation requirements.</p>
+<h3>Independent vs. Staff Adjuster</h3>
+<ul>
+<li><strong>Staff adjuster:</strong> Employed by one insurance company. Steady work, benefits, company training.</li>
+<li><strong>Independent adjuster:</strong> Self-employed, contracted by multiple companies. More flexibility, storm chasing opportunities, higher earning potential during catastrophe events.</li>
+</ul>
+<h3>Career Path</h3>
+<p>Many successful adjusters start during storm events (hurricane season), build experience and relationships, then transition to full-time independent work. Average income for experienced independent adjusters ranges from $60K-$120K+, with some earning significantly more during major catastrophe events.</p>""", 20, 5),
+    ]
+    db.executemany(
+        'INSERT OR IGNORE INTO training_modules (module_num, title, slug, content, duration_min, sort_order) VALUES (?,?,?,?,?,?)',
+        modules
+    )
+    db.commit()
+    db.close()
+
+_seed_training_modules()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PUBLIC: Become a Flood Adjuster — Training, Exams & Application
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route('/become-an-agent', methods=['GET'])
+def become_an_agent():
+    """Public landing page for becoming a flood adjuster."""
+    db = get_db()
+    modules = db.execute(
+        'SELECT * FROM training_modules WHERE is_active=1 ORDER BY sort_order, module_num'
+    ).fetchall()
+    return render_template('become_agent.html', modules=modules)
+
+
+@app.route('/training/<slug>', methods=['GET'])
+def training_module(slug):
+    """View a single training module."""
+    db = get_db()
+    module = db.execute(
+        'SELECT * FROM training_modules WHERE slug=? AND is_active=1', (slug,)
+    ).fetchone()
+    if not module:
+        flash('Training module not found.', 'error')
+        return redirect(url_for('become_an_agent'))
+    return render_template('training_module.html', module=module)
+
+
+@app.route('/practice-exam', methods=['GET', 'POST'])
+def practice_exam():
+    """Practice exam — AI generates random questions each time."""
+    db = get_db()
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        if not name or not email:
+            flash('Please enter your name and email to start the exam.', 'error')
+            return redirect(url_for('practice_exam'))
+        # Generate exam questions via AI
+        questions = _generate_practice_questions(db)
+        token = secrets.token_urlsafe(16)
+        db.execute(
+            'INSERT INTO exam_sessions (candidate_name, candidate_email, session_token, questions_json, total_questions, is_practice) VALUES (?,?,?,?,?,1)',
+            (name, email, token, json.dumps(questions), len(questions))
+        )
+        db.commit()
+        return redirect(url_for('practice_exam_take', token=token))
+    return render_template('practice_exam_start.html')
+
+
+@app.route('/practice-exam/<token>', methods=['GET', 'POST'])
+def practice_exam_take(token):
+    """Take a practice exam."""
+    db = get_db()
+    session = db.execute('SELECT * FROM exam_sessions WHERE session_token=? AND is_practice=1', (token,)).fetchone()
+    if not session:
+        flash('Exam session not found or expired.', 'error')
+        return redirect(url_for('practice_exam'))
+    questions = json.loads(session['questions_json'])
+    if request.method == 'POST':
+        answers = {}
+        for q in questions:
+            qid = str(q['id'])
+            answers[qid] = request.form.get(qid, '')
+        score = 0
+        for q in questions:
+            if answers.get(str(q['id']), '').lower() == q['answer'].lower():
+                score += 1
+        pct = int(score / len(questions) * 100) if questions else 0
+        db.execute(
+            'UPDATE exam_sessions SET answers_json=?, score=?, is_completed=1, completed_at=CURRENT_TIMESTAMP WHERE session_token=?',
+            (json.dumps(answers), pct, token)
+        )
+        db.commit()
+        return render_template('practice_exam_results.html', score=pct, total=len(questions), correct=score, questions=questions, answers=answers)
+    return render_template('practice_exam_take.html', questions=questions, token=token, name=session['candidate_name'])
+
+
+def _generate_practice_questions(db):
+    """Generate 20 random practice questions covering flood adjustment knowledge."""
+    import random
+    question_pool = [
+        # Water Categories & Classes
+        {"q": "What is Water Category 1?", "options": ["Clean water from a broken pipe", "Grey water from a washing machine", "Black water from sewage", "Salt water from the ocean"], "answer": "A", "topic": "Water Categories"},
+        {"q": "What is Water Category 3 also known as?", "options": ["Clean water", "Grey water", "Black water / Grossly contaminated", "Mineral water"], "answer": "C", "topic": "Water Categories"},
+        {"q": "Which water class affects only the floor area of a room?", "options": ["Class 1", "Class 2", "Class 3", "Class 4"], "answer": "A", "topic": "Water Classes"},
+        {"q": "What does Water Class 4 indicate?", "options": ["Only the floor is wet", "Walls are affected up to 24 inches", "The entire room is saturated", "Specialty drying for hardwood, concrete, or plaster"], "answer": "D", "topic": "Water Classes"},
+        {"q": "Water from a toilet overflow with urine is classified as which category?", "options": ["Category 1", "Category 2", "Category 3", "Category 0"], "answer": "B", "topic": "Water Categories"},
+        # NFIP / FEMA Knowledge
+        {"q": "What is the maximum structure coverage for residential NFIP?", "options": ["$100,000", "$250,000", "$500,000", "$1,000,000"], "answer": "B", "topic": "NFIP"},
+        {"q": "How long is the NFIP waiting period before a new policy takes effect?", "options": ["24 hours", "7 days", "30 days", "90 days"], "answer": "C", "topic": "NFIP"},
+        {"q": "What is ICC coverage in an NFIP policy?", "options": ["Interstate Commerce Coverage", "Increased Cost of Compliance", "Insurance Claim Compensation", "International Claims Coverage"], "answer": "B", "topic": "NFIP"},
+        {"q": "How long does a NFIP policyholder have to file a Proof of Loss?", "options": ["30 days", "60 days", "90 days", "1 year"], "answer": "B", "topic": "NFIP"},
+        {"q": "What is a Preferred Risk Policy (PRP)?", "options": ["The most expensive flood policy", "A lower-cost policy for moderate-to-low risk zones", "A policy for commercial buildings only", "A temporary policy"], "answer": "B", "topic": "NFIP"},
+        # Flood Damage Assessment
+        {"q": "Within how many hours can mold start growing after water intrusion?", "options": ["2-4 hours", "6-12 hours", "24-48 hours", "7 days"], "answer": "C", "topic": "Damage Assessment"},
+        {"q": "What is the first thing an adjuster should do upon arriving at a flood-damaged property?", "options": ["Start documenting with photos", "Begin water extraction", "Remove drywall", "Set up drying equipment"], "answer": "A", "topic": "Damage Assessment"},
+        {"q": "What does 'wicking' refer to in flood damage?", "options": ["Water evaporating from surfaces", "Water being drawn upward into walls and materials", "Water being pumped out of a basement", "Water changing from category to category"], "answer": "B", "topic": "Damage Assessment"},
+        {"q": "Which material is MOST likely to be salvageable after Category 1 water damage?", "options": ["Drywall", "Fiberglass insulation", "Concrete block", "Carpet padding"], "answer": "C", "topic": "Damage Assessment"},
+        {"q": "What document must be signed by the policyholder to finalize an NFIP claim payment?", "options": ["A contractor estimate", "A Proof of Loss form", "A police report", "A home inspection report"], "answer": "B", "topic": "Damage Assessment"},
+        # Adjuster Licensing
+        {"q": "Which organization provides adjuster licensing in most states?", "options": ["FEMA", "State Department of Insurance", "NFIP", "Department of Housing"], "answer": "B", "topic": "Licensing"},
+        {"q": "What is a WYO company?", "options": ["A company that writes flood insurance policies through NFIP", "A FEMA emergency response team", "A state licensing board", "A restoration contractor association"], "answer": "A", "topic": "Licensing"},
+        {"q": "An independent adjuster typically works for:", "options": ["One specific insurance company", "Multiple insurance companies on a contract basis", "FEMA directly", "The state government"], "answer": "B", "topic": "Licensing"},
+        # FloodClaims Pro Platform
+        {"q": "What AI assistant is built into FloodClaims Pro?", "options": ["FloodBot", "Aquila", "ClaimMaster", "AdjusterAI"], "answer": "B", "topic": "Platform"},
+        {"q": "What feature does FloodClaims Pro use to analyze damage photos?", "options": ["Manual sketching", "Photo-to-Claim AI analysis", "Video recording only", "Handwritten notes"], "answer": "B", "topic": "Platform"},
+        # Safety & Standards
+        {"q": "What PPE should be worn in a Category 3 water damage environment?", "options": ["No special equipment needed", "Gloves only", "Full PPE including respirator, gloves, and waterproof suit", "Hard hat only"], "answer": "C", "topic": "Safety"},
+        {"q": "What is the primary purpose of an elevation certificate?", "options": ["To prove ownership", "To determine flood insurance rates and building compliance", "To file a tax deduction", "To apply for a building permit"], "answer": "B", "topic": "Safety"},
+        # Claims Process
+        {"q": "What is the first step in the insurance claims process after a flood?", "options": ["Hire a contractor", "File the claim with the insurance company", "Begin repairs", "Throw away damaged items"], "answer": "B", "topic": "Claims Process"},
+        {"q": "Which zone is considered the highest coastal flood risk?", "options": ["Zone A", "Zone AE", "Zone V", "Zone X"], "answer": "C", "topic": "Claims Process"},
+    ]
+    # Pick 20 random questions each time
+    selected = random.sample(question_pool, min(20, len(question_pool)))
+    for i, q in enumerate(selected):
+        q['id'] = i + 1
+        # Shuffle options but track correct answer
+        opts = list(zip(['A', 'B', 'C', 'D'], q['options']))
+        random.shuffle(opts)
+        q['options'] = [o[1] for o in opts]
+        for j, (letter, text) in enumerate(opts):
+            if letter == q['answer']:
+                q['answer'] = ['A', 'B', 'C', 'D'][j]
+                break
+    return selected
+
+
+@app.route('/apply-adjuster', methods=['GET', 'POST'])
+def apply_adjuster():
+    """Public application form for prospective adjusters."""
+    db = get_db()
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        phone = request.form.get('phone', '').strip()
+        state = request.form.get('state', '').strip()
+        licensed = 1 if request.form.get('licensed') else 0
+        license_number = request.form.get('license_number', '').strip()
+        exam_score = request.form.get('exam_score', '').strip()
+        if not name or not email or not state:
+            flash('Name, email, and state are required.', 'error')
+            return redirect(url_for('apply_adjuster'))
+        try:
+            db.execute(
+                'INSERT INTO adjuster_applications_v2 (name, email, phone, state, licensed, license_number, exam_score, status) VALUES (?,?,?,?,?,?,?,?)',
+                (name, email, phone, state, licensed, license_number, int(exam_score) if exam_score else None, 'interested')
+            )
+            db.commit()
+            flash('Application submitted! We\'ll be in touch soon.', 'success')
+        except Exception as e:
+            flash('Error submitting application. Email may already be registered.', 'error')
+        return redirect(url_for('become_an_agent'))
+    return render_template('apply_adjuster.html')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Admin: Recruitment Management (existing)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 @app.route('/admin/recruit', methods=['GET', 'POST'])
 @login_required
