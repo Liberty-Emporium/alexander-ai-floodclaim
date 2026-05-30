@@ -282,9 +282,7 @@
     </div>
 
     <div class="info-box">
-      <strong>Train Aquila's brain</strong> — edit his identity, soul, memory, and system prompt directly.
-      Changes take effect on the next chat session. No dependency on any external widget.
-      Everything is stored locally in FloodClaims Pro's database.
+      <strong>Train Aquila's brain</strong> — edit his identity, soul, memory, and system prompt directly. Use the <strong>📷 Photo Training</strong> tab to customize how the AI analyzes damage photos. Changes take effect immediately.
     </div>
 
     <div id="brain-editor">
@@ -294,6 +292,7 @@
         <button type="button" class="btn btn-sm btn-brain-tab" data-tab="soul" onclick="switchBrainTab('soul')" style="background:var(--gray-200);color:var(--gray-800);">💫 SOUL.md</button>
         <button type="button" class="btn btn-sm btn-brain-tab" data-tab="memory" onclick="switchBrainTab('memory')" style="background:var(--gray-200);color:var(--gray-800);">🧠 MEMORY.md</button>
         <button type="button" class="btn btn-sm btn-brain-tab" data-tab="system" onclick="switchBrainTab('system')" style="background:var(--gray-200);color:var(--gray-800);">⚙️ System Prompt</button>
+        <button type="button" class="btn btn-sm btn-brain-tab" data-tab="photo" onclick="switchBrainTab('photo')" style="background:var(--gray-200);color:var(--gray-800);">📷 Photo Training</button>
       </div>
 
       <div class="brain-tab-content" id="tab-identity">
@@ -309,8 +308,31 @@
         <textarea class="form-control" id="brain-memory" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
       </div>
       <div class="brain-tab-content" id="tab-system" style="display:none;">
-        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">The system-level instructions sent to the AI model on every message.</div>
+        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">The system-level instructions sent to the AI model on every chat message.</div>
         <textarea class="form-control" id="brain-system" rows="14" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
+      </div>
+
+      <!-- ── Photo Training Tab ── -->
+      <div class="brain-tab-content" id="tab-photo" style="display:none;">
+        <div style="font-size:.82rem;color:var(--gray-400);margin-bottom:.4rem;">
+          Customize the prompt used when AI analyzes damage photos. This controls <strong>what details it looks for</strong> and <strong>how it reports damage</strong>. Use variables like <code>{room_name}</code>, <code>{claim_info}</code> — or just write free-form instructions.
+        </div>
+        <textarea class="form-control" id="brain-photo-prompt" rows="16" placeholder="Loading..." style="font-family:monospace;font-size:.82rem;resize:vertical;"></textarea>
+
+        <!-- Test section -->
+        <div style="margin-top:1rem;padding:1rem;background:rgba(6,182,212,.05);border:1px solid rgba(6,182,212,.2);border-radius:10px;">
+          <div style="font-size:.8rem;font-weight:700;color:var(--cyan);margin-bottom:.5rem;">🧪 Test Photo Analysis</div>
+          <div style="font-size:.75rem;color:var(--gray-400);margin-bottom:.5rem;">Upload a flood damage photo to test your training prompt. The AI will analyze it using your custom instructions above.</div>
+          <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+            <input type="file" id="test-photo-file" accept="image/*" style="font-size:.75rem;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-test-photo" onclick="testPhotoAnalysis()">🔍 Analyze Photo</button>
+            <span id="test-photo-status" style="font-size:.75rem;color:var(--gray-400);"></span>
+          </div>
+          <div id="test-photo-result" style="margin-top:.75rem;display:none;">
+            <div style="font-size:.7rem;font-weight:700;color:var(--gray-500);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.04em;">AI Analysis Result:</div>
+            <div id="test-photo-output" style="font-size:.8rem;color:var(--gray-700);line-height:1.7;white-space:pre-wrap;background:#fff;border:1px solid var(--gray-200);border-radius:8px;padding:.75rem;max-height:300px;overflow-y:auto;"></div>
+          </div>
+        </div>
       </div>
 
       <div style="display:flex;gap:.75rem;align-items:center;margin-top:1rem;flex-wrap:wrap;">
@@ -619,6 +641,10 @@ function switchBrainTab(tabName) {
     activeBtn.style.background = 'var(--blue-light)';
     activeBtn.style.color = '#fff';
   }
+  // Auto-load photo prompt when switching to photo tab
+  if (tabName === 'photo') {
+    loadPhotoPrompt();
+  }
 }
 
 function loadBrainFiles() {
@@ -654,6 +680,7 @@ function saveBrainFiles() {
   body.append('brain_soul_md', document.getElementById('brain-soul').value);
   body.append('brain_memory_md', document.getElementById('brain-memory').value);
   body.append('brain_system_prompt', document.getElementById('brain-system').value);
+  body.append('brain_photo_prompt', document.getElementById('brain-photo-prompt').value);
   fetch('/admin/willie/brain/update', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -673,6 +700,71 @@ function saveBrainFiles() {
   .catch(e => {
     status.textContent = '❌ Network error: ' + e.message;
     status.style.color = '#ef4444';
+  });
+}
+
+// ── Photo Training ───────────────────────────────────────────────────────────
+function loadPhotoPrompt() {
+  var textarea = document.getElementById('brain-photo-prompt');
+  if (textarea.dataset.loaded) return;
+  // Load from brain API (already included in /admin/settings/data)
+  fetch('/admin/settings/data', { credentials: 'include' })
+    .then(r => r.json())
+    .then(d => {
+      var prompt = d.brain_photo_prompt || '';
+      if (!prompt) {
+        // Set default detailed prompt
+        prompt = `You are a certified flood damage adjuster conducting a professional property inspection. Analyze this photo in EXTREME detail, as if writing an insurance claim report.\n\nFor EVERY ITEM visible in the photo, report:\n\n1. ITEM IDENTIFICATION — What is it? (e.g. drywall, hardwood flooring, kitchen cabinet, ceiling joist, electrical outlet, window frame, carpet, insulation, appliance, furniture, door trim, baseboard, light fixture, etc.)\n\n2. MATERIAL — What is it made of? (e.g. gypsum drywall, solid hardwood, engineered hardwood, ceramic tile, porcelain, fiberglass insulation, MDF cabinetry, solid wood, vinyl, aluminum, etc.)\n\n3. CONDITION/ DAMAGE STATE — Rate each item:\n   • UNDAMAGED — No visible issues\n   • MINOR — Surface staining, slight discoloration, minor water marks\n   • MODERATE — Visible water damage, peeling paint, warping, soft spots, mold spots\n   • SEVERE — Structural failure, significant warping/buckling, major mold growth, crumbling drywall, detached materials\n   • DESTROYED — Complete loss, must be replaced\n\n4. WATER EVIDENCE:\n   • Water line height on walls (estimate in inches/feet from floor)\n   • Standing water depth (if visible)\n   • Water staining pattern (clean line, irregular, capillary rise)\n   • Moisture marks, discoloration patterns\n\n5. MOLD/MILDEW:\n   • Presence: yes/no\n   • Color (black, green, white, brown)\n   • Location and estimated coverage area\n   • Growth stage (surface spots, established colony, heavy growth)\n\n6. STRUCTURAL CONCERNS:\n   • Warping, buckling, sagging of any structural element\n   • Cracking in foundation, walls, ceiling\n   • Delamination of materials\n   • Any visible settling or shifting\n\n7. FLOORING SPECIFICS:\n   • Type and material\n   • Damage pattern (edge cupping, crowning, buckling, staining, delamination)\n   • Estimated affected square footage\n   • Pad/funderlayment condition if visible\n\n8. WALL/DRYWALL SPECIFICS:\n   • Water line height\n   • Paint condition (bubbling, peeling, staining)\n   • Texture damage (popcorn, orange peel, smooth)\n   • Baseboard condition\n   • Any visible stud damage or insulation exposure\n\n9. CEILING SPECIFICS:\n   • Staining pattern and coverage\n   • Sagging or bowing\n   • Hole(s) or collapse\n   • Light fixture damage\n\n10. CONTENTS/PERSONAL PROPERTY:\n    • List any visible personal property/appliances/furniture\n    • Damage state of each item\n\n11. WATER CLASSIFICATION:\n    • Category 1 (Clean) / Category 2 (Gray) / Category 3 (Black) — based on visible contamination\n    • Water Class 1-4 based on affected materials and extent of saturation\n\nFormat your response as a structured inspection report. Be very detailed and specific. Use measurements where possible.`;
+      }
+      textarea.value = prompt;
+      textarea.dataset.loaded = '1';
+    })
+    .catch(function() {
+      textarea.placeholder = 'Error loading. Click Reload or enter your custom photo analysis prompt here.';
+    });
+}
+
+function testPhotoAnalysis() {
+  var fileInput = document.getElementById('test-photo-file');
+  var status = document.getElementById('test-photo-status');
+  var result = document.getElementById('test-photo-result');
+  var output = document.getElementById('test-photo-output');
+  var btn = document.getElementById('btn-test-photo');
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    status.textContent = '⚠️ Please select a photo first.';
+    return;
+  }
+
+  status.textContent = '⏳ Analyzing...';
+  btn.disabled = true;
+  result.style.display = 'none';
+
+  var formData = new FormData();
+  formData.append('photo', fileInput.files[0]);
+  formData.append('test_prompt', document.getElementById('brain-photo-prompt').value);
+  var csrfEl = document.querySelector('meta[name="csrf"]');
+  if (csrfEl) formData.append('csrf_token', csrfEl.content);
+
+  fetch('/admin/api/test-photo-analysis', {
+    method: 'POST',
+    credentials: 'include',
+    body: formData
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    if (data.ok) {
+      status.textContent = '✅ Analysis complete!';
+      output.textContent = data.analysis || data.description || JSON.stringify(data, null, 2);
+      result.style.display = 'block';
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Analysis failed');
+    }
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    status.textContent = '❌ Error: ' + err.message;
   });
 }
 

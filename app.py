@@ -1967,6 +1967,67 @@ def api_free_models():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route('/admin/api/test-photo-analysis', methods=['POST'])
+@login_required
+@admin_required
+def api_test_photo_analysis():
+    """Test photo analysis with custom prompt from brain training."""
+    if 'photo' not in request.files:
+        return jsonify({'ok': False, 'error': 'No photo uploaded'}), 400
+    file = request.files['photo']
+    test_prompt = request.form.get('test_prompt', '')
+    if not test_prompt:
+        test_prompt = None  # Will use default in ai_describe_photo_detailed
+
+    import tempfile, os
+    suffix = '.' + file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else '.jpg'
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    file.save(tmp.name)
+    tmp.close()
+
+    key = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    if not key:
+        os.unlink(tmp.name)
+        return jsonify({'ok': False, 'error': 'OpenRouter API key not configured'}), 400
+
+    model = get_setting('ai_vision_model') or get_setting('ai_model', 'openrouter/auto')
+    text_only = {'openrouter/owl-alpha', 'openrouter/owl', 'openai/o3-mini', 'deepseek/deepseek-r1'}
+    if model in text_only:
+        model = 'openrouter/auto'
+
+    try:
+        # Use custom prompt if provided
+        if test_prompt:
+            import base64 as _b64
+            with open(tmp.name, 'rb') as f:
+                img_b64 = _b64.b64encode(f.read()).decode()
+            ext = suffix.replace('.', '')
+            mime = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
+            r = _req.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+                json={
+                    'model': model,
+                    'messages': [{
+                        'role': 'user',
+                        'content': [
+                            {'type': 'text', 'text': test_prompt},
+                            {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}}
+                        ]
+                    }],
+                    'max_tokens': 2000
+                }, timeout=60)
+            result = r.json()['choices'][0]['message']['content']
+        else:
+            result = ai_describe_photo_detailed(tmp.name, key, model)
+        os.unlink(tmp.name)
+        return jsonify({'ok': True, 'analysis': result})
+    except Exception as e:
+        try: os.unlink(tmp.name)
+        except: pass
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 # ── Admin: Team Management ────────────────────────────────────────────────────
 
 @app.route('/admin/team')
@@ -3189,7 +3250,7 @@ def willie_update_settings():
 def willie_brain_get():
     """Fetch Aquila's brain files from local database settings."""
     db = get_db()
-    keys = ['brain_identity_md', 'brain_soul_md', 'brain_memory_md', 'brain_system_prompt']
+    keys = ['brain_identity_md', 'brain_soul_md', 'brain_memory_md', 'brain_system_prompt', 'brain_photo_prompt']
     result = {}
     for k in keys:
         row = db.execute('SELECT value FROM settings WHERE key=?', (k,)).fetchone()
@@ -3207,6 +3268,10 @@ def willie_brain_update():
     for key in brain_keys:
         val = request.form.get(key, '')
         set_setting(key, val)
+    # Photo analysis training prompt
+    photo_prompt = request.form.get('brain_photo_prompt', '')
+    if photo_prompt:
+        set_setting('brain_photo_prompt', photo_prompt)
     return jsonify({'ok': True, 'message': 'Brain files saved!', 'updated': brain_keys})
 
 
@@ -3868,8 +3933,30 @@ Return ONLY valid JSON, no other text:
 
 
 def ai_describe_photo_detailed(image_path, key, model):
-    """Run vision AI on a photo with a detailed damage-focused prompt."""
+    """Run vision AI on a photo with a detailed damage-focused prompt, customized by brain training."""
     try:
+        # Load custom photo prompt from brain training if available
+        custom_prompt = get_setting('brain_photo_prompt', '')
+        if custom_prompt:
+            prompt_text = custom_prompt
+        else:
+            prompt_text = (
+                'You are a certified flood damage assessor. Analyze this photo in extreme detail. '
+                'Describe EVERYTHING you see:\n'
+                '• List each item/structure visible (walls, floors, ceilings, cabinets, appliances, furniture, doors, windows, etc.)\n'
+                '• For each item, note its CONDITION (undamaged / minor water staining / moderate damage / severe damage / destroyed)\n'
+                '• Describe WATER EVIDENCE: water lines on walls, standing water depth, moisture marks, discoloration\n'
+                '• Note MOLD/MILDEW: presence, color, location, estimated coverage\n'
+                '• Describe STRUCTURAL CONCERNS: warping, buckling, cracking, delamination, foundation shifts\n'
+                '• Note the FLOORING type and damage level (hardwood/tile/carpet/cork/concrete — buckled/stained/warped/destroyed)\n'
+                '• Note WALL/DRYWALL condition: water line height, peeling paint, soft spots, holes, texture damage\n'
+                '• Note CEILING condition: staining, sagging, holes, collapse risk\n'
+                '• Identify any PERSONAL PROPERTY/CONTENTS visible and their damage state\n'
+                '• Estimate water category (1=clean, 2=gray, 3=blackwater) and water class (1-4)\n'
+                '• Be extremely specific — describe dimensions, materials, colors, textures where visible\n'
+                '• Format as a structured inspection report with clear sections'
+            )
+
         with open(image_path, 'rb') as f:
             img_b64 = base64.b64encode(f.read()).decode()
         ext  = image_path.rsplit('.', 1)[-1].lower()
@@ -3882,18 +3969,12 @@ def ai_describe_photo_detailed(image_path, key, model):
                 'messages': [{
                     'role': 'user',
                     'content': [
-                        {'type': 'text', 'text': (
-                            'You are a flood damage assessor. Describe ALL visible damage in this photo in detail. '
-                            'Include: what materials are damaged (drywall, flooring, ceiling, cabinets, etc.), '
-                            'the severity (minor/moderate/severe), visible water lines or staining, '
-                            'mold or mildew presence, structural concerns, and estimated affected square footage. '
-                            'Be specific and professional. 3-5 sentences.'
-                        )},
+                        {'type': 'text', 'text': prompt_text},
                         {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}}
                     ]
                 }],
-                'max_tokens': 300
-            }, timeout=30)
+                'max_tokens': 1500
+            }, timeout=60)
         return r.json()['choices'][0]['message']['content']
     except Exception:
         return ''
