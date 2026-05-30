@@ -105,34 +105,7 @@
   }
   .help-box strong { color: var(--blue-light); }
 
-  /* Chat bubble icon picker */
-  .icon-grid {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
-    margin: .5rem 0;
-  }
-  .icon-cell-btn {
-    display: flex !important; align-items: center; justify-content: center;
-    padding: 10px; border-radius: 10px; cursor: pointer;
-    font-size: 1.8rem; line-height: 1;
-    border: 2px solid rgba(100,116,139,.2);
-    background: rgba(255,255,255,.03);
-    transition: all .15s;
-    box-sizing: border-box;
-    width: 100%; min-width: 0;
-    margin: 0;
-  }
-  .icon-cell-btn:hover {
-    background: rgba(59,130,246,.1);
-    border-color: rgba(59,130,246,.3);
-  }
-  .icon-opt:checked + .icon-cell-btn {
-    border-color: var(--blue-light);
-    background: rgba(59,130,246,.15);
-    box-shadow: 0 0 0 1px var(--blue-light);
-  }
-  .icon-opt {
-    position: absolute; opacity: 0; pointer-events: none;
-  }
+  /* Chat bubble icon picker - legacy, now using inline styles */
   .upload-preview {
     width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
     border: 2px solid var(--border); margin-top: .5rem;
@@ -405,15 +378,21 @@
       <!-- Emoji Icon Picker -->
       <div class="form-group" style="margin-top:.75rem;">
         <label>Or Choose an Emoji Icon</label>
-        <div class="icon-grid" id="iconGrid">
+        <div id="iconGrid" style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:.5rem 0;">
           {% for e in ['🌊','💧','🌀','🏠','🔧','📋','🤖','👷','🛡️','⚡','🔥','🌧️','💦','🏗️','📊','🗺️','💼','🎯','🧠','💪'] %}
-          <input class="icon-opt" type="radio" name="bubble_emoji_icon" value="{{ e }}"
-                 id="emoji_{{ loop.index }}"
-                 {% if e == '🌊' %}checked{% endif %}
-                 onchange="document.getElementById('bubbleEmojiPreview').textContent='{{ e }}';clearUpload();">
-          <label class="icon-cell-btn" for="emoji_{{ loop.index }}">{{ e }}</label>
+          <label style="display:flex; align-items:center; justify-content:center; padding:10px; border-radius:10px; cursor:pointer; font-size:1.8rem; line-height:1; border:2px solid rgba(100,116,139,.2); background:rgba(255,255,255,.03); transition:all .15s; margin:0; text-align:center; font-weight:400; text-transform:none; letter-spacing:normal; color:inherit; width:100%; box-sizing:border-box; min-width:0;">
+            <input type="radio" name="bubble_emoji_icon" value="{{ e }}"
+                   style="position:absolute; opacity:0; pointer-events:none;"
+                   {% if e == '🌊' %}checked{% endif %}
+                   onchange="document.getElementById('bubbleEmojiPreview').textContent='{{ e }}';clearUpload();">
+            {{ e }}
+          </label>
           {% endfor %}
         </div>
+        <style>
+          #iconGrid label:hover { background:rgba(59,130,246,.1) !important; border-color:rgba(59,130,246,.3) !important; }
+          #iconGrid label:has(input:checked) { border-color:var(--blue-light) !important; background:rgba(59,130,246,.15) !important; box-shadow:0 0 0 1px var(--blue-light) !important; }
+        </style>
       </div>
 
       <!-- Preview -->
