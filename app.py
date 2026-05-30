@@ -1942,6 +1942,38 @@ def add_team_member():
         flash('Email already exists.', 'error')
     return redirect(url_for('team'))
 
+@app.route('/admin/team/<int:user_id>/edit', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def edit_team_member(user_id):
+    db    = get_db()
+    email = request.form.get('email', '').strip().lower()
+    name  = request.form.get('name', '').strip()
+    pw    = request.form.get('password', '').strip()
+    role  = request.form.get('role', 'adjuster')
+    if not email:
+        flash('Email is required.', 'error')
+        return redirect(url_for('team'))
+    # If password provided, validate it
+    if pw:
+        ok, err = _validate_password(pw)
+        if not ok:
+            flash(err, 'error')
+            return redirect(url_for('team'))
+    try:
+        if pw:
+            db.execute('UPDATE users SET email=?, name=?, password=?, role=? WHERE id=?',
+                       (email, name, hash_pw(pw), role, user_id))
+        else:
+            db.execute('UPDATE users SET email=?, name=?, role=? WHERE id=?',
+                       (email, name, role, user_id))
+        db.commit()
+        flash(f'Team member {name} updated!', 'success')
+    except sqlite3.IntegrityError:
+        flash('Email already exists.', 'error')
+    return redirect(url_for('team'))
+
 @app.route('/admin/team/<int:user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
@@ -2815,6 +2847,47 @@ def willie_delete_line_item(item_id):
     db.execute('DELETE FROM line_items WHERE id=?', (item_id,))
     db.commit()
     return jsonify({'ok': True, 'message': f'Line item "{item["description"]}" deleted.'})
+
+
+@app.route('/willie/api/team/<int:user_id>', methods=['PUT', 'PATCH'])
+def willie_edit_team_member(user_id):
+    if not willie_auth():
+        return jsonify({'error': 'unauthorized'}), 401
+    data  = request.get_json(silent=True) or {}
+    name  = data.get('name', '').strip()
+    email = data.get('email', '').strip().lower()
+    pw    = data.get('password', '').strip()
+    role  = data.get('role', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'email is required'}), 400
+    if role and role not in ('admin', 'adjuster'):
+        return jsonify({'error': 'role must be admin or adjuster'}), 400
+    if pw:
+        ok, err = _validate_password(pw)
+        if not ok:
+            return jsonify({'error': err}), 400
+    db = get_db()
+    user = db.execute('SELECT id FROM users WHERE id=?', (user_id,)).fetchone()
+    if not user:
+        return jsonify({'error': 'Team member not found'}), 404
+    try:
+        if pw and role:
+            db.execute('UPDATE users SET name=?, email=?, password=?, role=? WHERE id=?',
+                       (name, email, hash_pw(pw), role, user_id))
+        elif pw:
+            db.execute('UPDATE users SET name=?, email=?, password=? WHERE id=?',
+                       (name, email, hash_pw(pw), user_id))
+        elif role:
+            db.execute('UPDATE users SET name=?, email=?, role=? WHERE id=?',
+                       (name, email, role, user_id))
+        else:
+            db.execute('UPDATE users SET name=?, email=? WHERE id=?',
+                       (name, email, user_id))
+        db.commit()
+        updated = db.execute('SELECT id, name, email, role FROM users WHERE id=?', (user_id,)).fetchone()
+        return jsonify({'ok': True, 'user': dict(updated), 'message': f'Team member {name} updated.'})
+    except sqlite3.IntegrityError:
+        return jsonify({'error': f'Email {email} already exists'}), 409
 
 
 @app.route('/willie/api/team/<int:user_id>', methods=['DELETE'])
