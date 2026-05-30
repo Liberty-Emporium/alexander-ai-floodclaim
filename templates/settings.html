@@ -107,21 +107,21 @@
 
   /* Chat bubble icon picker */
   .icon-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
     margin: .5rem 0;
   }
   .icon-cell-wrapper {
     display: flex; align-items: center; justify-content: center;
   }
   .icon-opt {
-    display: none;
+    position: absolute; opacity: 0; pointer-events: none;
   }
-  .icon-cell {
+  .icon-cell-wrapper .icon-cell {
     text-align: center; padding: 8px 4px; border-radius: 8px; cursor: pointer;
-    font-size: 1.3rem; border: 2px solid transparent; transition: all .15s;
+    font-size: 1.4rem; border: 2px solid transparent; transition: all .15s;
     display: block; width: 100%;
   }
-  .icon-cell:hover { background: rgba(59,130,246,.1); }
+  .icon-cell-wrapper .icon-cell:hover { background: rgba(59,130,246,.1); }
   .icon-opt:checked + .icon-cell {
     border-color: var(--blue-light); background: rgba(59,130,246,.12);
   }
