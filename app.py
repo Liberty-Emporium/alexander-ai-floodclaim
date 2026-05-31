@@ -379,7 +379,7 @@ def init_db():
             db.execute('''INSERT INTO training_classes (title, description, price_cents, status) VALUES (?,?,?,?)''',
                        ('Flood Adjusting Fundamentals',
                         'Complete training for aspiring flood adjusters. Covers NFIP guidelines, water damage classification, claim documentation, using FloodClaims Pro platform, and passing the certification exam.',
-                        5000, 'active'))
+                        0, 'active'))
             class_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
             # Seed lessons
             lessons = [
@@ -6534,7 +6534,7 @@ def training_classes():
 @login_required
 @csrf_required
 def enroll_class(class_id):
-    """Enroll and pay for a training class via Stripe (or bypass in demo mode)."""
+    """Enroll in a training class — free, no payment required."""
     db = get_db()
     tc = db.execute('SELECT * FROM training_classes WHERE id=? AND status=?', (class_id, 'active')).fetchone()
     if not tc:
@@ -6546,67 +6546,13 @@ def enroll_class(class_id):
     if existing:
         flash('You are already enrolled in this class.', 'info')
         return redirect(url_for('training_learn', enroll_id=existing['id']))
-    # Demo mode: bypass Stripe payment (auto-enabled when no Stripe key is set)
-    stripe_key = get_setting('stripe_secret_key') or os.environ.get('STRIPE_SECRET_KEY', '')
-    demo_mode = os.environ.get('DEMO_MODE', '').lower() in ('1', 'true', 'yes') or (not stripe_key and not STRIPE_OK)
-    if demo_mode and not stripe_key:
-        # Direct enrollment without payment
-        db.execute('''INSERT OR REPLACE INTO training_enrollments (user_id, class_id, stripe_session, payment_status)
-                      VALUES (?,?,?,?)''',
-                   (session['user_id'], class_id, 'demo-bypass', 'completed'))
-        db.commit()
-        flash('🎉 Demo mode — enrolled for free! Start learning!', 'success')
-        return redirect(url_for('training_learn', enroll_id=db.execute('SELECT last_insert_rowid()').fetchone()[0]))
-    if not stripe_key or not STRIPE_OK:
-        flash('Stripe is not configured. Contact admin to set up payments.', 'error')
-        return redirect(url_for('training_classes'))
-    try:
-        _stripe.api_key = stripe_key
-        checkout = _stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{'price_data': {
-                'currency': 'usd',
-                'product_data': {'name': f'Training: {tc["title"]}', 'description': tc['description'][:200]},
-                'unit_amount': tc['price_cents'],
-            }, 'quantity': 1}],
-            mode='payment',
-            success_url=url_for('training_payment_success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}&class_id=' + str(class_id),
-            cancel_url=url_for('training_classes', _external=True),
-            customer_email=session.get('email', ''),
-            metadata={'user_id': str(session['user_id']), 'class_id': str(class_id), 'type': 'training_enrollment'},
-        )
-        # Create pending enrollment
-        db.execute('INSERT INTO training_enrollments (user_id, class_id, stripe_session, payment_status) VALUES (?,?,?,?)',
-                   (session['user_id'], class_id, checkout['id'], 'pending'))
-        db.commit()
-        return redirect(checkout.url)
-    except Exception as e:
-        flash(f'Payment error: {e}', 'error')
-        return redirect(url_for('training_classes'))
-
-
-@app.route('/training/payment/success')
-@login_required
-def training_payment_success():
-    """Handle successful Stripe payment for training class."""
-    session_id = request.args.get('session_id', '')
-    class_id = request.args.get('class_id', '')
-    stripe_key = get_setting('stripe_secret_key') or os.environ.get('STRIPE_SECRET_KEY', '')
-    if session_id and stripe_key and STRIPE_OK and class_id:
-        try:
-            _stripe.api_key = stripe_key
-            cs = _stripe.checkout.Session.retrieve(session_id)
-            if cs.get('payment_status') == 'paid':
-                db = get_db()
-                db.execute('UPDATE training_enrollments SET payment_status=? WHERE user_id=? AND class_id=? AND stripe_session=?',
-                           ('completed', session['user_id'], class_id, session_id))
-                db.commit()
-                flash('🎉 Payment successful! You are now enrolled. Start learning!', 'success')
-            else:
-                flash('Payment not confirmed. Please try again.', 'error')
-        except Exception as e:
-            flash(f'Verification error: {e}', 'error')
-    return redirect(url_for('training_classes'))
+    # Free enrollment — no payment needed
+    db.execute('''INSERT OR REPLACE INTO training_enrollments (user_id, class_id, payment_status)
+                  VALUES (?,?,?)''',
+               (session['user_id'], class_id, 'completed'))
+    db.commit()
+    flash('🎉 Enrolled! Start learning now.', 'success')
+    return redirect(url_for('training_learn', enroll_id=db.execute('SELECT last_insert_rowid()').fetchone()[0]))
 
 
 @app.route('/training/<int:enroll_id>/learn')
@@ -6618,10 +6564,10 @@ def training_learn(enroll_id):
         SELECT te.*, tc.title AS class_title, tc.description AS class_desc
         FROM training_enrollments te
         JOIN training_classes tc ON tc.id = te.class_id
-        WHERE te.id=? AND te.user_id=? AND te.payment_status='completed'
+        WHERE te.id=? AND te.user_id=?
     ''', (enroll_id, session['user_id'])).fetchone()
     if not enrollment:
-        flash('Enrollment not found or payment not completed.', 'error')
+        flash('Enrollment not found.', 'error')
         return redirect(url_for('training_classes'))
     lessons = db.execute('SELECT * FROM training_lessons WHERE class_id=? ORDER BY lesson_order', (enrollment['class_id'],)).fetchall()
     progress = db.execute('SELECT lesson_id, completed FROM training_progress WHERE enrollment_id=?', (enroll_id,)).fetchall()
@@ -6638,8 +6584,8 @@ def training_learn(enroll_id):
 def complete_lesson(enroll_id, lesson_id):
     """Mark a lesson as completed."""
     db = get_db()
-    enrollment = db.execute('SELECT * FROM training_enrollments WHERE id=? AND user_id=? AND payment_status=?',
-                            (enroll_id, session['user_id'], 'completed')).fetchone()
+    enrollment = db.execute('SELECT * FROM training_enrollments WHERE id=? AND user_id=?',
+                            (enroll_id, session['user_id'])).fetchone()
     if not enrollment:
         return jsonify({'error': 'not_enrolled'}), 403
     db.execute('''INSERT INTO training_progress (enrollment_id, lesson_id, completed, completed_at)
@@ -6684,8 +6630,8 @@ def training_exam(enroll_id):
 def submit_exam(enroll_id):
     """Submit exam answers and calculate score."""
     db = get_db()
-    enrollment = db.execute('SELECT * FROM training_enrollments WHERE id=? AND user_id=? AND payment_status=?',
-                            (enroll_id, session['user_id'], 'completed')).fetchone()
+    enrollment = db.execute('SELECT * FROM training_enrollments WHERE id=? AND user_id=?',
+                            (enroll_id, session['user_id'])).fetchone()
     if not enrollment:
         return jsonify({'error': 'not_enrolled'}), 403
     questions = db.execute('SELECT * FROM training_exam_questions WHERE class_id=?', (enrollment['class_id'],)).fetchall()

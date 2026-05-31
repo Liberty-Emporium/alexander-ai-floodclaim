@@ -8,47 +8,30 @@
   .training-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.12); }
   .training-card h3 { font-size: 1.05rem; font-weight: 800; margin: 0; }
   .training-card p { font-size: .82rem; color: var(--gray-600); line-height: 1.6; margin: 0; }
-  .training-price { font-size: 1.5rem; font-weight: 900; color: var(--green-600); }
-  .training-price span { font-size: .75rem; font-weight: 500; color: var(--gray-400); }
+  .training-free { font-size: 1.1rem; font-weight: 800; color: var(--green-600); }
   .training-meta { display:flex; gap:1rem; font-size:.72rem; color:var(--gray-400); }
   .btn-enroll { margin-top:auto; width:100%; }
-  .demo-banner { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border-radius: 12px; padding: .75rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
-  .demo-banner a { color: #fff; text-decoration: underline; font-weight: 700; }
-  .demo-card { border: 2px solid rgba(245,158,11,.4); background: rgba(245,158,11,.04); }
-  .demo-badge { display: inline-block; background: #f59e0b; color: #fff; font-size: .65rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
 </style>
 {% endblock %}
 {% block content %}
 
 <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:.25rem;">Available Training</h2>
-<p style="font-size:.85rem;color:var(--gray-500);margin-bottom:1.5rem;">Enroll in flood adjuster training courses. Complete lessons and pass the exam to earn your certification.</p>
-
-<!-- Demo Mode Banner -->
-<div class="demo-banner">
-  <div>
-    <strong>🧪 Demo Mode Active</strong> — No payment required. Enroll and test all features for free.
-  </div>
-  <span class="demo-badge">Testing</span>
-</div>
+<p style="font-size:.85rem;color:var(--gray-500);margin-bottom:1.5rem;">Enroll in flood adjuster training courses. Complete lessons and pass the exam to earn your certification. All courses are free.</p>
 
 {% if classes %}
 <div class="training-grid">
   {% for c in classes %}
-  <div class="card training-card demo-card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <h3>{{ c.title }}</h3>
-      <span class="demo-badge">Demo</span>
-    </div>
+  <div class="card training-card">
+    <h3>{{ c.title }}</h3>
     <p>{{ c.description[:180] }}{% if c.description|length > 180 %}…{% endif %}</p>
     <div class="training-meta">
       <span>📚 {{ c.num_lessons or 0 }} lessons</span>
       <span>👥 {{ c.num_enrolled or 0 }} enrolled</span>
     </div>
-    <div class="training-price" style="opacity:.5;text-decoration:line-through;">${{ "%.2f"|format(c.price_cents / 100) }} <span>one-time</span></div>
-    <div style="font-size:.75rem;font-weight:700;color:#f59e0b;margin-top:.25rem;">FREE — Demo Mode</div>
+    <div class="training-free">Free</div>
     <form method="POST" action="{{ url_for('enroll_class', class_id=c.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn btn-primary btn-enroll">🎓 Enroll Free (Demo)</button>
+      <button type="submit" class="btn btn-primary btn-enroll">🎓 Enroll Now</button>
     </form>
   </div>
   {% endfor %}
@@ -60,9 +43,5 @@
   <p style="font-size:.85rem;color:var(--gray-500);">Check back soon — courses are being added regularly.</p>
 </div>
 {% endif %}
-
-<div style="margin-top:1.5rem;padding:.75rem 1rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;font-size:.78rem;color:#92400e;">
-  <strong>Demo mode note:</strong> Enrollment is automatic — no credit card needed. Click "Enroll Free" to access lessons, take the exam, and test the certificate system. Remove <code>DEMO_MODE</code> env var to restore Stripe payments.
-</div>
 
 {% endblock %}

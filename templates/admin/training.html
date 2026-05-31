@@ -31,7 +31,7 @@
     <div class="tcard-meta">
       <span>📚 {{ c.num_lessons or 0 }} lessons</span>
       <span>👥 {{ c.num_enrolled or 0 }} enrolled</span>
-      <span>${{ "%.2f"|format(c.price_cents/100) }}</span>
+      <span>Free</span>
     </div>
     <div style="display:flex;gap:.5rem;">
       <a href="{{ url_for('admin_manage_lessons', class_id=c.id) }}" class="btn btn-secondary btn-sm">📝 Lessons</a>

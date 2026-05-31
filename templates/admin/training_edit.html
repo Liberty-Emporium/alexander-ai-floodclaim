@@ -19,12 +19,6 @@
       </div>
 
       <div class="form-group">
-        <label>Price (cents)</label>
-        <input type="number" name="price_cents" class="form-control" value="{{ tc.price_cents if tc else '5000' }}" min="0" step="100">
-        <small style="font-size:.7rem;color:var(--gray-400);">$50.00 = 5000 cents</small>
-      </div>
-
-      <div class="form-group">
         <label>Status</label>
         <select name="status" class="form-control">
           <option value="active" {{ 'selected' if tc and tc.status == 'active' else '' }}>Active (visible to students)</option>
