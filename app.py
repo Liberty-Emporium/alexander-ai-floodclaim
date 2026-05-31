@@ -6534,7 +6534,7 @@ def training_classes():
 @login_required
 @csrf_required
 def enroll_class(class_id):
-    """Enroll and pay for a training class via Stripe."""
+    """Enroll and pay for a training class via Stripe (or bypass in demo mode)."""
     db = get_db()
     tc = db.execute('SELECT * FROM training_classes WHERE id=? AND status=?', (class_id, 'active')).fetchone()
     if not tc:
@@ -6546,10 +6546,20 @@ def enroll_class(class_id):
     if existing:
         flash('You are already enrolled in this class.', 'info')
         return redirect(url_for('training_learn', enroll_id=existing['id']))
+    # Demo mode: bypass Stripe payment
+    demo_mode = os.environ.get('DEMO_MODE', '').lower() in ('1', 'true', 'yes')
     stripe_key = get_setting('stripe_secret_key') or os.environ.get('STRIPE_SECRET_KEY', '')
-    if not stripe_key or not STRIPE_OK:
+    if not demo_mode and (not stripe_key or not STRIPE_OK):
         flash('Stripe is not configured. Contact admin to set up payments.', 'error')
         return redirect(url_for('training_classes'))
+    if demo_mode:
+        # Direct enrollment without payment
+        db.execute('''INSERT OR REPLACE INTO training_enrollments (user_id, class_id, stripe_session, payment_status)
+                      VALUES (?,?,?,?)''',
+                   (session['user_id'], class_id, 'demo-bypass', 'completed'))
+        db.commit()
+        flash('🎉 Demo mode — enrolled for free! Start learning!', 'success')
+        return redirect(url_for('training_learn', enroll_id=db.execute('SELECT last_insert_rowid()').fetchone()[0]))
     try:
         _stripe.api_key = stripe_key
         checkout = _stripe.checkout.Session.create(
