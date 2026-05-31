@@ -6546,13 +6546,10 @@ def enroll_class(class_id):
     if existing:
         flash('You are already enrolled in this class.', 'info')
         return redirect(url_for('training_learn', enroll_id=existing['id']))
-    # Demo mode: bypass Stripe payment
-    demo_mode = os.environ.get('DEMO_MODE', '').lower() in ('1', 'true', 'yes')
+    # Demo mode: bypass Stripe payment (auto-enabled when no Stripe key is set)
     stripe_key = get_setting('stripe_secret_key') or os.environ.get('STRIPE_SECRET_KEY', '')
-    if not demo_mode and (not stripe_key or not STRIPE_OK):
-        flash('Stripe is not configured. Contact admin to set up payments.', 'error')
-        return redirect(url_for('training_classes'))
-    if demo_mode:
+    demo_mode = os.environ.get('DEMO_MODE', '').lower() in ('1', 'true', 'yes') or (not stripe_key and not STRIPE_OK)
+    if demo_mode and not stripe_key:
         # Direct enrollment without payment
         db.execute('''INSERT OR REPLACE INTO training_enrollments (user_id, class_id, stripe_session, payment_status)
                       VALUES (?,?,?,?)''',
@@ -6560,6 +6557,9 @@ def enroll_class(class_id):
         db.commit()
         flash('🎉 Demo mode — enrolled for free! Start learning!', 'success')
         return redirect(url_for('training_learn', enroll_id=db.execute('SELECT last_insert_rowid()').fetchone()[0]))
+    if not stripe_key or not STRIPE_OK:
+        flash('Stripe is not configured. Contact admin to set up payments.', 'error')
+        return redirect(url_for('training_classes'))
     try:
         _stripe.api_key = stripe_key
         checkout = _stripe.checkout.Session.create(
