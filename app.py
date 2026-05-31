@@ -314,6 +314,26 @@ def init_db():
     if admin:
         db.execute('UPDATE users SET password=? WHERE id=?',
                    (hash_pw(ADMIN_PASSWORD), admin['id']))
+    # Seed default training class if none exist
+    tc = db.execute('SELECT COUNT(*) FROM training_classes').fetchone()[0]
+    if tc == 0:
+        db.execute('''INSERT INTO training_classes (title, description, price_cents, status) VALUES (?,?,?,?)''',
+                   ('Flood Adjusting Fundamentals',
+                    'Complete training for aspiring flood adjusters. Covers NFIP guidelines, water damage classification, claim documentation, using FloodClaims Pro platform, and passing the certification exam.',
+                    5000, 'active'))
+        class_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        # Seed lessons
+        lessons = [
+            ('Introduction to Flood Adjusting', 'Flood adjusting is a specialized field within the insurance industry that focuses on assessing and documenting damage caused by flooding events. As a flood adjuster, you will be responsible for inspecting properties, documenting damage, estimating repair costs, and working with policyholders through the claims process.\n\n<h4>What You Will Learn</h4>\n<ul>\n<li>The role and responsibilities of a flood insurance adjuster</li>\n<li>How the National Flood Insurance Program (NFIP) works</li>\n<li>Types of flood zones and their significance</li>\n<li>Insurance policy coverage limits and exclusions</li>\n</ul>\n\n<h4>Career Outlook</h4>\n<p>Flood adjusting offers both full-time and contract opportunities. During catastrophic events, demand for qualified adjusters increases significantly. Experienced flood adjusters can earn $500-$1,000+ per day during deployment periods.</p>', 0, ''),
+            ('Water Damage Classification', 'Flood damage is categorized by water category and class. Understanding these classifications is essential for accurate claim documentation.\n\n<h4>Water Categories</h4>\n<ul>\n<li><strong>Category 1 (Clean Water):</strong> Originates from a sanitary source. Examples: broken water supply lines, tub or sink overflows.</li>\n<li><strong>Category 2 (Gray Water):</strong> Contains significant contamination. Examples: dishwasher overflow, sump pump failure, toilet overflow (urine only).</li>\n<li><strong>Category 3 (Black Water):</strong> Grossly contaminated. Examples: sewage, seawater, river water, storm surge.</li>\n</ul>\n\n<h4>Water Classes (by evaporation rate)</h4>\n<ul>\n<li><strong>Class 1:</strong> Least affected. Only a portion of a room is affected.</li>\n<li><strong>Class 2:</strong> Affecting entire room. 12-24 inches up walls.</li>\n<li><strong>Class 3:</strong> Highest evaporation rate. Ceiling and walls fully saturated.</li>\n<li><strong>Class 4:</strong> Specialty drying. Hardwood, concrete, plaster — low permeance materials.</li>\n</ul>', 1, ''),
+            ('NFIP & FEMA Guidelines', 'The National Flood Insurance Program (NFIP) is the primary provider of flood insurance in the United States, administered by FEMA.\n\n<h4>Key Policy Facts</h4>\n<ul>\n<li><strong>Residential Building Coverage:</strong> Up to $250,000</li>\n<li><strong>Residential Contents Coverage:</strong> Up to $100,000</li>\n<li><strong>Commercial Building Coverage:</strong> Up to $500,000</li>\n<li><strong>Contents (Commercial):</strong> Up to $500,000</li>\n<li><strong>Waiting Period:</strong> 30 days before coverage begins</li>\n<li><strong>Deductible:</strong> Separate building and contents deductibles</li>\n</ul>\n\n<h4>Important Forms</h4>\n<ul>\n<li><strong>Proof of Loss (Form 81-31):</strong> Must be filed within 60 days</li>\n<li><strong>Elevation Certificate:</strong> Documents BFE and building elevation</li>\n<li><strong>Adjuster\'s Damage Inspection Report:</strong> Your primary documentation</li>\n</ul>', 2, ''),
+            ('FloodClaims Pro Platform Training', 'FloodClaims Pro is an integrated platform for managing flood insurance claims from start to finish.\n\n<h4>Platform Features</h4>\n<ul>\n<li><strong>Dashboard:</strong> View all claims, their status, and priority at a glance</li>\n<li><strong>Pipeline:</strong> Kanban-style board for tracking claim progress through stages</li>\n<li><strong>Inspection Scheduler:</strong> Schedule and manage property inspections</li>\n<li><strong>Photo Analysis:</strong> AI-powered photo assessment that automatically identifies and documents damage</li>\n<li><strong>Report Generation:</strong> Create professional reports with one click</li>\n<li><strong>Client Portal:</strong> Allow customers to upload photos and track claim status</li>\n<li><strong>Compliance Checker:</strong> Ensures all required fields are completed</li>\n</ul>\n\n<h4>Workflow</h4>\n<p>1. Create claim → 2. Inspect property → 3. Document with photos → 4. AI analysis → 5. Write report → 6. Submit package</p>', 3, ''),
+            ('Claim Documentation & Report Writing', 'Proper documentation is the foundation of every successful flood claim. Your reports must be thorough, accurate, and meet NFIP requirements.\n\n<h4>Essential Documentation</h4>\n<ul>\n<li>Flood water line heights (interior and exterior)</li>\n<li>Photos of all affected areas (minimum 20-30 per property)</li>\n<li>Room-by-room damage assessments</li>\n<li>Contents inventory with pre-loss condition</li>\n<li>Elevation certificate (if available)</li>\n<li>Previous flood claim history</li>\n</ul>\n\n<h4>Report Structure</h4>\n<p>1. Property Information → 2. Flood Event Details → 3. Room-by-Room Assessment → 4. Photo Documentation → 5. Damage Summary → 6. Recommendations</p>', 4, ''),
+        ]
+        for title, content, order, video_url in lessons:
+            db.execute('INSERT INTO training_lessons (class_id, title, content, lesson_order, video_url) VALUES (?,?,?,?,?)',
+                       (class_id, title, content, order, video_url))
+        _seed_training_questions(db, class_id)
     db.commit()
     db.close()
 
@@ -6392,6 +6412,315 @@ def generate_upload_link(claim_id):
         'token': token,
         'sms_message': f'FloodClaims Pro: Upload photos of your damage here: {upload_url}'
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TRAINING CLASSES — LMS System ($50/class, Stripe, certificates)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _seed_training_questions(db, class_id):
+    """Seed flood adjustment exam questions for a class."""
+    existing = db.execute('SELECT COUNT(*) FROM training_exam_questions WHERE class_id=?', (class_id,)).fetchone()[0]
+    if existing:
+        return
+    questions = [
+        ("What is the maximum coverage under the NFIP for a single-family dwelling?", "$100,000 building / $100,000 contents", "$250,000 building / $100,000 contents", "$500,000 building / $250,000 contents", "$250,000 building / $250,000 contents", "b"),
+        ("How many days does a policyholder typically have to file a Proof of Loss?", "30 days", "60 days", "90 days", "1 year", "b"),
+        ("Which flood zone designation indicates high-risk coastal areas?", "Zone A", "Zone AE", "Zone V", "Zone X", "c"),
+        ("What does ICC (Increased Cost of Compliance) coverage help pay for?", "Temporary housing", "Building elevation or demolition costs", "Legal fees", "Landscaping", "b"),
+        ("What is the standard NFIP waiting period before coverage begins?", "15 days", "30 days", "45 days", "60 days", "b"),
+        ("Which form is used to report flood damage to NFIP?", "Form 81-31 (Proof of Loss)", "Form 1040", "HUD-1", "ACORD 25", "a"),
+        ("What is the maximum Increased Cost of Compliance (ICC) benefit?", "$15,000", "$20,000", "$30,000", "$50,000", "c"),
+        ("What type of flood damage is typically NOT covered by NFIP?", "Storm surge flooding", "Mudflow", "Sewer backup (without general flooding)", "River overflow", "c"),
+        ("Which elevation certificate component shows the lowest floor elevation?", "Section A - Property Information", "Section B - Flood Zone", "Section C - Building Elevation", "Section D - Surveyor Certification", "c"),
+        ("What is the deductible structure for NFIP policies per building and contents?", "One deductible per occurrence", "Separate building and contents deductibles", "No deductible required", "Flat $500 deductible", "b"),
+        ("What does the term 'Base Flood Elevation' (BFE) represent?", "The highest recorded flood level", "The computed elevation floodwater rises to in a 1% annual chance flood", "The lowest point of the property", "The average rainfall per year", "b"),
+        ("Which coverage type does NOT exist in a standard NFIP policy?", "Building property", "Personal property (contents)", "Additional living expenses", "Debris removal", "c"),
+        ("How is actual cash value (ACV) calculated for flood claims?", "Replacement cost", "Replacement cost minus depreciation", "Original purchase price", "Market value of the property", "b"),
+        ("What is the maximum personal property coverage under NFIP for residential?", "$100,000", "$200,000", "$250,000", "$500,000", "a"),
+        ("Which program backs the NFIP flood insurance policies?", "Private reinsurers", "Federal Emergency Management Agency (FEMA)", "State governments", "The National Weather Service", "b"),
+        ("What does 'substantial damage' mean in floodplain management?", "Damage > 25% of market value", "Damage > 50% of market value", "Damage > 75% of market value", "Total loss only", "b"),
+        ("How often must an elevation certificate be renewed?", "Every year", "Every 5 years", "Every 10 years", "No expiration — valid unless structure changes", "d"),
+        ("What is the first step when inspecting a flood-damaged property?", "Take photographs", "Review the policy and coverage", "Measure water lines", "Interview the homeowner", "b"),
+        ("What constitutes 'general flooding' required for NFIP coverage?", "One property affected", "Two or more properties and 2+ acres", "Any water entry from any source", "Federal disaster declaration only", "b"),
+        ("What is the purpose of a Damage Inspection Report?", "To finalize the claim", "To document findings and estimate damage", "To approve the claim", "To close the file", "b"),
+    ]
+    db.executemany('INSERT INTO training_exam_questions (class_id,question,option_a,option_b,option_c,option_d,correct_answer) VALUES (?,?,?,?,?,?,?)',
+                    [(class_id, q[0], q[1], q[2], q[3], q[4], q[5]) for q in questions])
+    db.commit()
+
+
+@app.route('/training')
+@login_required
+def training_classes():
+    """Browse all available training classes."""
+    db = get_db()
+    classes = db.execute('''
+        SELECT tc.*,
+               COUNT(DISTINCT tl.id) AS num_lessons,
+               COUNT(DISTINCT te.id) AS num_enrolled
+        FROM training_classes tc
+        LEFT JOIN training_lessons tl ON tl.class_id = tc.id
+        LEFT JOIN training_enrollments te ON te.class_id = tc.id AND te.payment_status='completed'
+        WHERE tc.status = 'active'
+        GROUP BY tc.id
+        ORDER BY tc.created_at DESC
+    ''').fetchall()
+    return render_template('training_classes.html', classes=classes)
+
+
+@app.route('/training/<int:class_id>/enroll', methods=['POST'])
+@login_required
+@csrf_required
+def enroll_class(class_id):
+    """Enroll and pay for a training class via Stripe."""
+    db = get_db()
+    tc = db.execute('SELECT * FROM training_classes WHERE id=? AND status=?', (class_id, 'active')).fetchone()
+    if not tc:
+        flash('Training class not found.', 'error')
+        return redirect(url_for('training_classes'))
+    # Check if already enrolled
+    existing = db.execute('SELECT * FROM training_enrollments WHERE user_id=? AND class_id=?',
+                          (session['user_id'], class_id)).fetchone()
+    if existing:
+        flash('You are already enrolled in this class.', 'info')
+        return redirect(url_for('training_learn', enroll_id=existing['id']))
+    stripe_key = get_setting('stripe_secret_key') or os.environ.get('STRIPE_SECRET_KEY', '')
+    if not stripe_key or not STRIPE_OK:
+        flash('Stripe is not configured. Contact admin to set up payments.', 'error')
+        return redirect(url_for('training_classes'))
+    try:
+        _stripe.api_key = stripe_key
+        checkout = _stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{'price_data': {
+                'currency': 'usd',
+                'product_data': {'name': f'Training: {tc["title"]}', 'description': tc['description'][:200]},
+                'unit_amount': tc['price_cents'],
+            }, 'quantity': 1}],
+            mode='payment',
+            success_url=url_for('training_payment_success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}&class_id=' + str(class_id),
+            cancel_url=url_for('training_classes', _external=True),
+            customer_email=session.get('email', ''),
+            metadata={'user_id': str(session['user_id']), 'class_id': str(class_id), 'type': 'training_enrollment'},
+        )
+        # Create pending enrollment
+        db.execute('INSERT INTO training_enrollments (user_id, class_id, stripe_session, payment_status) VALUES (?,?,?,?)',
+                   (session['user_id'], class_id, checkout['id'], 'pending'))
+        db.commit()
+        return redirect(checkout.url)
+    except Exception as e:
+        flash(f'Payment error: {e}', 'error')
+        return redirect(url_for('training_classes'))
+
+
+@app.route('/training/payment/success')
+@login_required
+def training_payment_success():
+    """Handle successful Stripe payment for training class."""
+    session_id = request.args.get('session_id', '')
+    class_id = request.args.get('class_id', '')
+    stripe_key = get_setting('stripe_secret_key') or os.environ.get('STRIPE_SECRET_KEY', '')
+    if session_id and stripe_key and STRIPE_OK and class_id:
+        try:
+            _stripe.api_key = stripe_key
+            cs = _stripe.checkout.Session.retrieve(session_id)
+            if cs.get('payment_status') == 'paid':
+                db = get_db()
+                db.execute('UPDATE training_enrollments SET payment_status=? WHERE user_id=? AND class_id=? AND stripe_session=?',
+                           ('completed', session['user_id'], class_id, session_id))
+                db.commit()
+                flash('🎉 Payment successful! You are now enrolled. Start learning!', 'success')
+            else:
+                flash('Payment not confirmed. Please try again.', 'error')
+        except Exception as e:
+            flash(f'Verification error: {e}', 'error')
+    return redirect(url_for('training_classes'))
+
+
+@app.route('/training/<int:enroll_id>/learn')
+@login_required
+def training_learn(enroll_id):
+    """View and progress through enrolled training class."""
+    db = get_db()
+    enrollment = db.execute('''
+        SELECT te.*, tc.title AS class_title, tc.description AS class_desc
+        FROM training_enrollments te
+        JOIN training_classes tc ON tc.id = te.class_id
+        WHERE te.id=? AND te.user_id=? AND te.payment_status='completed'
+    ''', (enroll_id, session['user_id'])).fetchone()
+    if not enrollment:
+        flash('Enrollment not found or payment not completed.', 'error')
+        return redirect(url_for('training_classes'))
+    lessons = db.execute('SELECT * FROM training_lessons WHERE class_id=? ORDER BY lesson_order', (enrollment['class_id'],)).fetchall()
+    progress = db.execute('SELECT lesson_id, completed FROM training_progress WHERE enrollment_id=?', (enroll_id,)).fetchall()
+    completed_ids = {p['lesson_id'] for p in progress if p['completed']}
+    has_exam = db.execute('SELECT COUNT(*) FROM training_exam_questions WHERE class_id=?', (enrollment['class_id'],)).fetchone()[0] > 0
+    cert = db.execute('SELECT * FROM training_certificates WHERE enrollment_id=?', (enroll_id,)).fetchone()
+    return render_template('training_learn.html', enrollment=enrollment, lessons=lessons,
+                           completed_ids=completed_ids, has_exam=has_exam, cert=cert)
+
+
+@app.route('/training/<int:enroll_id>/lesson/<int:lesson_id>/complete', methods=['POST'])
+@login_required
+@csrf_required
+def complete_lesson(enroll_id, lesson_id):
+    """Mark a lesson as completed."""
+    db = get_db()
+    enrollment = db.execute('SELECT * FROM training_enrollments WHERE id=? AND user_id=? AND payment_status=?',
+                            (enroll_id, session['user_id'], 'completed')).fetchone()
+    if not enrollment:
+        return jsonify({'error': 'not_enrolled'}), 403
+    db.execute('''INSERT INTO training_progress (enrollment_id, lesson_id, completed, completed_at)
+                  VALUES (?,?,1,?)
+                  ON CONFLICT(enrollment_id,lesson_id) DO UPDATE SET completed=1, completed_at=excluded.completed_at''',
+               (enroll_id, lesson_id, datetime.datetime.now().isoformat()))
+    # Recalculate progress
+    total = db.execute('SELECT COUNT(*) FROM training_lessons WHERE class_id=?', (enrollment['class_id'],)).fetchone()[0]
+    done = db.execute('SELECT COUNT(*) FROM training_progress WHERE enrollment_id=? AND completed=1', (enroll_id,)).fetchone()[0]
+    pct = int((done / total) * 100) if total else 0
+    db.execute('UPDATE training_enrollments SET progress_pct=? WHERE id=?', (pct, enroll_id))
+    db.commit()
+    return jsonify({'progress': pct, 'completed': True})
+
+
+@app.route('/training/<int:enroll_id>/exam')
+@login_required
+def training_exam(enroll_id):
+    """Take the certification exam."""
+    db = get_db()
+    enrollment = db.execute('''
+        SELECT te.*, tc.title AS class_title
+        FROM training_enrollments te
+        JOIN training_classes tc ON tc.id = te.class_id
+        WHERE te.id=? AND te.user_id=? AND te.payment_status='completed'
+    ''', (enroll_id, session['user_id'])).fetchone()
+    if not enrollment:
+        flash('Enrollment not found.', 'error')
+        return redirect(url_for('training_classes'))
+    questions = db.execute('SELECT * FROM training_exam_questions WHERE class_id=? ORDER BY RANDOM() LIMIT 20',
+                           (enrollment['class_id'],)).fetchall()
+    import random
+    for q in questions:
+        options = [q['option_a'], q['option_b'], q['option_c'], q['option_d']]
+        random.shuffle(options)
+    return render_template('training_exam.html', enrollment=enrollment, questions=questions)
+
+
+@app.route('/training/<int:enroll_id>/exam/submit', methods=['POST'])
+@login_required
+@csrf_required
+def submit_exam(enroll_id):
+    """Submit exam answers and calculate score."""
+    db = get_db()
+    enrollment = db.execute('SELECT * FROM training_enrollments WHERE id=? AND user_id=? AND payment_status=?',
+                            (enroll_id, session['user_id'], 'completed')).fetchone()
+    if not enrollment:
+        return jsonify({'error': 'not_enrolled'}), 403
+    questions = db.execute('SELECT * FROM training_exam_questions WHERE class_id=?', (enrollment['class_id'],)).fetchall()
+    score = 0
+    total = len(questions) or 1
+    for q in questions:
+        submitted = request.form.get(f'q_{q["id"]}', '')
+        if submitted.lower() == q['correct_answer'].lower():
+            score += 1
+    pct = int((score / total) * 100)
+    passed = pct >= 80
+    if passed:
+        cert_id = secrets.token_hex(16)
+        db.execute('''INSERT OR REPLACE INTO training_certificates (user_id, class_id, enrollment_id, score, certificate_id, issued_at)
+                      VALUES (?,?,?,?,?,?)''',
+                   (session['user_id'], enrollment['class_id'], enroll_id, pct, cert_id, datetime.datetime.now().isoformat()))
+        db.execute('UPDATE training_enrollments SET completed_at=?, progress_pct=100 WHERE id=?',
+                   (datetime.datetime.now().isoformat(), enroll_id))
+        db.commit()
+        return jsonify({'passed': True, 'score': pct, 'certificate_id': cert_id})
+    db.commit()
+    return jsonify({'passed': False, 'score': pct, 'message': 'You need 80% to pass. Review the material and try again.'})
+
+
+@app.route('/training/certificate/<cert_id>')
+@login_required
+def view_certificate(cert_id):
+    """View a training certificate."""
+    db = get_db()
+    cert = db.execute('''
+        SELECT tc.*, tcl.title AS class_title, u.name AS student_name, u.email AS student_email
+        FROM training_certificates tc
+        JOIN training_classes tcl ON tcl.id = tc.class_id
+        JOIN users u ON u.id = tc.user_id
+        WHERE tc.certificate_id=?
+    ''', (cert_id,)).fetchone()
+    if not cert:
+        flash('Certificate not found.', 'error')
+        return redirect(url_for('training_classes'))
+    return render_template('training_certificate.html', cert=cert)
+
+
+# ── ADMIN: Training Class Management ───────────────────────────────────────
+
+@app.route('/admin/training')
+@login_required
+def admin_training():
+    """Admin: list all training classes."""
+    if session.get('role') not in ('admin', 'manager'):
+        abort(403)
+    db = get_db()
+    classes = db.execute('SELECT tc.*, COUNT(DISTINCT tl.id) AS num_lessons, COUNT(DISTINCT te.id) AS num_enrolled FROM training_classes tc LEFT JOIN training_lessons tl ON tl.class_id = tc.id LEFT JOIN training_enrollments te ON te.class_id = tc.id GROUP BY tc.id ORDER BY tc.created_at DESC').fetchall()
+    return render_template('admin/training.html', classes=classes)
+
+
+@app.route('/admin/training/new', methods=['GET', 'POST'])
+@login_required
+def admin_new_class():
+    """Admin: create a new training class."""
+    if session.get('role') not in ('admin', 'manager'):
+        abort(403)
+    if request.method == 'POST':
+        db = get_db()
+        db.execute('INSERT INTO training_classes (title, description, price_cents, status) VALUES (?,?,?,?)',
+                   (request.form['title'], request.form['description'], int(request.form.get('price_cents', 5000)),
+                    request.form.get('status', 'active')))
+        class_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        _seed_training_questions(db, class_id)
+        db.commit()
+        flash('✅ Training class created! Default exam questions added.', 'success')
+        return redirect(url_for('admin_training'))
+    return render_template('admin/training_edit.html', tc=None)
+
+
+@app.route('/admin/training/<int:class_id>/lessons', methods=['GET', 'POST'])
+@login_required
+def admin_manage_lessons(class_id):
+    """Admin: manage lessons for a class."""
+    if session.get('role') not in ('admin', 'manager'):
+        abort(403)
+    db = get_db()
+    tc = db.execute('SELECT * FROM training_classes WHERE id=?', (class_id,)).fetchone()
+    if not tc:
+        abort(404)
+    if request.method == 'POST':
+        order = int(request.form.get('lesson_order', 0))
+        db.execute('INSERT INTO training_lessons (class_id, title, content, lesson_order, video_url) VALUES (?,?,?,?,?)',
+                   (class_id, request.form['title'], request.form.get('content',''), order, request.form.get('video_url','')))
+        db.commit()
+        flash('Lesson added.', 'success')
+        return redirect(url_for('admin_manage_lessons', class_id=class_id))
+    lessons = db.execute('SELECT * FROM training_lessons WHERE class_id=? ORDER BY lesson_order', (class_id,)).fetchall()
+    return render_template('admin/training_lessons.html', tc=tc, lessons=lessons)
+
+
+@app.route('/admin/training/<int:class_id>/lesson/<int:lesson_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_lesson(class_id, lesson_id):
+    """Admin: delete a lesson."""
+    if session.get('role') not in ('admin', 'manager'):
+        abort(403)
+    db = get_db()
+    db.execute('DELETE FROM training_lessons WHERE id=? AND class_id=?', (lesson_id, class_id))
+    db.commit()
+    flash('Lesson deleted.', 'success')
+    return redirect(url_for('admin_manage_lessons', class_id=class_id))
 
 
 if __name__ == '__main__':

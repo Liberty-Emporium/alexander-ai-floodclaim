@@ -687,6 +687,12 @@
 
     {% if session.role == 'admin' %}
     <div class="nav-section">Admin</div>
+    <a href="{{ url_for('training_classes') }}" class="nav-link {% if request.endpoint and 'training' in request.endpoint %}active{% endif %}">
+      <i data-lucide="graduation-cap" class="nav-link-icon"></i> Training
+    </a>
+    <a href="{{ url_for('recruit') }}" class="nav-link {% if request.endpoint=='recruit' %}active{% endif %}">
+      <i data-lucide="user-plus" class="nav-link-icon"></i> Recruit
+    </a>
     <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
       <i data-lucide="users" class="nav-link-icon"></i> Team
     </a>

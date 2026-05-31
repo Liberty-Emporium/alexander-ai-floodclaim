@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Training Classes — Admin{% endblock %}
+{% block page_title %}🎓 Manage Training Classes{% endblock %}
+{% block extra_css %}
+<style>
+  .training-admin-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1rem; max-width:1100px; }
+  .tcard { border-radius:14px; padding:1.25rem; }
+  .tcard h3 { font-size:1rem; font-weight:700; margin:0 0 .3rem; }
+  .tcard p { font-size:.78rem; color:var(--gray-600); margin:0 0 .5rem; }
+  .tcard-meta { display:flex; gap:.75rem; font-size:.7rem; color:var(--gray-400); margin-bottom:.75rem; }
+  .badge-active { background:rgba(16,185,129,.12); color:#065f46; padding:.15rem .5rem; border-radius:999px; font-size:.65rem; font-weight:700; }
+  .badge-draft { background:rgba(245,158,11,.12); color:#92400e; padding:.15rem .5rem; border-radius:999px; font-size:.65rem; font-weight:700; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+  <h2 style="font-size:1.2rem;font-weight:800;margin:0;">Training Classes</h2>
+  <a href="{{ url_for('admin_new_class') }}" class="btn btn-primary btn-sm">+ New Class</a>
+</div>
+
+{% if classes %}
+<div class="training-admin-grid">
+  {% for c in classes %}
+  <div class="card tcard">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <h3>{{ c.title }}</h3>
+      <span class="badge-{{ c.status }}">{{ c.status|title }}</span>
+    </div>
+    <p>{{ c.description[:120] }}{% if c.description|length > 120 %}…{% endif %}</p>
+    <div class="tcard-meta">
+      <span>📚 {{ c.num_lessons or 0 }} lessons</span>
+      <span>👥 {{ c.num_enrolled or 0 }} enrolled</span>
+      <span>${{ "%.2f"|format(c.price_cents/100) }}</span>
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <a href="{{ url_for('admin_manage_lessons', class_id=c.id) }}" class="btn btn-secondary btn-sm">📝 Lessons</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">📚</div>
+  <h3>No Training Classes Yet</h3>
+  <p style="font-size:.82rem;color:var(--gray-500);margin-bottom:1rem;">Create your first class to start training adjusters.</p>
+  <a href="{{ url_for('admin_new_class') }}" class="btn btn-primary">+ Create First Class</a>
+</div>
+{% endif %}
+{% endblock %}

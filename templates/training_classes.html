@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Training Classes — FloodClaims Pro{% endblock %}
+{% block page_title %}🎓 Training Classes{% endblock %}
+{% block extra_css %}
+<style>
+  .training-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; max-width: 1100px; }
+  .training-card { border-radius: 16px; padding: 1.5rem; display:flex; flex-direction:column; gap:.75rem; transition: transform .15s, box-shadow .15s; }
+  .training-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.12); }
+  .training-card h3 { font-size: 1.05rem; font-weight: 800; margin: 0; }
+  .training-card p { font-size: .82rem; color: var(--gray-600); line-height: 1.6; margin: 0; }
+  .training-price { font-size: 1.5rem; font-weight: 900; color: var(--green-600); }
+  .training-price span { font-size: .75rem; font-weight: 500; color: var(--gray-400); }
+  .training-meta { display:flex; gap:1rem; font-size:.72rem; color:var(--gray-400); }
+  .btn-enroll { margin-top:auto; width:100%; }
+</style>
+{% endblock %}
+{% block content %}
+
+<h2 style="font-size:1.3rem;font-weight:800;margin-bottom:.25rem;">Available Training</h2>
+<p style="font-size:.85rem;color:var(--gray-500);margin-bottom:1.5rem;">Enroll in flood adjuster training courses. Complete lessons and pass the exam to earn your certification.</p>
+
+{% if classes %}
+<div class="training-grid">
+  {% for c in classes %}
+  <div class="card training-card">
+    <h3>{{ c.title }}</h3>
+    <p>{{ c.description[:180] }}{% if c.description|length > 180 %}…{% endif %}</p>
+    <div class="training-meta">
+      <span>📚 {{ c.num_lessons or 0 }} lessons</span>
+      <span>👥 {{ c.num_enrolled or 0 }} enrolled</span>
+    </div>
+    <div class="training-price">${{ "%.2f"|format(c.price_cents / 100) }} <span>one-time</span></div>
+    <form method="POST" action="{{ url_for('enroll_class', class_id=c.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary btn-enroll">Enroll Now — $50</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">📚</div>
+  <h3 style="margin-bottom:.5rem;">No Training Classes Yet</h3>
+  <p style="font-size:.85rem;color:var(--gray-500);">Check back soon — courses are being added regularly.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Certificate — {{ cert.class_title }}{% endblock %}
+{% block page_title %}🏆 Training Certificate{% endblock %}
+{% block extra_css %}
+<style>
+  .cert-wrapper { max-width: 800px; margin: 0 auto; }
+  .cert-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    border: 3px solid #d4af37;
+    border-radius: 20px;
+    padding: 3rem 2.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cert-card::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1px solid rgba(212,175,55,.3);
+    border-radius: 14px;
+    pointer-events: none;
+  }
+  .cert-seal { width: 80px; height: 80px; margin: 0 auto 1rem; background: radial-gradient(circle, #d4af37, #b8960c); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 4px 20px rgba(212,175,55,.4); }
+  .cert-stripe { height: 4px; background: linear-gradient(90deg, transparent, #d4af37, transparent); margin: 1rem 0; }
+  @media print {
+    .sidebar, .topbar, .no-print { display: none !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; }
+    .cert-card { border-width: 4px; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="cert-wrapper">
+  <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <a href="{{ url_for('training_classes') }}" class="btn btn-secondary btn-sm">← Back to Training</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print Certificate</button>
+  </div>
+
+  <div class="cert-card" id="certificate">
+    <div class="cert-seal">🏆</div>
+    <h1 style="font-size: 1.8rem; font-weight: 900; color: #d4af37; margin-bottom: .25rem; letter-spacing: .03em;">CERTIFICATE OF COMPLETION</h1>
+    <div class="cert-stripe"></div>
+    <p style="color: rgba(255,255,255,.5); font-size: .85rem; margin-bottom: .5rem;">This certifies that</p>
+    <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: .5rem;">{{ cert.student_name or cert.student_email }}</h2>
+    <p style="color: rgba(255,255,255,.5); font-size: .85rem; margin-bottom: .5rem;">has successfully completed</p>
+    <h3 style="font-size: 1.2rem; font-weight: 700; color: #d4af37; margin-bottom: .5rem;">{{ cert.class_title }}</h3>
+    <div class="cert-stripe"></div>
+    <div style="display:flex;justify-content:center;gap:2rem;margin-top:.75rem;">
+      <div>
+        <div style="color: rgba(255,255,255,.4); font-size: .65rem; text-transform: uppercase; letter-spacing: .06em;">Score</div>
+        <div style="color: #fff; font-size: 1.1rem; font-weight: 800;">{{ cert.score }}%</div>
+      </div>
+      <div>
+        <div style="color: rgba(255,255,255,.4); font-size: .65rem; text-transform: uppercase; letter-spacing: .06em;">Date Issued</div>
+        <div style="color: #fff; font-size: 1.1rem; font-weight: 800;">{{ cert.issued_at[:10] if cert.issued_at else '—' }}</div>
+      </div>
+      <div>
+        <div style="color: rgba(255,255,255,.4); font-size: .65rem; text-transform: uppercase; letter-spacing: .06em;">Certificate ID</div>
+        <div style="color: #fff; font-size: .85rem; font-weight: 600; font-family: monospace;">{{ cert.certificate_id[:16] }}...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="no-print" style="margin-top:1.5rem;text-align:center;">
+    <p style="font-size:.72rem;color:var(--gray-400);">Issued by FloodClaims Pro Training Platform</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Certification Exam — {{ enrollment.class_title }}{% endblock %}
+{% block page_title %}📝 Certification Exam{% endblock %}
+{% block extra_css %}
+<style>
+  .exam-container { max-width: 750px; margin: 0 auto; }
+  .exam-q { border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; }
+  .exam-q h4 { font-size: .9rem; font-weight: 700; margin-bottom: .75rem; line-height: 1.5; }
+  .exam-opt { display: flex; align-items: center; gap: .6rem; padding: .5rem .75rem; border-radius: 8px; cursor: pointer; font-size: .82rem; margin-bottom: .35rem; border: 2px solid transparent; transition: all .15s; }
+  .exam-opt:hover { background: var(--gray-100); }
+  .exam-opt.selected { border-color: var(--blue-500); background: rgba(59,130,246,.08); }
+  .exam-opt input { accent-color: var(--blue-500); }
+  .exam-timer { position: sticky; top:0; z-index:10; background: var(--card-bg); padding:.5rem 1rem; border-radius:10px; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; font-size:.82rem; font-weight:600; }
+  .timer-warning { color: var(--red-500); }
+  .result-pass { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); border-radius:14px; padding:2rem; text-align:center; }
+  .result-fail { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius:14px; padding:2rem; text-align:center; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="exam-container">
+  <div class="card" style="padding:1rem 1.25rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <h2 style="font-size:1.1rem;font-weight:800;margin:0;">{{ enrollment.class_title }} — Final Exam</h2>
+      <p style="font-size:.75rem;color:var(--gray-500);margin:.2rem 0 0;">Answer all questions. You need <strong>80% or higher</strong> to pass and earn your certificate.</p>
+    </div>
+    <div id="timer" style="font-size:1.1rem;font-weight:800;color:var(--blue-600);">⏱ 30:00</div>
+  </div>
+
+  <form id="examForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {% for q in questions %}
+    <div class="card exam-q" id="q{{ loop.index }}">
+      <h4><strong>Q{{ loop.index }}.</strong> {{ q.question }}</h4>
+      {% for opt_key in ['a','b','c','d'] %}
+      {% set opt_val = q['option_' ~ opt_key] %}
+      <label class="exam-opt">
+        <input type="radio" name="q_{{ q.id }}" value="{{ opt_key }}" required>
+        <strong>{{ opt_key|upper }}.</strong> {{ opt_val }}
+      </label>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div style="text-align:center;margin-top:1.5rem;">
+      <button type="submit" class="btn btn-primary" style="padding:.75rem 2rem;font-size:1rem;">Submit Exam</button>
+    </div>
+  </form>
+
+  <div id="resultArea" style="display:none;"></div>
+</div>
+
+<script>
+// Timer: 30 minutes
+let timeLeft = 30 * 60;
+const timerEl = document.getElementById('timer');
+const timer = setInterval(() => {
+  timeLeft--;
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  timerEl.textContent = `⏱ ${m}:${s.toString().padStart(2,'0')}`;
+  if (timeLeft <= 300) timerEl.classList.add('timer-warning');
+  if (timeLeft <= 0) { clearInterval(timer); document.getElementById('examForm').dispatchEvent(new Event('submit')); }
+}, 1000);
+
+// Highlight selected option
+document.querySelectorAll('.exam-opt input').forEach(input => {
+  input.addEventListener('change', function() {
+    const group = this.closest('.exam-q');
+    group.querySelectorAll('.exam-opt').forEach(l => l.classList.remove('selected'));
+    this.closest('.exam-opt').classList.add('selected');
+  });
+});
+
+// Submit exam
+document.getElementById('examForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  clearInterval(timer);
+  const csrf = '{{ csrf_token() }}';
+  const fd = new FormData(this);
+  fetch(`/training/{{ enrollment.id }}/exam/submit`, {
+    method: 'POST',
+    body: fd,
+    headers: {'X-CSRF-Token': csrf},
+  }).then(r => r.json()).then(d => {
+    const ra = document.getElementById('resultArea');
+    ra.style.display = 'block';
+    if (d.passed) {
+      ra.innerHTML = `<div class="result-pass">
+        <div style="font-size:3rem;margin-bottom:.5rem;">🏆</div>
+        <h2 style="font-size:1.5rem;font-weight:900;color:#065f46;margin-bottom:.5rem;">CERTIFIED!</h2>
+        <p style="font-size:1rem;color:#065f46;margin-bottom:1rem;">Score: ${d.score}% — You passed!</p>
+        <a href="/training/certificate/${d.certificate_id}" class="btn btn-primary" style="font-size:.95rem;padding:.6rem 1.5rem;">View Your Certificate</a>
+      </div>`;
+    } else {
+      ra.innerHTML = `<div class="result-fail">
+        <div style="font-size:3rem;margin-bottom:.5rem;">📚</div>
+        <h2 style="font-size:1.3rem;font-weight:800;color:#991b1b;margin-bottom:.5rem;">Not Yet — Score: ${d.score}%</h2>
+        <p style="color:#991b1b;margin-bottom:1rem;">You need 80% to pass. Review the material and try again.</p>
+        <a href="/training/{{ enrollment.id }}/learn" class="btn btn-primary">↩ Back to Lessons</a>
+      </div>`;
+    }
+    window.scrollTo(0, 0);
+  });
+});
+</script>
+{% endblock %}

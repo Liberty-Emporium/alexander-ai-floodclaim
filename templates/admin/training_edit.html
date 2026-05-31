@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if tc else 'New' }} Training Class{% endblock %}
+{% block page_title %}{{ '✏️ Edit' if tc else '➕ New' }} Training Class{% endblock %}
+{% block content %}
+
+<div style="max-width: 600px;">
+  <div class="card" style="padding:1.5rem;">
+    <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:1rem;">{{ 'Edit' if tc else 'Create' }} Training Class</h2>
+
+    <form method="POST">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" name="title" class="form-control" required value="{{ tc.title if tc else '' }}" placeholder="e.g. Flood Adjusting Fundamentals">
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" class="form-control" rows="4" placeholder="Describe what students will learn...">{{ tc.description if tc else '' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Price (cents)</label>
+        <input type="number" name="price_cents" class="form-control" value="{{ tc.price_cents if tc else '5000' }}" min="0" step="100">
+        <small style="font-size:.7rem;color:var(--gray-400);">$50.00 = 5000 cents</small>
+      </div>
+
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status" class="form-control">
+          <option value="active" {{ 'selected' if tc and tc.status == 'active' else '' }}>Active (visible to students)</option>
+          <option value="draft" {{ 'selected' if tc and tc.status == 'draft' else '' }}>Draft (hidden)</option>
+          <option value="archived" {{ 'selected' if tc and tc.status == 'archived' else '' }}>Archived</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:.75rem;margin-top:1rem;">
+        <button type="submit" class="btn btn-primary">{{ 'Save Changes' if tc else 'Create Class' }}</button>
+        <a href="{{ url_for('admin_training') }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

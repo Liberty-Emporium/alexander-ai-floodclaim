@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Lessons — {{ tc.title }}{% endblock %}
+{% block page_title %}📝 Lessons: {{ tc.title }}{% endblock %}
+{% block extra_css %}
+<style>
+  .lesson-admin-list { list-style:none; padding:0; margin:0; }
+  .lesson-admin-item { display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; border-bottom:1px solid var(--gray-100); }
+  .lesson-admin-item:last-child { border-bottom:none; }
+  .lesson-order { width:28px; height:28px; border-radius:50%; background:var(--gray-100); display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; color:var(--gray-500); flex-shrink:0; margin-right:.75rem; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="max-width: 750px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <div>
+      <h2 style="font-size:1.1rem;font-weight:800;margin:0;">Lessons — {{ tc.title }}</h2>
+      <p style="font-size:.75rem;color:var(--gray-500);margin:.2rem 0 0;">Add and manage lesson content for this training class.</p>
+    </div>
+    <a href="{{ url_for('admin_training') }}" class="btn btn-secondary btn-sm">← Back</a>
+  </div>
+
+  <!-- Add Lesson Form -->
+  <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+    <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.75rem;">+ Add Lesson</h3>
+    <form method="POST">
+      <div style="display:grid;grid-template-columns:1fr 80px;gap:.75rem;margin-bottom:.75rem;">
+        <div class="form-group" style="margin:0;">
+          <input type="text" name="title" class="form-control" required placeholder="Lesson title">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <input type="number" name="lesson_order" class="form-control" value="{{ lessons|length }}" min="0" placeholder="Order">
+        </div>
+      </div>
+      <div class="form-group">
+        <textarea name="content" class="form-control" rows="3" placeholder="Lesson content (HTML supported)..."></textarea>
+      </div>
+      <div class="form-group">
+        <input type="url" name="video_url" class="form-control" placeholder="Video URL (YouTube embed URL, optional)">
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Add Lesson</button>
+    </form>
+  </div>
+
+  <!-- Existing Lessons -->
+  <div class="card" style="padding:.75rem;">
+    <h3 style="font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);padding:.5rem 1rem;">{{ lessons|length }} Lesson{{ 's' if lessons|length != 1 }}</h3>
+    {% if lessons %}
+    <ul class="lesson-admin-list">
+      {% for l in lessons %}
+      <li class="lesson-admin-item">
+        <div style="display:flex;align-items:center;">
+          <span class="lesson-order">{{ l.lesson_order + 1 }}</span>
+          <div>
+            <div style="font-size:.85rem;font-weight:600;">{{ l.title }}</div>
+            <div style="font-size:.7rem;color:var(--gray-400);">{{ l.content[:80] }}{% if l.content|length > 80 %}…{% endif %}</div>
+          </div>
+        </div>
+        <form method="POST" action="{{ url_for('admin_delete_lesson', class_id=tc.id, lesson_id=l.id) }}" onsubmit="return confirm('Delete this lesson?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm" style="color:var(--red-500);padding:2px 8px;">🗑</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p style="text-align:center;padding:1.5rem;color:var(--gray-400);font-size:.82rem;">No lessons yet. Add your first one above.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

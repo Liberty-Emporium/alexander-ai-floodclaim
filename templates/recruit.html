@@ -210,6 +210,20 @@
     {% endif %}
   </div>
 
+  <!-- ═══ TRAINING CLASSES CTA ═══ -->
+  <div class="card" style="grid-column: 1 / -1;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h3 style="font-size:1rem;font-weight:800;margin-bottom:.25rem;">🎓 Paid Training Classes</h3>
+        <p style="font-size:.82rem;color:var(--gray-600);">Enroll contractors and new adjusters in certified flood adjustment training. $50 per class, includes lessons, exam, and certificate.</p>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <a href="{{ url_for('training_classes') }}" class="btn btn-secondary btn-sm">Browse Classes</a>
+        <a href="{{ url_for('admin_training') }}" class="btn btn-primary btn-sm">Manage Training</a>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 {% endblock %}
