@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Something Went Wrong — FloodClaims Pro{% endblock %}
+{% block page_title %}Something Went Wrong{% endblock %}
+{% block content %}
+<div style="text-align:center;padding:4rem 1rem;max-width:480px;margin:0 auto;">
+  <div style="font-size:4rem;margin-bottom:1rem;">⚠️</div>
+  <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:.75rem;">Something Went Wrong</h2>
+  <p style="color:var(--t-secondary);font-size:.95rem;line-height:1.6;margin-bottom:1rem;">
+    We're sorry — an unexpected error occurred. Our team has been notified.
+  </p>
+  <p style="color:var(--t-muted);font-size:.8rem;margin-bottom:2rem;">
+    If this keeps happening, please contact support at leprograms@protonmail.com
+  </p>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="display:inline-block;text-decoration:none;">
+    ← Back to Dashboard
+  </a>
+</div>
+{% endblock %}

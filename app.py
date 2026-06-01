@@ -282,6 +282,16 @@ def init_db():
             ai_description TEXT DEFAULT '',
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        -- Soft-delete columns (added via migration for existing DBs)
+        _rooms_cols = [r[1] for r in db.execute('PRAGMA table_info(rooms)').fetchall()]
+        if 'deleted_at' not in _rooms_cols:
+            db.execute('ALTER TABLE rooms ADD COLUMN deleted_at TEXT DEFAULT NULL')
+        _li_cols = [r[1] for r in db.execute('PRAGMA table_info(line_items)').fetchall()]
+        if 'deleted_at' not in _li_cols:
+            db.execute('ALTER TABLE line_items ADD COLUMN deleted_at TEXT DEFAULT NULL')
+        _photo_cols = [r[1] for r in db.execute('PRAGMA table_info(photos)').fetchall()]
+        if 'deleted_at' not in _photo_cols:
+            db.execute('ALTER TABLE photos ADD COLUMN deleted_at TEXT DEFAULT NULL')
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL DEFAULT ''
@@ -491,12 +501,20 @@ def migrate_new_features():
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 claim_id    INTEGER NOT NULL,
                 status      TEXT DEFAULT 'pending',
+                progress    INTEGER DEFAULT 0,
+                progress_msg TEXT DEFAULT '',
                 result      TEXT DEFAULT '',
                 error       TEXT DEFAULT '',
                 created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
             );
         ''')
+        # Migrate existing table if columns missing
+        _ej_cols = [r[1] for r in db.execute('PRAGMA table_info(estimate_jobs)').fetchall()]
+        if 'progress' not in _ej_cols:
+            db.execute('ALTER TABLE estimate_jobs ADD COLUMN progress INTEGER DEFAULT 0')
+        if 'progress_msg' not in _ej_cols:
+            db.execute('ALTER TABLE estimate_jobs ADD COLUMN progress_msg TEXT DEFAULT ""')
         cols = [r[1] for r in db.execute('PRAGMA table_info(claims)').fetchall()]
         extras = [
             ('flood_zone',     'TEXT DEFAULT ""'),
@@ -686,10 +704,10 @@ def gen_claim_number():
 
 def recalc_claim(claim_id):
     db = get_db()
-    rooms = db.execute('SELECT id FROM rooms WHERE claim_id=?', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT id FROM rooms WHERE claim_id=? AND deleted_at IS NULL', (claim_id,)).fetchall()
     total = 0
     for room in rooms:
-        rt = db.execute('SELECT COALESCE(SUM(total),0) as s FROM line_items WHERE room_id=?',
+        rt = db.execute('SELECT COALESCE(SUM(total),0) as s FROM line_items WHERE room_id=? AND deleted_at IS NULL',
                         (room['id'],)).fetchone()['s']
         db.execute('UPDATE rooms SET subtotal=? WHERE id=?', (rt, room['id']))
         total += rt
@@ -743,18 +761,41 @@ def _run_estimate_job(job_id, claim_id, claim, rooms, photo_analyses, photo_sect
     import sqlite3 as _sq3
     db = _sq3.connect(DB_PATH)
     db.row_factory = _sq3.Row
+    def _update(progress, msg, status='pending'):
+        db.execute('UPDATE estimate_jobs SET progress=?, progress_msg=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                   (progress, msg, status, job_id))
+        db.commit()
     try:
+        _update(5, 'Building pricing knowledge base...')
         PRICING_KB = _build_pricing_kb()
+        _update(10, 'Preparing claim data and photo analysis...')
         prompt = _build_estimate_prompt(claim, room_section, photo_section, PRICING_KB)
+        photo_count = len(photo_analyses) if photo_analyses else 0
+        _update(20, f'Calling AI model ({photo_count} photos to analyze)...')
+        # Simulate incremental progress during the AI call
+        import time as _time
         estimate = call_openrouter([{'role': 'user', 'content': prompt}], model, key, max_tokens=4000)
-        db.execute(
-            'UPDATE estimate_jobs SET status=?, result=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-            ('done', estimate, job_id))
+        _update(90, 'Processing and formatting estimate results...')
+        # Update claim total_estimate with AI-recommended amount if parseable
+        try:
+            import re as _re
+            # Look for GRAND TOTAL or similar in the estimate
+            total_matches = [_re.search(r'GRAND TOTAL[:\s]*\$?([\d,]+\.?\d*)', estimate, _re.IGNORECASE),
+                           _re.search(r'(?:Total|Grand Total|Claim Amount)[:\s]*\$?([\d,]+\.?\d*)', estimate, _re.IGNORECASE)]
+            for m in total_matches:
+                if m:
+                    ai_total = float(m.group(1).replace(',', ''))
+                    if ai_total > 0:
+                        db.execute('UPDATE claims SET total_estimate=? WHERE id=?', (ai_total, claim_id))
+                        break
+        except Exception:
+            pass
+        db.execute('UPDATE estimate_jobs SET status=?, progress=100, progress_msg=?, result=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                   ('done', 'Estimate complete!', estimate, job_id))
         db.commit()
     except Exception as e:
-        db.execute(
-            'UPDATE estimate_jobs SET status=?, error=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-            ('error', str(e), job_id))
+        db.execute('UPDATE estimate_jobs SET status=?, progress=0, progress_msg=?, error=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                   ('error', 'Estimate failed', str(e), job_id))
         db.commit()
     finally:
         db.close()
@@ -881,17 +922,17 @@ def ai_estimate(claim_id):
         return jsonify({'ok': False, 'error': 'OpenRouter API key not configured. Go to Settings and add your key.'}), 400
 
     # Rooms + line items
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_section = ''
     for r in rooms:
-        items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (r['id'],)).fetchall()
+        items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (r['id'],)).fetchall()
         item_list = '; '.join([f"{i['description']} x{i['quantity']} {i['unit']} @${i['unit_cost']:.2f}" for i in items]) or 'No items'
         room_section += f"  {r['name']}: {item_list}\n"
     if not room_section:
         room_section = '  No rooms documented yet.\n'
 
     # Analyze photos (use cached AI descriptions or run fresh)
-    photos = [dict(p) for p in db.execute('SELECT * FROM photos WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()]
+    photos = [dict(p) for p in db.execute('SELECT * FROM photos WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()]
     photo_analyses = []
     for photo in photos[:8]:
         photo_path = os.path.join(UPLOAD_DIR, photo['filename'])
@@ -1097,15 +1138,18 @@ def ai_estimate_poll(claim_id, job_id):
         claim = dict(db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone())
         return jsonify({
             'ok': True, 'status': 'done',
+            'progress': 100,
             'estimate': job['result'],
             'claim_number': claim['claim_number'],
             'client': claim['client_name'],
             'current_total': float(claim['total_estimate']),
         })
     if job['status'] == 'error':
-        return jsonify({'ok': False, 'status': 'error',
+        return jsonify({'ok': False, 'status': 'error', 'progress': 0,
                         'error': job['error'] or 'AI estimate failed'})
-    return jsonify({'ok': True, 'status': 'pending'})
+    return jsonify({'ok': True, 'status': 'pending',
+                    'progress': job.get('progress', 0) or 0,
+                    'progress_msg': job.get('progress_msg', '') or ''})
 
 
 @app.route('/claims/<int:claim_id>/update-estimate', methods=['POST'])
@@ -1137,13 +1181,13 @@ def report_pdf(claim_id):
     if not claim:
         flash('Claim not found.', 'error')
         return redirect(url_for('dashboard'))
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_data = []
     for room in rooms:
-        items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-        photos = db.execute('SELECT * FROM photos WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
+        items  = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
+        photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
-    unassigned_photos = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL', (claim_id,)).fetchall()
+    unassigned_photos = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
     recalc_claim(claim_id)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
@@ -1165,7 +1209,7 @@ def export_xactimate(claim_id):
     if not claim:
         flash('Claim not found.', 'error')
         return redirect(url_for('dashboard'))
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -1184,7 +1228,7 @@ def export_xactimate(claim_id):
         '  <Rooms>',
     ]
     for room in rooms:
-        items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
+        items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         lines += ['    <Room>', f'      <Name>{room["name"]}</Name>',
                   f'      <Subtotal>{room["subtotal"]:.2f}</Subtotal>', '      <LineItems>']
         for item in items:
@@ -1253,11 +1297,11 @@ def client_portal(token):
     claim_id = row['claim_id']
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_data = []
     for room in rooms:
         items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-        photos = db.execute('SELECT * FROM photos WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
+        photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
     return render_template('client_portal.html', claim=claim, room_data=room_data, token=token,
                            generated=datetime.datetime.now().strftime('%B %d, %Y'))
@@ -1639,6 +1683,7 @@ def new_claim():
                     'INSERT INTO photos (claim_id, filename, caption, ai_description) VALUES (?,?,?,?)',
                     (claim['id'], filename, 'Initial site photo', ai_desc))
         db.commit()
+        _log_activity(claim['id'], f'Claim created: {claim_num}')
         flash(f'Claim {claim_num} created!', 'success')
         return redirect(url_for('claim_detail', claim_id=claim['id']))
     adjusters = db.execute('SELECT * FROM users ORDER BY name').fetchall() \
@@ -1666,6 +1711,7 @@ def delete_claim(claim_id):
             pass
     db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
     db.commit()
+    _log_activity(claim_id, f'Claim {claim["claim_number"]} deleted')
     flash(f'Claim {claim["claim_number"]} ({claim["client_name"]}) deleted.', 'success')
     return redirect(url_for('dashboard'))
 
@@ -1720,6 +1766,7 @@ def update_claim_notes(claim_id):
     notes = request.form.get('notes', '').strip()
     db.execute('UPDATE claims SET notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', (notes, claim_id))
     db.commit()
+    _log_activity(claim_id, 'Notes updated')
     flash('Notes saved.', 'success')
     return redirect(url_for('claim_detail', claim_id=claim_id))
 
@@ -1735,14 +1782,14 @@ def claim_detail(claim_id):
         if not claim:
             flash('Claim not found.', 'error')
             return redirect(url_for('dashboard'))
-        rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+        rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
         room_data = []
         for room in rooms:
-            items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-            photos = db.execute('SELECT * FROM photos WHERE room_id=? ORDER BY id',     (room['id'],)).fetchall()
+            items  = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
+            photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id',     (room['id'],)).fetchall()
             room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
         unassigned_photos = db.execute(
-            'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL ORDER BY id',
+            'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL ORDER BY id',
             (claim_id,)).fetchall()
         recalc_claim(claim_id)
         # Re-fetch after recalc so totals are fresh
@@ -1762,6 +1809,39 @@ def claim_detail(claim_id):
         import traceback as _tb
         print(f'[claim_detail ERROR] claim_id={claim_id}: {_claim_err}\n{_tb.format_exc()}')
         flash(f'Error loading claim — check server logs for details: {_claim_err}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/claims/<int:claim_id>/mobile')
+@login_required
+def claim_detail_mobile(claim_id):
+    """Simplified mobile-first claim detail view."""
+    try:
+        db = get_db()
+        claim = db.execute('''SELECT c.*, u.name as adjuster_name
+            FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''',
+            (claim_id,)).fetchone()
+        if not claim:
+            flash('Claim not found.', 'error')
+            return redirect(url_for('dashboard'))
+        rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
+        room_data = []
+        for room in rooms:
+            items  = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
+            photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
+            room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
+        unassigned_photos = db.execute(
+            'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL ORDER BY id',
+            (claim_id,)).fetchall()
+        signature = db.execute(
+            'SELECT * FROM signatures WHERE claim_id=? ORDER BY id DESC LIMIT 1',
+            (claim_id,)).fetchone()
+        return render_template('claim_detail_mobile.html', claim=claim,
+                               room_data=room_data, unassigned_photos=unassigned_photos,
+                               signature=signature)
+    except Exception as _e:
+        import traceback as _tb
+        print(f'[claim_detail_mobile ERROR] claim_id={claim_id}: {_e}\n{_tb.format_exc()}')
+        flash('Error loading claim.', 'error')
         return redirect(url_for('dashboard'))
 
 @app.route('/claims/<int:claim_id>/status', methods=['POST'])
@@ -1792,6 +1872,7 @@ def add_room(claim_id):
     if name:
         db.execute('INSERT INTO rooms (claim_id, name) VALUES (?,?)', (claim_id, name))
         db.commit()
+        _log_activity(claim_id, f'Room added: {name}')
     return redirect(url_for('claim_detail', claim_id=claim_id))
 
 @app.route('/rooms/<int:room_id>/delete', methods=['POST'])
@@ -1803,11 +1884,13 @@ def delete_room(room_id):
     if not room:
         return redirect(url_for('dashboard'))
     claim_id = room['claim_id']
-    # CASCADE in schema deletes line_items; unassign photos back to claim
+    # Soft-delete room and its line items
+    db.execute('UPDATE rooms SET deleted_at=CURRENT_TIMESTAMP WHERE id=?', (room_id,))
+    db.execute('UPDATE line_items SET deleted_at=CURRENT_TIMESTAMP WHERE room_id=?', (room_id,))
     db.execute('UPDATE photos SET room_id=NULL WHERE room_id=?', (room_id,))
-    db.execute('DELETE FROM rooms WHERE id=?', (room_id,))
     db.commit()
     recalc_claim(claim_id)
+    _log_activity(claim_id, f'Room soft-deleted: {room["name"]}')
     return redirect(url_for('claim_detail', claim_id=claim_id))
 
 @app.route('/rooms/<int:room_id>/item/add', methods=['POST'])
@@ -1829,6 +1912,7 @@ def add_item(room_id):
         (room_id, desc, qty, unit, unit_cost, total))
     db.commit()
     recalc_claim(room['claim_id'])
+    _log_activity(room['claim_id'], f'Line item added: {desc} x{qty} {unit} @${unit_cost:.2f}')
     return redirect(url_for('claim_detail', claim_id=room['claim_id']))
 
 @app.route('/items/<int:item_id>/delete', methods=['POST'])
@@ -1839,10 +1923,11 @@ def delete_item(item_id):
     item = db.execute(
         'SELECT r.claim_id FROM line_items li JOIN rooms r ON li.room_id=r.id WHERE li.id=?',
         (item_id,)).fetchone()
-    db.execute('DELETE FROM line_items WHERE id=?', (item_id,))
+    db.execute('UPDATE line_items SET deleted_at=CURRENT_TIMESTAMP WHERE id=?', (item_id,))
     db.commit()
     if item:
         recalc_claim(item['claim_id'])
+        _log_activity(item['claim_id'], 'Line item soft-deleted')
     return jsonify({'ok': True})
 
 @app.route('/claims/<int:claim_id>/photo/upload', methods=['POST'])
@@ -1856,17 +1941,54 @@ def upload_photo(claim_id):
     if not file or not allowed_file(file.filename):
         flash('Invalid file type. Please upload a PNG, JPG, GIF, or WEBP.', 'error')
         return redirect(url_for('claim_detail', claim_id=claim_id))
+    # ── File size check (10MB max) ──
+    file.seek(0, 2)  # seek to end
+    file_size = file.tell()
+    file.seek(0)  # reset
+    if file_size > 10 * 1024 * 1024:
+        flash('File too large. Maximum size is 10MB. Please compress your image and try again.', 'error')
+        return redirect(url_for('claim_detail', claim_id=claim_id))
     ext       = file.filename.rsplit('.', 1)[1].lower()
     filename  = f'{secrets.token_hex(12)}.{ext}'
     save_path = os.path.join(UPLOAD_DIR, filename)
-    file.save(save_path)
+    # ── Auto-compress large images ──
+    try:
+        from PIL import Image as _PILImage
+        img = _PILImage.open(file)
+        # Resize if max dimension > 2048px
+        max_dim = max(img.size)
+        if max_dim > 2048:
+            scale = 2048 / max_dim
+            new_size = (int(img.size[0] * scale), int(img.size[1] * scale))
+            img = img.resize(new_size, _PILImage.LANCZOS)
+        # Convert RGBA to RGB for JPEG
+        if img.mode == 'RGBA' and ext in ('jpg', 'jpeg'):
+            img = img.convert('RGB')
+        # Save with quality optimization
+        save_kwargs = {'optimize': True}
+        if ext in ('jpg', 'jpeg'):
+            save_kwargs['quality'] = 80
+        elif ext == 'png':
+            save_kwargs['compress_level'] = 6
+        img.save(save_path, **save_kwargs)
+        size_kb = os.path.getsize(save_path) / 1024
+        if int(file_size / 1024) > 500:
+            compressed_pct = int((1 - size_kb / (file_size / 1024)) * 100)
+            flash_msg = f'Photo uploaded and compressed ({compressed_pct}% smaller)'
+        else:
+            flash_msg = 'Photo uploaded!'
+    except Exception:
+        # PIL not available or error — save original
+        file.save(save_path)
+        flash_msg = 'Photo uploaded!'
     ai_desc = ai_describe_photo(save_path)
     db.execute(
         'INSERT INTO photos (claim_id, room_id, filename, caption, ai_description) '
         'VALUES (?,?,?,?,?)',
         (claim_id, room_id, filename, caption, ai_desc))
     db.commit()
-    flash('Photo uploaded!' + (' AI analysis complete.' if ai_desc else
+    _log_activity(claim_id, f'Photo uploaded: {filename}')
+    flash(flash_msg + (' AI analysis complete.' if ai_desc else
           ' Add an OpenRouter key in Settings to enable AI analysis.'), 'success')
     return redirect(url_for('claim_detail', claim_id=claim_id))
 
@@ -1890,8 +2012,9 @@ def delete_photo(photo_id):
             os.remove(file_path)
     except Exception:
         pass
-    db.execute('DELETE FROM photos WHERE id=?', (photo_id,))
+    db.execute('UPDATE photos SET deleted_at=CURRENT_TIMESTAMP WHERE id=?', (photo_id,))
     db.commit()
+    _log_activity(photo['claim_id'], f'Photo soft-deleted: {photo["filename"]}')
     return jsonify({'ok': True})
 
 @app.route('/photos/<int:photo_id>/ai-description', methods=['POST'])
@@ -1950,14 +2073,14 @@ def report(claim_id):
     if not claim:
         flash('Claim not found.', 'error')
         return redirect(url_for('dashboard'))
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_data = []
     for room in rooms:
         items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-        photos = db.execute('SELECT * FROM photos WHERE room_id=? ORDER BY id',     (room['id'],)).fetchall()
+        photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id',     (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
     unassigned_photos = db.execute(
-        'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL', (claim_id,)).fetchall()
+        'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
     recalc_claim(claim_id)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''',
@@ -3328,13 +3451,13 @@ def willie_chat():
             WHERE c.id=?
         ''', (claim_id,)).fetchone()
         if claim:
-            rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+            rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
             room_lines = []
             for room in rooms:
-                items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
+                items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
                 item_text = ', '.join(f'{i["description"]} ({i["quantity"]} {i["unit"]} @ ${i["unit_cost"]})' for i in items) or 'no items yet'
                 room_lines.append(f'    Room [{room["id"]}] {room["name"]} (${room["subtotal"]:,.2f}): {item_text}')
-            photos = db.execute('SELECT COUNT(*) as c FROM photos WHERE claim_id=?', (claim_id,)).fetchone()
+            photos = db.execute('SELECT COUNT(*) as c FROM photos WHERE claim_id=? AND deleted_at IS NULL', (claim_id,)).fetchone()
 
             _nl = chr(10)
             rooms_text = _nl.join(room_lines) if room_lines else '    (no rooms added yet)'
@@ -3600,10 +3723,10 @@ def willie_lookup_claim():
             (claim_number,)).fetchone()
         if not claim:
             return jsonify({'ok': False, 'error': f'No claim found with number {claim_number}'}), 404
-        rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim['id'],)).fetchall()
+        rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim['id'],)).fetchall()
         room_data = []
         for r in rooms:
-            items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (r['id'],)).fetchall()
+            items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (r['id'],)).fetchall()
             room_data.append({'room': dict(r), 'line_items': [dict(i) for i in items]})
         return jsonify({'ok': True, 'claim': dict(claim), 'rooms': room_data})
     elif client_name:
@@ -3631,15 +3754,15 @@ def willie_generate_estimate(claim_id):
         return jsonify({'error': 'OpenRouter API key not configured. Add it in Settings.'}), 400
 
     # Gather rooms + items
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_summary = []
     for r in rooms:
-        items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (r['id'],)).fetchall()
+        items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (r['id'],)).fetchall()
         item_list = '; '.join([f"{i['description']} x{i['quantity']} {i['unit']} @${i['unit_cost']:.2f}" for i in items]) or 'No line items yet'
         room_summary.append(f"  Room: {r['name']}\n  Items: {item_list}")
 
     # Analyze all photos with vision AI
-    photos = [dict(p) for p in db.execute('SELECT * FROM photos WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()]
+    photos = [dict(p) for p in db.execute('SELECT * FROM photos WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()]
     photo_analyses = []
     for photo in photos[:8]:  # limit to 8 photos to avoid token overflow
         photo_path = os.path.join(UPLOAD_DIR, photo['filename'])
@@ -3874,10 +3997,10 @@ def willie_get_claim(claim_id):
     ''', (claim_id,)).fetchone()
     if not claim:
         return jsonify({'error': 'Claim not found'}), 404
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_data = []
     for r in rooms:
-        items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (r['id'],)).fetchall()
+        items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (r['id'],)).fetchall()
         room_data.append({'room': dict(r), 'line_items': [dict(i) for i in items]})
     return jsonify({'ok': True, 'claim': dict(claim), 'rooms': room_data})
 
@@ -4133,11 +4256,11 @@ def willie_get_report(claim_id):
     db = get_db()
     claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
     if not claim: return jsonify({'error': 'Claim not found'}), 404
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     report = dict(claim)
     report['rooms'] = []
     for r in rooms:
-        items = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (r['id'],)).fetchall()
+        items = db.execute('SELECT * FROM line_items WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (r['id'],)).fetchall()
         room_data = dict(r)
         room_data['line_items'] = [dict(i) for i in items]
         report['rooms'].append(room_data)
@@ -5092,7 +5215,7 @@ def mobile_upload_page(claim_id):
     if not row:
         return '<h2 style="font-family:sans-serif;text-align:center;margin-top:4rem">Link expired or invalid.</h2>', 403
     claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     return render_template('mobile_upload.html', claim=claim, rooms=rooms, token=token)
 
 
@@ -5167,6 +5290,7 @@ def bulk_action():
     db = get_db()
     if action == 'delete':
         for cid in ids:
+            claim = db.execute('SELECT claim_number, client_name FROM claims WHERE id=?', (cid,)).fetchone()
             photos = db.execute('SELECT filename FROM photos WHERE claim_id=?', (cid,)).fetchall()
             for p in photos:
                 try:
@@ -5174,6 +5298,8 @@ def bulk_action():
                     if os.path.exists(path): os.remove(path)
                 except Exception: pass
             db.execute('DELETE FROM claims WHERE id=?', (cid,))
+            if claim:
+                _log_activity(cid, f'Claim {claim["claim_number"]} bulk-deleted')
         db.commit()
         flash(f'Deleted {len(ids)} claim(s).', 'success')
     elif action in ('set_new', 'set_in_progress', 'set_submitted', 'set_closed'):
@@ -5184,16 +5310,20 @@ def bulk_action():
             claim = db.execute('SELECT * FROM claims WHERE id=?', (cid,)).fetchone()
             db.execute('UPDATE claims SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
                        (new_status, cid))
+            if claim:
+                _log_activity(cid, f'Status changed to {new_status} (bulk)')
             if claim and claim['client_email']:
                 notify_client_status_change(claim, new_status)
         db.commit()
-        flash(f'Updated {len(ids)} claim(s) to “{new_status}”.', 'success')
+        flash(f'Updated {len(ids)} claim(s) to "{new_status}".', 'success')
     elif action == 'assign':
         adj_id = request.form.get('assign_adjuster')
         if adj_id:
+            adj_name = db.execute('SELECT name FROM users WHERE id=?', (adj_id,)).fetchone()
             for cid in ids:
                 db.execute('UPDATE claims SET adjuster_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
                            (adj_id, cid))
+                _log_activity(cid, f'Assigned to {adj_name["name"] if adj_name else adj_id} (bulk)')
             db.commit()
             flash(f'Assigned {len(ids)} claim(s).', 'success')
     else:
@@ -5373,6 +5503,7 @@ def schedule_add():
     db.execute('UPDATE claims SET sched_date=?, sched_time=?, inspection_date=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
                (slot_date, slot_time, slot_date, claim_id))
     db.commit()
+    _log_activity(claim_id, f'Inspection scheduled: {slot_date} at {slot_time}')
     claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
     # Email adjuster
     adj = db.execute('SELECT * FROM users WHERE id=?', (adj_id,)).fetchone()
@@ -5865,15 +5996,15 @@ def submit_package_page(claim_id):
     if not claim:
         flash('Claim not found.', 'error')
         return redirect(url_for('dashboard'))
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_data = []
     photo_count = 0
     for room in rooms:
         items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-        photos = db.execute('SELECT * FROM photos WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
+        photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
         photo_count += len(photos)
-    unassigned = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL', (claim_id,)).fetchall()
+    unassigned = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
     photo_count += len(unassigned)
     recalc_claim(claim_id)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
@@ -5932,13 +6063,13 @@ def submit_package_download(claim_id):
     if not claim:
         flash('Claim not found.', 'error')
         return redirect(url_for('dashboard'))
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? ORDER BY id', (claim_id,)).fetchall()
+    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
     room_data = []
     for room in rooms:
         items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-        photos = db.execute('SELECT * FROM photos WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
+        photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
-    unassigned = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL', (claim_id,)).fetchall()
+    unassigned = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
     recalc_claim(claim_id)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
@@ -6275,23 +6406,46 @@ def batch_analyze_claim_room(claim_id, room_id):
         db.close()
         return jsonify({'error': 'no_photos'}), 400
 
-    # Save photos and collect paths
+    # Save photos and collect paths (with size check + compression)
     upload_dir = os.path.join(app.config.get('UPLOAD_FOLDER', 'static/uploads'), str(claim_id))
     os.makedirs(upload_dir, exist_ok=True)
     saved_paths = []
+    _batch_errors = []
 
     for i, photo in enumerate(photos):
-        if photo and photo.filename:
-            filename = f'batch_{room_id}_{int(datetime.datetime.now().timestamp())}_{i}_{secure_filename(photo.filename)}'
-            filepath = os.path.join(upload_dir, filename)
+        if not photo or not photo.filename:
+            continue
+        # Size check (10MB per file)
+        photo.seek(0, 2)
+        psize = photo.tell()
+        photo.seek(0)
+        if psize > 10 * 1024 * 1024:
+            _batch_errors.append(f'{photo.filename}: too large (>10MB)')
+            continue
+        _ext = photo.filename.rsplit('.', 1)[1].lower() if '.' in photo.filename else 'jpg'
+        if _ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+            _ext = 'jpg'
+        filename = f'batch_{room_id}_{int(datetime.datetime.now().timestamp())}_{i}_{secure_filename(photo.filename.rsplit(".", 1)[0])}.{_ext}'
+        filepath = os.path.join(upload_dir, filename)
+        # Auto-compress
+        try:
+            from PIL import Image as _PIL
+            img = _PIL.Image.open(photo)
+            if max(img.size) > 2048:
+                sc = 2048 / max(img.size)
+                img = img.resize((int(img.size[0]*sc), int(img.size[1]*sc)), _PIL.LANCZOS)
+            if img.mode == 'RGBA' and _ext in ('jpg', 'jpeg'):
+                img = img.convert('RGB')
+            _sk = {'optimize': True, 'quality': 80} if _ext in ('jpg', 'jpeg') else {'optimize': True}
+            img.save(filepath, **_sk)
+        except Exception:
             photo.save(filepath)
 
-            # Insert photo record
-            db.execute(
-                'INSERT INTO photos (claim_id, room_id, filename, ai_description, customer_submitted) VALUES (?, ?, ?, ?, ?)',
-                (claim_id, room_id, filename, '', 0)
-            )
-            saved_paths.append(filepath)
+        # Insert photo record
+        db.execute(
+            'INSERT INTO photos (claim_id, room_id, filename, ai_description, customer_submitted) VALUES (?, ?, ?, ?, ?)',
+            (claim_id, room_id, filename, '', 0))
+        saved_paths.append(filepath)
 
     db.commit()
 
@@ -6325,7 +6479,8 @@ def batch_analyze_claim_room(claim_id, room_id):
     return jsonify({
         'success': True,
         'analysis': analysis,
-        'photos_processed': len(saved_paths)
+        'photos_processed': len(saved_paths),
+        'errors': _batch_errors if _batch_errors else None
     })
 
 
@@ -6739,6 +6894,18 @@ def admin_delete_lesson(class_id, lesson_id):
     flash('Lesson deleted.', 'success')
     return redirect(url_for('admin_manage_lessons', class_id=class_id))
 
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template('errors/403.html'), 403
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template('errors/500.html'), 500
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)

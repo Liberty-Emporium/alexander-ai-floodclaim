@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}{{ claim.claim_number }} — FloodClaims Pro{% endblock %}
+{% block page_title %}🏠 {{ claim.client_name }}{% endblock %}
+{% block extra_css %}
+<style>
+  .mob-card{background:#fff;border-radius:14px;padding:1rem;margin-bottom:.75rem;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #e2e0f0}
+  .mob-card h3{font-size:.95rem;font-weight:700;margin:0 0 .5rem}
+  .mob-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8}
+  .mob-val{font-size:.9rem;font-weight:600;color:#0a1628}
+  .mob-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid #f1f5f9}
+  .mob-row:last-child{border-bottom:none}
+  .mob-badge{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:.65rem;font-weight:700}
+  .mob-room-card{background:#f8fafc;border-radius:10px;padding:.75rem;margin-bottom:.5rem;border:1px solid #e2e8f0}
+  .mob-room-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+  .mob-room-name{font-size:.85rem;font-weight:700}
+  .mob-room-subtotal{font-size:.85rem;font-weight:800;color:#10b981}
+  .mob-item{font-size:.78rem;color:#475569;padding:.2rem 0;display:flex;justify-content:space-between}
+  .mob-photo-grid{display:flex;gap:.35rem;overflow-x:auto;padding-bottom:.25rem;margin-top:.5rem}
+  .mob-photo-grid img{height:72px;width:72px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid #e2e8f0}
+  .mob-action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;margin:.75rem 0}
+  .mob-action-grid .btn{font-size:.75rem;padding:.45rem;width:100%;text-align:center}
+  .mob-stat{display:flex;gap:.5rem;margin-bottom:.75rem}
+  .mob-stat-card{flex:1;text-align:center;padding:.5rem;background:#fff;border-radius:10px;border:1px solid #e2e8f0}
+  .mob-stat-val{font-size:1.1rem;font-weight:800;color:#06D6C7}
+  .mob-stat-lbl{font-size:.6rem;color:#94a3b8;font-weight:600;text-transform:uppercase}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Stats -->
+<div class="mob-stat">
+  <div class="mob-stat-card"><div class="mob-stat-val">{{ "{:,.0f}".format(claim.total_estimate) }}</div><div class="mob-stat-lbl">Estimate</div></div>
+  <div class="mob-stat-card"><div class="mob-stat-val">{{ room_data|length }}</div><div class="mob-stat-lbl">Rooms</div></div>
+  <div class="mob-stat-card"><div class="mob-stat-val">{% set pcount = 0 %}{% for r in room_data %}{% set pcount = pcount + r.room_photos|length %}{% endfor %}{{ pcount + unassigned_photos|length }}</div><div class="mob-stat-lbl">Photos</div></div>
+  <div class="mob-stat-card"><span class="mob-badge" style="background:{% if claim.status=='New' %}#dbeafe{% elif claim.status=='In Progress'}%#fef3c7{% elif claim.status=='Submitted'}%#d1fae5{% else%}#f1f5f9{% endif %};color:{% if claim.status=='New' %}#1e40af{% elif claim.status=='In Progress'}%#92400e{% elif claim.status=='Submitted'}%#065f46{% else%}#475569{% endif %}">{{ claim.status }}</span><br><div class="mob-stat-lbl" style="margin-top:.15rem">Status</div></div>
+</div>
+
+<!-- Property Info -->
+<div class="mob-card">
+  <div class="mob-row"><span class="mob-label">Property</span><span class="mob-val">{{ claim.property_address }}</span></div>
+  <div class="mob-row"><span class="mob-label">Flood Date</span><span class="mob-val">{{ claim.flood_date }}</span></div>
+  {% if claim.insurance_company %}<div class="mob-row"><span class="mob-label">Insurance</span><span class="mob-val">{{ claim.insurance_company }}</span></div>{% endif %}
+  {% if claim.claim_number %}<div class="mob-row"><span class="mob-label">Claim #</span><span class="mob-val">{{ claim.claim_number }}</span></div>{% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="mob-action-grid">
+  <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📋 Full View</a>
+  <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
+  <button onclick="runAIEstimate()" class="btn btn-primary btn-sm">🤖 AI Estimate</button>
+  <a href="{{ url_for('submit_package_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📤 Submit</a>
+</div>
+
+<!-- Rooms -->
+{% if room_data %}
+<div class="mob-card">
+  <h3>🏠 Rooms</h3>
+  {% for rd in room_data %}
+  <div class="mob-room-card">
+    <div class="mob-room-header">
+      <span class="mob-room-name">{{ rd.room.name }}</span>
+      <span class="mob-room-subtotal">${{ "{:,.2f}".format(rd.room.subtotal) }}</span>
+    </div>
+    {% if rd.line_items %}
+      {% for item in rd.line_items %}
+      <div class="mob-item">
+        <span>{{ item.description }} x{{ item.quantity }} {{ item.unit }}</span>
+        <span style="font-weight:600">${{ "{:,.2f}".format(item.total) }}</span>
+      </div>
+      {% endfor %}
+    {% endif %}
+    {% if rd.room_photos %}
+    <div class="mob-photo-grid">
+      {% for p in rd.room_photos[:5] %}
+      <img src="{{ url_for('uploaded_file', filename=p.filename) }}" alt="{{ p.caption or 'Photo' }}" onclick="window.open(this.src)">
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Unassigned Photos -->
+{% if unassigned_photos %}
+<div class="mob-card">
+  <h3>📷 Unassigned Photos ({{ unassigned_photos|length }})</h3>
+  <div class="mob-photo-grid">
+    {% for p in unassigned_photos[:8] %}
+    <img src="{{ url_for('uploaded_file', filename=p.filename) }}" alt="{{ p.caption or 'Photo' }}" onclick="window.open(this.src)">
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Signature -->
+{% if signature %}
+<div class="mob-card">
+  <h3>✍️ Signature</h3>
+  {% if signature.signature_data %}
+  <img src="{{ signature.signature_data }}" style="max-width:200px;border:1px solid #e2e8f0;border-radius:8px">
+  <div style="font-size:.75rem;color:#94a3b8;margin-top:.25rem">Signed {{ signature.signed_at }}</div>
+  {% else %}
+  <div style="font-size:.85rem;color:#64748b">Signature on file</div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% set _mob_js_added = True %}
+{% block extra_js %}
+{{ super()|default('') }}
+{% if not _mob_js_added|default(false) %}
+<script>/* mobile page JS placeholder */</script>
+{% endif %}
+{% endblock %}
+{% endblock %}

@@ -1120,44 +1120,90 @@ function _estimateShowResult(d) {
 function runAIEstimate() {
   document.getElementById('estimateModal').style.display = 'flex';
   _estimateSeconds = 0;
-  _estimateLoading('Starting AI estimate job...');
+  // Show progress bar UI
+  var content = document.getElementById('estimateContent');
+  content.innerHTML = `
+    <div id="estimateProgressArea" style="text-align:center;padding:2rem 1rem;">
+      <div style="font-size:2.5rem;margin-bottom:.75rem;">🤖</div>
+      <div style="font-size:1rem;font-weight:700;margin-bottom:.5rem;" id="estimateStatusText">Starting AI estimate...</div>
+      <div style="font-size:.8rem;color:#64748b;margin-bottom:1.25rem;" id="estimateStatusDetail"></div>
+      <div style="background:#e2e8f0;border-radius:999px;height:10px;overflow:hidden;max-width:400px;margin:0 auto;">
+        <div id="estimateProgressBar" style="height:100%;background:linear-gradient(90deg,#06D6C7,#3B7BFF);border-radius:999px;width:0%;transition:width .4s ease;"></div>
+      </div>
+      <div style="font-size:.72rem;color:#94a3b8;margin-top:.5rem;" id="estimateTimer">0s</div>
+    </div>
+    <div id="estimateResultArea" style="display:none;"></div>
+  `;
 
-  fetch('/claims/{{ claim.id }}/ai-estimate', { headers:{'X-CSRF-Token':getCsrf()},
-    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include'
+  fetch('/claims/{{ claim.id }}/ai-estimate', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-Token':getCsrf()},
+    credentials:'include'
   })
   .then(r => {
     if (r.status === 401) return {ok:false, error:'Session expired — please refresh and log in.'};
     return r.json().catch(()=>({ok:false, error:'Unexpected response ('+r.status+')'}));
   })
   .then(d => {
-    if (!d.ok) { _estimateShowResult(d); return; }
+    if (!d.ok) { _estimateShowError(d.error); return; }
     var jobId = d.job_id;
-    _estimateLoading('Analyzing photos and building estimate…<br><small style="color:#94a3b8">Hang tight — this takes 20–60 seconds</small>');
-    // Start timer display
+    // Start timer
     var timerEl = document.getElementById('estimateTimer');
-    var timerInt = setInterval(()=>{ _estimateSeconds++; if(timerEl) timerEl.textContent = _estimateSeconds+'s'; }, 1000);
-    // Poll every 3 seconds
+    var timerInt = setInterval(()=>{
+      _estimateSeconds++;
+      if(timerEl) timerEl.textContent = _estimateSeconds + 's';
+    }, 1000);
+    // Poll every 2 seconds
     var polls = 0;
     _estimatePollTimer = setInterval(()=>{
       polls++;
-      if (polls > 40) { // 2 min timeout
+      if (polls > 60) { // 2 min timeout
         clearInterval(_estimatePollTimer); clearInterval(timerInt);
-        _estimateShowResult({ok:false, error:'Estimate timed out after 2 minutes. Try again.'});
+        _estimateShowError('Estimate timed out after 2 minutes. Please try again.');
         return;
       }
       fetch('/claims/{{ claim.id }}/ai-estimate/' + jobId, {credentials:'include'})
       .then(r=>r.json())
       .then(poll=>{
-        if (poll.status === 'pending') return; // still working
-        clearInterval(_estimatePollTimer); clearInterval(timerInt);
-        _estimateShowResult(poll);
+        // Update progress bar
+        var bar = document.getElementById('estimateProgressBar');
+        var statusText = document.getElementById('estimateStatusText');
+        var statusDetail = document.getElementById('estimateStatusDetail');
+        if (bar && poll.progress !== undefined) {
+          bar.style.width = poll.progress + '%';
+        }
+        if (statusText && poll.progress_msg) {
+          statusText.textContent = poll.progress_msg;
+        }
+        if (statusDetail) {
+          if (poll.status === 'pending') {
+            statusDetail.textContent = 'This usually takes 20–60 seconds. Please wait...';
+          }
+        }
+        if (poll.status === 'done') {
+          clearInterval(_estimatePollTimer); clearInterval(timerInt);
+          _estimateShowResult(poll);
+        } else if (poll.status === 'error') {
+          clearInterval(_estimatePollTimer); clearInterval(timerInt);
+          _estimateShowError(poll.error || 'AI estimate failed');
+        }
       })
       .catch(()=>{});
-    }, 3000);
+    }, 2000);
   })
   .catch(e => {
-    _estimateShowResult({ok:false, error:'Network error: '+e.message});
+    _estimateShowError('Network error: ' + e.message);
   });
+}
+
+function _estimateShowError(msg) {
+  var content = document.getElementById('estimateContent');
+  content.innerHTML = `<div style="text-align:center;padding:2rem;color:#dc2626;">
+    <div style="font-size:2rem;margin-bottom:.5rem;">⚠️</div>
+    <div style="font-weight:700;margin-bottom:.5rem;">Estimate Failed</div>
+    <div style="font-size:.85rem;color:#64748b;">${escHtml(msg)}</div>
+    <button onclick="runAIEstimate()" class="btn btn-primary btn-sm" style="margin-top:1rem;">Try Again</button>
+  </div>`;
 }
 function closeEstimateModal() {
   document.getElementById('estimateModal').style.display = 'none';
