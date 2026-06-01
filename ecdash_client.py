@@ -321,17 +321,44 @@ def init_app(flask_app=None, app_name: Optional[str] = None):
     # Pre-warm the URL cache in a background thread so first call_app() is fast
     # CRITICAL: The prewarm thread must NOT block app startup.
     # If EcDash vault is slow or unreachable, skip rather than hang FloodClaims.
+    # Strategy: populate a hardcoded URL map FIRST (instant, no network),
+    # then let the background thread update from vault when it's ready.
     import threading
+
+    # Step 1: Hardcoded fallback URLs — these work immediately without vault
+    _url_cache.update({
+        "Pet Vet AI": "https://ai-vet-tech.alexanderai.site",
+        "Sweet Spot Cakes": "https://sweet-spot-cakes.up.railway.app",
+        "AI Agent Widget": "https://ai.widget.alexanderai.site",
+        "GymForge": "https://gymforge.ai.alexanderai.site",
+    })
+
     def _prewarm():
+        """Background: try to refresh from vault, but with a hard total time limit."""
+        import time as _t
+        _start = _t.time()
         try:
-            # Quick check: hit the vault health endpoint first (fast fail)
-            health = _http("GET", f"{ECDASH_URL}/health", timeout=5)
-            if health is None:
-                logger.warning("ecdash_client: EcDash vault unreachable, skipping prewarm (non-fatal)")
+            # Fetch vault list with short timeout
+            result = _http("GET", f"{ECDASH_URL}/api/vault",
+                           headers=_vault_headers(), timeout=5)
+            if not result or not isinstance(result, list):
                 return
-            _refresh_app_urls()
+            # Only process App URLs items, with per-item 3s timeout
+            for item in result:
+                if _t.time() - _start > 10:  # Hard 10s total limit
+                    logger.warning("ecdash_client prewarm: 10s budget exhausted, skipping remaining")
+                    break
+                if item.get("category") == "App URLs":
+                    label = item.get("label", "")
+                    if label not in _url_cache:  # Don't overwrite hardcoded URLs
+                        detail = _http("GET", f"{ECDASH_URL}/api/vault/{item['id']}",
+                                       headers=_vault_headers(), timeout=3)
+                        if detail and detail.get("secret"):
+                            _url_cache[label] = detail["secret"].rstrip("/")
+            logger.debug(f"ecdash_client: prewarm loaded {len(_url_cache)} app URLs")
         except Exception as e:
             logger.warning(f"ecdash_client prewarm failed (non-fatal): {e}")
+
     prewarm_thread = threading.Thread(target=_prewarm, daemon=True)
     prewarm_thread.start()
     # Do NOT join — let it run in background
