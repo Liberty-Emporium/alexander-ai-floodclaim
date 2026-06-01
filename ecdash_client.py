@@ -319,12 +319,21 @@ def init_app(flask_app=None, app_name: Optional[str] = None):
     log_startup(ECDASH_APP_NAME)
 
     # Pre-warm the URL cache in a background thread so first call_app() is fast
+    # CRITICAL: The prewarm thread must NOT block app startup.
+    # If EcDash vault is slow or unreachable, skip rather than hang FloodClaims.
     import threading
     def _prewarm():
         try:
+            # Quick check: hit the vault health endpoint first (fast fail)
+            health = _http("GET", f"{ECDASH_URL}/health", timeout=5)
+            if health is None:
+                logger.warning("ecdash_client: EcDash vault unreachable, skipping prewarm (non-fatal)")
+                return
             _refresh_app_urls()
-        except Exception:
-            pass
-    threading.Thread(target=_prewarm, daemon=True).start()
+        except Exception as e:
+            logger.warning(f"ecdash_client prewarm failed (non-fatal): {e}")
+    prewarm_thread = threading.Thread(target=_prewarm, daemon=True)
+    prewarm_thread.start()
+    # Do NOT join — let it run in background
 
     return flask_app  # pass-through for chaining
