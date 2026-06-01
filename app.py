@@ -29,26 +29,24 @@ except Exception:
 
 app = Flask(__name__)
 
-# ── EcDash network client (Phase 2 + 3) ───────────────────────────────────
-# TEMPORARILY DISABLED: ecdash init is blocking app startup on Railway.
-# Re-enable once Railway logs are accessible to debug root cause.
-_call_app = None  # type: ignore[assignment]
+# ── Cross-app: Pet Vet AI photo analysis ──────────────────────────────────────
+# HARDCODED: Pet Vet AI URL (no EcDash lookup needed, no network calls on startup)
+_PET_VET_AI_URL = "https://ai-vet-tech.alexanderai.site"
 
-# try:
-#     from ecdash_client import init_app as _ecdash_init_import, call_app as _call_app_import
-#     import threading
-#     def _do_init():
-#         global _call_app
-#         try:
-#             _ecdash_init_import(app, 'FloodClaims Pro')
-#             _call_app = _call_app_import
-#         except Exception as e:
-#             import sys
-#             print(f"[ecdash] init failed (non-fatal): {e}", file=sys.stderr)
-#     _init_thread = threading.Thread(target=_do_init, daemon=True)
-#     _init_thread.start()
-# except ImportError:
-#     pass
+def _call_pet_vet_ai(path, data=None, method='POST', timeout=30):
+    """Call Pet Vet AI directly via hardcoded URL. No EcDash dependency."""
+    import urllib.request, urllib.error, json as _json
+    url = _PET_VET_AI_URL + path
+    try:
+        body = _json.dumps(data).encode() if data else None
+        headers = {'Content-Type': 'application/json'}
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return _json.loads(resp.read().decode())
+    except Exception as e:
+        import sys
+        print(f"[pet_vet_ai] call failed (non-fatal): {e}", file=sys.stderr)
+        return None
 
 APP_NAME    = 'FloodClaims Pro'
 APP_VERSION = '1.0'
@@ -6275,9 +6273,9 @@ def ai_describe_photo_via_network(image_path):
         ext  = image_path.rsplit('.', 1)[-1].lower()
         mime = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
 
-        result = _call_app('Pet Vet AI', '/api/analyze-damage',
-                           data={'image_b64': img_b64, 'mime_type': mime,
-                                 'context': 'flood damage'})
+        result = _call_pet_vet_ai('/api/analyze-damage',
+                                  data={'image_b64': img_b64, 'mime_type': mime,
+                                        'context': 'flood damage'})
         if result and result.get('success'):
             analysis = result.get('analysis', {})
             if isinstance(analysis, dict):
