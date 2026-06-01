@@ -30,29 +30,25 @@ except Exception:
 app = Flask(__name__)
 
 # ── EcDash network client (Phase 2 + 3) ───────────────────────────────────
-# CRITICAL: ecdash_client.init_app() must NOT block app startup.
-# If EcDash is slow/unreachable, the app must still start and serve pages.
+# TEMPORARILY DISABLED: ecdash init is blocking app startup on Railway.
+# Re-enable once Railway logs are accessible to debug root cause.
 _call_app = None  # type: ignore[assignment]
-_ecdash_ok = False
 
-try:
-    from ecdash_client import init_app as _ecdash_init_import, call_app as _call_app_import
-    # Run init in a thread with a hard deadline — never block the main import chain
-    import threading
-    def _do_init():
-        global _ecdash_init, _call_app, _ecdash_ok
-        try:
-            _ecdash_init_import(app, 'FloodClaims Pro')
-            _call_app = _call_app_import
-            _ecdash_ok = True
-        except Exception as e:
-            import sys
-            print(f"[ecdash] init failed (non-fatal): {e}", file=sys.stderr)
-    _init_thread = threading.Thread(target=_do_init, daemon=True)
-    _init_thread.start()
-    # Don't wait — let it finish in the background
-except ImportError:
-    def _call_app(*a, **kw): return None
+# try:
+#     from ecdash_client import init_app as _ecdash_init_import, call_app as _call_app_import
+#     import threading
+#     def _do_init():
+#         global _call_app
+#         try:
+#             _ecdash_init_import(app, 'FloodClaims Pro')
+#             _call_app = _call_app_import
+#         except Exception as e:
+#             import sys
+#             print(f"[ecdash] init failed (non-fatal): {e}", file=sys.stderr)
+#     _init_thread = threading.Thread(target=_do_init, daemon=True)
+#     _init_thread.start()
+# except ImportError:
+#     pass
 
 APP_NAME    = 'FloodClaims Pro'
 APP_VERSION = '1.0'
