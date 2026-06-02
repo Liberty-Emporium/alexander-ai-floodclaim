@@ -687,6 +687,9 @@
 
     {% if session.role == 'admin' %}
     <div class="nav-section">Admin</div>
+    <a href="{{ url_for('feedback_studio') }}" class="nav-link {% if request.endpoint and 'feedback' in request.endpoint %}active{% endif %}">
+      <i data-lucide="message-square" class="nav-link-icon"></i> Feedback
+    </a>
     <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
       <i data-lucide="users" class="nav-link-icon"></i> Team
     </a>
