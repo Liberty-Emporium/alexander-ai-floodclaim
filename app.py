@@ -2980,6 +2980,13 @@ def _migrate_feedback_tables():
     existing = db.execute('SELECT id FROM feedback_poll_state WHERE id=1').fetchone()
     if not existing:
         db.execute('INSERT INTO feedback_poll_state (id, last_check, last_notification) VALUES (1, "", "")')
+    # Seed Mr. Forbes as first client (only if not already exists)
+    forbes = db.execute('SELECT id FROM feedback_clients WHERE email=?', ('tcwilliamsemail@gmail.com',)).fetchone()
+    if not forbes:
+        import secrets as _sec
+        token = _sec.token_urlsafe(24)
+        db.execute('INSERT INTO feedback_clients (name, email, token, app_name) VALUES (?,?,?,?)',
+                   ('Mr. Forbes', 'tcwilliamsemail@gmail.com', token, 'Forbes Custom App'))
     db.commit()
     db.close()
 
