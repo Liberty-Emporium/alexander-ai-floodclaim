@@ -293,16 +293,18 @@ def init_db():
             ai_description TEXT DEFAULT '',
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );
-        -- Soft-delete columns (added via migration for existing DBs)
-        _rooms_cols = [r[1] for r in db.execute('PRAGMA table_info(rooms)').fetchall()]
-        if 'deleted_at' not in _rooms_cols:
-            db.execute('ALTER TABLE rooms ADD COLUMN deleted_at TEXT DEFAULT NULL')
-        _li_cols = [r[1] for r in db.execute('PRAGMA table_info(line_items)').fetchall()]
-        if 'deleted_at' not in _li_cols:
-            db.execute('ALTER TABLE line_items ADD COLUMN deleted_at TEXT DEFAULT NULL')
-        _photo_cols = [r[1] for r in db.execute('PRAGMA table_info(photos)').fetchall()]
-        if 'deleted_at' not in _photo_cols:
-            db.execute('ALTER TABLE photos ADD COLUMN deleted_at TEXT DEFAULT NULL')
+    ''')
+    # Soft-delete columns (added via migration for existing DBs)
+    _rooms_cols = [r[1] for r in db.execute('PRAGMA table_info(rooms)').fetchall()]
+    if 'deleted_at' not in _rooms_cols:
+        db.execute('ALTER TABLE rooms ADD COLUMN deleted_at TEXT DEFAULT NULL')
+    _li_cols = [r[1] for r in db.execute('PRAGMA table_info(line_items)').fetchall()]
+    if 'deleted_at' not in _li_cols:
+        db.execute('ALTER TABLE line_items ADD COLUMN deleted_at TEXT DEFAULT NULL')
+    _photo_cols = [r[1] for r in db.execute('PRAGMA table_info(photos)').fetchall()]
+    if 'deleted_at' not in _photo_cols:
+        db.execute('ALTER TABLE photos ADD COLUMN deleted_at TEXT DEFAULT NULL')
+    db.executescript('''
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL DEFAULT ''
@@ -6919,4 +6921,5 @@ def server_error(e):
     return render_template('errors/500.html'), 500
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
