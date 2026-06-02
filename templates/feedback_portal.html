@@ -65,14 +65,15 @@
 
 <div class="header">
   <h1>💬 {{ client.app_name or 'App Feedback' }}</h1>
-  <p>{{ client.name }} — tell us what you want in your app</p>
+  <p>Your feedback goes straight to our dashboard → changes in 24 hours</p>
 </div>
 
 <div class="chat" id="chat">
   <div class="welcome" id="welcome">
     <div class="icon">🎤</div>
-    <h2>Tell Us What You Want</h2>
-    <p>Talk to our AI about your app idea. Tell it what you need, what you'd like to change, or what's missing. Jay will use everything you say to build your custom app.</p>
+    <h2>Billy, How Can We Help You Make This App Better?</h2>
+    <p>This is a direct connection to our development dashboard. Talk to the AI about what you need — what you want changed, added, or removed. Everything you say goes straight to our team.</p>
+    <p style="color:#60a5fa;font-weight:600;font-size:.9rem;margin-top:.75rem;">⚡ Changes you request here take effect within 24 hours.</p>
     <button class="btn" onclick="startSession()">🎤 Start Talking</button>
   </div>
 </div>
@@ -98,7 +99,7 @@ function startSession() {
   active = true;
   document.getElementById('txtInput').focus();
   // AI greeting
-  addMsg('assistant', "Hey there! 👋 I'm here to help you think through your app. There are no wrong answers — just tell me what's on your mind.\n\nWhat kind of business do run, and what do you want your app to do?");
+  addMsg('assistant', "Hey Billy! 👋 This is a direct line to our development team's dashboard. Whatever you tell me here gets sent straight to Jay and the team.\n\nTell me about your business and what you want your app to do. What's working, what's not, what's missing?\n\n⚡ Changes you request here take effect within 24 hours.");
 }
 
 function addMsg(role, text) {
