@@ -1946,6 +1946,14 @@ def delete_item(item_id):
 
 # ── Feedback: Dashboard API & Client Portal ────────────────────────────────────
 
+@app.route('/api/health/feedback-tables')
+def feedback_tables_health():
+    """Check if feedback tables exist (no auth required for monitoring)."""
+    import sqlite3
+    db = sqlite3.connect(DB_PATH)
+    tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'feedback_%'").fetchall()]
+    return jsonify({'tables': tables, 'ok': len(tables) == 4})
+
 @app.route('/api/dashboard/feedback')
 @login_required
 def dashboard_feedback_api():
