@@ -4,7 +4,7 @@ try:
     BCRYPT_OK = True
 except ImportError:
     BCRYPT_OK = False
-from datetime import timedelta
+from datetime import timedelta, timezone
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, jsonify, g, send_from_directory, make_response)
