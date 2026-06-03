@@ -190,8 +190,23 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXT
 
 # ── DB ────────────────────────────────────────────────────────────────────────
+_db_initialized = False
+
+def _ensure_db_initialized():
+    """Lazily initialize the database on first DB access. Never crashes the app."""
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            init_db()
+            _db_initialized = True
+        except Exception as e:
+            import sys
+            print(f"[db_init] WARNING: init_db() failed (non-fatal): {e}", file=sys.stderr)
+            # Don't set _db_initialized — retry on next access
+
 def get_db():
     if 'db' not in g:
+        _ensure_db_initialized()
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
@@ -442,7 +457,8 @@ def check_pw(pw, hashed):
     # Legacy SHA-256 path
     return hashlib.sha256(pw.encode()).hexdigest() == hashed
 
-init_db()
+# init_db() is now called lazily in get_db() via _ensure_db_initialized()
+# This prevents worker crashes when Railway volume isn't ready on startup
 
 def migrate_claims_columns():
     new_cols = [
@@ -6643,37 +6659,56 @@ def sales_page():
 def health():
     return jsonify({'status': 'ok'})
 
+@app.route('/ready')
+def ready():
+    """Readiness probe — checks DB connectivity."""
+    try:
+        db = get_db()
+        db.execute('SELECT 1 FROM claims LIMIT 1')
+        return jsonify({'ready': True, 'db': 'ok'})
+    except Exception as e:
+        return jsonify({'ready': False, 'db': str(e)}), 503
+
 # ── Phase 3: Standardized /api/status ───────────────────────────────────
 @app.route('/api/status', methods=['GET'])
 def api_status():
     """Liberty-Emporium network: standardized status endpoint."""
-    # Rate limit unauthenticated status checks
-    ip = request.remote_addr or 'unknown'
-    if is_rate_limited(f'status:{ip}', max_calls=30, window=60):
-        return jsonify({'error': 'rate limited'}), 429
-    uptime = int(_uptime_time.time() - _APP_START_TIME)
-    def _fmt(s):
-        if s < 60:   return f"{s}s"
-        if s < 3600: return f"{s//60}m {s%60}s"
-        return f"{s//3600}h {(s%3600)//60}m"
     try:
-        db     = get_db()
-        claims = db.execute('SELECT COUNT(*) FROM claims').fetchone()[0]
-        open_c = db.execute("SELECT COUNT(*) FROM claims WHERE status NOT IN ('closed','paid')").fetchone()[0]
-        photos = db.execute('SELECT COUNT(*) FROM photos').fetchone()[0]
-        stats  = {'total_claims': claims, 'open_claims': open_c, 'total_photos': photos}
+        # Rate limit unauthenticated status checks
+        ip = request.remote_addr or 'unknown'
+        if is_rate_limited(f'status:{ip}', max_calls=30, window=60):
+            return jsonify({'error': 'rate limited'}), 429
+        uptime = int(_uptime_time.time() - _APP_START_TIME)
+        def _fmt(s):
+            if s < 60:   return f"{s}s"
+            if s < 3600: return f"{s//60}m {s%60}s"
+            return f"{s//3600}h {(s%3600)//60}m"
+        try:
+            db     = get_db()
+            claims = db.execute('SELECT COUNT(*) FROM claims').fetchone()[0]
+            open_c = db.execute("SELECT COUNT(*) FROM claims WHERE status NOT IN ('closed','paid')").fetchone()[0]
+            photos = db.execute('SELECT COUNT(*) FROM photos').fetchone()[0]
+            stats  = {'total_claims': claims, 'open_claims': open_c, 'total_photos': photos}
+        except Exception as e:
+            stats = {'error': str(e)}
+        return jsonify({
+            'app':            APP_NAME,
+            'version':        APP_VERSION,
+            'healthy':        True,
+            'uptime_seconds': uptime,
+            'uptime_human':   _fmt(uptime),
+            'stats':          stats,
+            'network':        'liberty-emporium',
+            'ts':             datetime.now(timezone.utc).isoformat(),
+        })
     except Exception as e:
-        stats = {'error': str(e)}
-    return jsonify({
-        'app':            APP_NAME,
-        'version':        APP_VERSION,
-        'healthy':        True,
-        'uptime_seconds': uptime,
-        'uptime_human':   _fmt(uptime),
-        'stats':          stats,
-        'network':        'liberty-emporium',
-        'ts':             datetime.now(timezone.utc).isoformat(),
-    })
+        return jsonify({
+            'app':     APP_NAME,
+            'version': APP_VERSION,
+            'healthy': False,
+            'error':   str(e),
+            'ts':      datetime.now(timezone.utc).isoformat(),
+        }), 500
 
 # ── Phase 3: Cross-app — Pet Vet AI photo analysis ──────────────────────────
 def ai_describe_photo_via_network(image_path):
