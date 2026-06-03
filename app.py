@@ -6672,43 +6672,12 @@ def ready():
 # ── Phase 3: Standardized /api/status ───────────────────────────────────
 @app.route('/api/status', methods=['GET'])
 def api_status():
-    """Liberty-Emporium network: standardized status endpoint."""
-    try:
-        # Rate limit unauthenticated status checks
-        ip = request.remote_addr or 'unknown'
-        if is_rate_limited(f'status:{ip}', max_calls=30, window=60):
-            return jsonify({'error': 'rate limited'}), 429
-        uptime = int(_uptime_time.time() - _APP_START_TIME)
-        def _fmt(s):
-            if s < 60:   return f"{s}s"
-            if s < 3600: return f"{s//60}m {s%60}s"
-            return f"{s//3600}h {(s%3600)//60}m"
-        try:
-            db     = get_db()
-            claims = db.execute('SELECT COUNT(*) FROM claims').fetchone()[0]
-            open_c = db.execute("SELECT COUNT(*) FROM claims WHERE status NOT IN ('closed','paid')").fetchone()[0]
-            photos = db.execute('SELECT COUNT(*) FROM photos').fetchone()[0]
-            stats  = {'total_claims': claims, 'open_claims': open_c, 'total_photos': photos}
-        except Exception as e:
-            stats = {'error': str(e)}
-        return jsonify({
-            'app':            APP_NAME,
-            'version':        APP_VERSION,
-            'healthy':        True,
-            'uptime_seconds': uptime,
-            'uptime_human':   _fmt(uptime),
-            'stats':          stats,
-            'network':        'liberty-emporium',
-            'ts':             datetime.now(timezone.utc).isoformat(),
-        })
-    except Exception as e:
-        return jsonify({
-            'app':     APP_NAME,
-            'version': APP_VERSION,
-            'healthy': False,
-            'error':   str(e),
-            'ts':      datetime.now(timezone.utc).isoformat(),
-        }), 500
+    """Simple status endpoint — no rate limiting, no complex queries."""
+    return jsonify({
+        'app': 'FloodClaims Pro',
+        'version': '1.0',
+        'status': 'ok',
+    })
 
 # ── Phase 3: Cross-app — Pet Vet AI photo analysis ──────────────────────────
 def ai_describe_photo_via_network(image_path):
