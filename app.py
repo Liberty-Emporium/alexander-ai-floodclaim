@@ -198,6 +198,14 @@ def _ensure_db_initialized():
     if not _db_initialized:
         try:
             init_db()
+            migrate_claims_columns()
+            migrate_new_features()
+            migrate_photos_columns()
+            migrate_new_features_v2()
+            _migrate_recruitment_tables()
+            _migrate_training_tables()
+            _seed_training_modules()
+            migrate_batch_photo_columns()
             _db_initialized = True
         except Exception as e:
             import sys
@@ -205,6 +213,7 @@ def _ensure_db_initialized():
             # Don't set _db_initialized — retry on next access
 
 def get_db():
+    global _db_initialized
     if 'db' not in g:
         _ensure_db_initialized()
         g.db = sqlite3.connect(DB_PATH)
@@ -457,8 +466,9 @@ def check_pw(pw, hashed):
     # Legacy SHA-256 path
     return hashlib.sha256(pw.encode()).hexdigest() == hashed
 
-# init_db() is now called lazily in get_db() via _ensure_db_initialized()
-# This prevents worker crashes when Railway volume isn't ready on startup
+# All DB migrations (init_db, migrate_claims_columns, migrate_new_features, etc.)
+# are now called lazily in get_db() via _ensure_db_initialized().
+# This prevents worker crashes when Railway volume isn't ready on startup.
 
 def migrate_claims_columns():
     new_cols = [
@@ -493,7 +503,7 @@ def migrate_claims_columns():
     except Exception:
         pass
 
-migrate_claims_columns()
+# migrate_claims_columns() is now called lazily in get_db()
 
 
 def migrate_new_features():
@@ -561,7 +571,7 @@ def migrate_new_features():
     except Exception as e:
         print(f'migrate_new_features error: {e}')
 
-migrate_new_features()
+# migrate_new_features() now called lazily in get_db()
 
 
 def migrate_photos_columns():
@@ -580,7 +590,7 @@ def migrate_photos_columns():
     except Exception as e:
         print(f'migrate_photos_columns error: {e}')
 
-migrate_photos_columns()
+# migrate_photos_columns() now called lazily in get_db()
 
 
 def migrate_new_features_v2():
@@ -630,7 +640,7 @@ def migrate_new_features_v2():
     except Exception as e:
         print(f'migrate_new_features_v2 error: {e}')
 
-migrate_new_features_v2()
+# migrate_new_features_v2() now called lazily in get_db()
 
 
 # ── Integrations: FEMA, Maps, Email (helpers only — routes defined after auth) ──
@@ -2951,7 +2961,7 @@ def _migrate_training_tables():
     db.commit()
     db.close()
 
-_migrate_training_tables()
+# _migrate_training_tables() now called lazily in get_db()
 
 # ── Client Feedback Studio ────────────────────────────────────────────────────
 
@@ -3152,7 +3162,7 @@ def _seed_training_modules():
     db.commit()
     db.close()
 
-_seed_training_modules()
+# _seed_training_modules() now called lazily in get_db()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -6679,8 +6689,13 @@ def api_status():
         'status': 'ok',
     })
 
+# ── Claims List (redirect to dashboard) ──────────────────────────────────
+@app.route('/claims', methods=['GET'])
+def claims_list():
+    """Claims list — redirects to dashboard which shows claims."""
+    return redirect(url_for('dashboard'))
+
 # ── Phase 3: Cross-app — Pet Vet AI photo analysis ──────────────────────────
-def ai_describe_photo_via_network(image_path):
     """Phase 3: Ask Pet Vet AI to analyze a damage photo via the app network.
     Falls back to local OpenRouter analysis if network call fails.
     """
@@ -6730,7 +6745,7 @@ def migrate_batch_photo_columns():
     except Exception as e:
         print(f'migrate_batch_photo_columns error: {e}')
 
-migrate_batch_photo_columns()
+# migrate_batch_photo_columns() now called lazily in get_db()
 
 
 def _get_vision_model():
