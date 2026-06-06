@@ -66,54 +66,6 @@ _set_app(app)
 _set_paths(DB_PATH, DATA_DIR)
 app.teardown_appcontext(close_db)
 
-# ── Seed admin user ──────────────────────────────────────────────────────────
-def _seed_admin():
-    """Create default admin user if none exists."""
-    import sqlite3, hashlib, os
-    try:
-        db_path = os.path.join(DATA_DIR, 'floodclaim.db')
-        print(f'[seed] DB path: {db_path}')
-        print(f'[seed] DB exists: {os.path.exists(db_path)}')
-        
-        # Check if bcrypt is available
-        try:
-            import bcrypt as _bcrypt
-            bcrypt_ok = True
-        except ImportError:
-            bcrypt_ok = False
-        print(f'[seed] bcrypt available: {bcrypt_ok}')
-        
-        db = sqlite3.connect(db_path)
-        db.row_factory = sqlite3.Row
-        
-        # Check if users table exists
-        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchall()
-        print(f'[seed] users table exists: {len(tables) > 0}')
-        
-        existing = db.execute('SELECT id, email, password FROM users WHERE email=?', ('leprograms@protonmail.com',)).fetchone()
-        if not existing:
-            if bcrypt_ok:
-                pw_hash = _bcrypt.hashpw('Mhall001!'.encode(), _bcrypt.gensalt(12)).decode()
-            else:
-                pw_hash = hashlib.sha256('Mhall001!'.encode()).hexdigest()
-            print(f'[seed] Creating admin, hash prefix: {pw_hash[:10]}...')
-            db.execute(
-                'INSERT INTO users (email, password, name, role, is_active) VALUES (?,?,?,?,?)',
-                ('leprograms@protonmail.com', pw_hash, 'Jay Alexander', 'admin', 1)
-            )
-            db.commit()
-            print('[seed] Admin user created successfully')
-        else:
-            print(f'[seed] Admin already exists: {existing["email"]}')
-            print(f'[seed] Hash prefix: {existing["password"][:10]}...')
-        db.close()
-    except Exception as e:
-        import traceback
-        print(f'[seed] Error: {e}')
-        traceback.print_exc()
-
-_seed_admin()
-
 # ── CSRF protection ───────────────────────────────────────────────────────────
 def _get_csrf_token():
     if 'csrf_token' not in session:
