@@ -488,7 +488,6 @@ def get_setting(key, default=''):
     except Exception:
         return default
 
-app.jinja_env.globals['get_setting'] = get_setting
 
 def set_setting(key, value):
     db = sqlite3.connect(DB_PATH)
