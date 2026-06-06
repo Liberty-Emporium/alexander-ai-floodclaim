@@ -70,7 +70,7 @@
 <div class="module-list">
   {% if modules %}
     {% for m in modules %}
-    <a href="{{ url_for('training_module', slug=m.slug) }}" class="module-item">
+    <a href="{{ url_for('training.training_module', slug=m.slug) }}" class="module-item">
       <div class="module-num">{{ m.module_num }}</div>
       <div class="module-info" style="flex:1;">
         <h4>{{ m.title }}</h4>

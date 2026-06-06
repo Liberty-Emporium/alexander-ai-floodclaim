@@ -11,8 +11,7 @@ bp = Blueprint("feedback", __name__)
 @bp.route('/api/health/feedback-tables')
 def feedback_tables_health():
     """Check if feedback tables exist (no auth required for monitoring)."""
-    import sqlite3
-    db = sqlite3.connect(DB_PATH)
+    db = get_db()
     tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'feedback_%'").fetchall()]
     return jsonify({'tables': tables, 'ok': len(tables) == 4})
 
@@ -81,15 +80,17 @@ def feedback_clients():
 @bp.route('/feedback/<token>')
 def feedback_client_portal(token):
     """Client-facing feedback portal — no login required."""
-    db = get_db()
-    client = db.execute('SELECT * FROM feedback_clients WHERE token=? AND status="active"', (token,)).fetchone()
-    if not client:
-        return 'Invalid or expired link. Please contact Jay Alexander for a new link.', 404
-    # Get or create a conversation for this client
-    conv = db.execute('SELECT * FROM feedback_conversations WHERE client_token=? ORDER BY updated_at DESC LIMIT 1',
-                      (token,)).fetchone()
-    conv_id = conv['id'] if conv else None
-    return render_template('feedback_portal.html', client=client, conv_id=conv_id)
+    try:
+        db = get_db()
+        client = db.execute('SELECT * FROM feedback_clients WHERE token=? AND status="active"', (token,)).fetchone()
+        if not client:
+            return 'Invalid or expired link. Please contact Jay Alexander for a new link.', 404
+        conv = db.execute('SELECT * FROM feedback_conversations WHERE client_token=? ORDER BY updated_at DESC LIMIT 1',
+                          (token,)).fetchone()
+        conv_id = conv['id'] if conv else None
+        return render_template('feedback_portal.html', client=client, conv_id=conv_id)
+    except Exception:
+        return 'This feature is not yet available. Please contact support.', 503
 
 
 
