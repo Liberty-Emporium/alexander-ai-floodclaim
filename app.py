@@ -66,6 +66,28 @@ _set_app(app)
 _set_paths(DB_PATH, DATA_DIR)
 app.teardown_appcontext(close_db)
 
+# ── Seed admin user ──────────────────────────────────────────────────────────
+def _seed_admin():
+    """Create default admin user if none exists."""
+    try:
+        from models.database import get_db, hash_pw, BCRYPT_OK
+        db = get_db()
+        existing = db.execute('SELECT id FROM users WHERE email=?', ('leprograms@protonmail.com',)).fetchone()
+        if not existing:
+            pw_hash = hash_pw('Mhall001!')
+            db.execute(
+                'INSERT INTO users (email, password, name, role, is_active) VALUES (?,?,?,?,?)',
+                ('leprograms@protonmail.com', pw_hash, 'Jay Alexander', 'admin', 1)
+            )
+            db.commit()
+            print('[seed] Admin user created: leprograms@protonmail.com')
+        else:
+            print('[seed] Admin user already exists')
+    except Exception as e:
+        print(f'[seed] Error (non-fatal): {e}')
+
+_seed_admin()
+
 # ── CSRF protection ───────────────────────────────────────────────────────────
 def _get_csrf_token():
     if 'csrf_token' not in session:
