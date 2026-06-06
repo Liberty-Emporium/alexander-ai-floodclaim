@@ -30,8 +30,11 @@ def login():
         pw    = request.form.get('password', '')
         db    = get_db()
         user  = db.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
-        if not user or not check_pw(pw, user['password']):
-            flash('Invalid email or password.', 'error')
+        if not user:
+            flash(f'User not found: {email}', 'error')
+            return render_template('login.html')
+        if not check_pw(pw, user['password']):
+            flash(f'Password mismatch. Hash prefix: {user["password"][:10]}...', 'error')
             return render_template('login.html')
         # Check if user is active (managers/admins can be deactivated by admin)
         if not user.get('is_active', 1):
