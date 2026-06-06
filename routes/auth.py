@@ -1,7 +1,7 @@
 """Routes for auth blueprint."""
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from models.database import get_db, hash_pw, check_pw, get_setting
+from models.database import get_db, hash_pw, check_pw, get_setting, BCRYPT_OK
 from utils.auth_decorators import login_required
 from utils.security import csrf_required
 from utils.helpers import is_rate_limited
