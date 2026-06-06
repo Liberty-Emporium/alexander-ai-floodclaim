@@ -7,6 +7,7 @@ Contains: DB init, migrations, password hashing, settings, all schema migrations
 import os
 import sqlite3
 import hashlib
+from flask import g
 
 try:
     import bcrypt as _bcrypt
@@ -68,24 +69,13 @@ def get_db():
         g.db.execute("PRAGMA foreign_keys=ON")
     return g.db
 
-@app.teardown_appcontext
-def close_db(e=None):
-    db = g.pop('db', None)
-    if db: db.close()
 
-@app.after_request
-def security_headers(response):
-    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
-    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    response.headers.setdefault('X-XSS-Protection', '1; mode=block')
-    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-    response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
-    response.headers.setdefault(
-        'Content-Security-Policy',
-        "default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https://unpkg.com https://openrouter.ai https://api.stripe.com; frame-src 'self' https://js.stripe.com https://maps.google.com;"
-    )
-    response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-    return response
+def close_db(e=None):
+    """Close the database connection. Registered as teardown in app.py."""
+    db = g.pop('db', None)
+    if db:
+        db.close()
+
 
 def init_db():
     os.makedirs(DATA_DIR, exist_ok=True)
