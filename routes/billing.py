@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models.database import get_db, get_setting, set_setting
 from utils.auth_decorators import login_required
+from utils.security import csrf_required
 
 bp = Blueprint("billing", __name__)
 

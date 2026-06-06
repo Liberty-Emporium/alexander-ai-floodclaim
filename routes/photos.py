@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from models.database import get_db, get_setting
 from utils.auth_decorators import login_required
-from utils.security import allowed_file
+from utils.security import allowed_file, csrf_required
 from services.ai import ai_describe_photo, call_openrouter
 import os
 import json
