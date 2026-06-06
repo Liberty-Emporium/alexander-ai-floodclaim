@@ -103,6 +103,8 @@ def _csrf_protect():
             return
         if request.path.startswith('/portal/'):
             return
+        if request.path == '/seed':
+            return
         import re
         if re.search(r'/claims/\d+/sign$', request.path):
             return
