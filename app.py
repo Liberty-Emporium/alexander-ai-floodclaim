@@ -71,20 +71,25 @@ def _seed_admin():
     """Create default admin user if none exists."""
     try:
         from models.database import get_db, hash_pw, BCRYPT_OK
+        print(f'[seed] BCRYPT_OK={BCRYPT_OK}')
         db = get_db()
-        existing = db.execute('SELECT id FROM users WHERE email=?', ('leprograms@protonmail.com',)).fetchone()
+        existing = db.execute('SELECT id, email, password FROM users WHERE email=?', ('leprograms@protonmail.com',)).fetchone()
         if not existing:
             pw_hash = hash_pw('Mhall001!')
+            print(f'[seed] Creating admin user, hash prefix: {pw_hash[:10]}...')
             db.execute(
                 'INSERT INTO users (email, password, name, role, is_active) VALUES (?,?,?,?,?)',
                 ('leprograms@protonmail.com', pw_hash, 'Jay Alexander', 'admin', 1)
             )
             db.commit()
-            print('[seed] Admin user created: leprograms@protonmail.com')
+            print('[seed] Admin user created successfully')
         else:
-            print('[seed] Admin user already exists')
+            print(f'[seed] Admin user already exists: {existing["email"]}')
+            print(f'[seed] Stored hash prefix: {existing["password"][:10]}...')
     except Exception as e:
-        print(f'[seed] Error (non-fatal): {e}')
+        import traceback
+        print(f'[seed] Error: {e}')
+        traceback.print_exc()
 
 _seed_admin()
 
