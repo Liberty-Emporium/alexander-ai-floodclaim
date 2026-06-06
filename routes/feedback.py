@@ -1,5 +1,7 @@
 """Routes for feedback blueprint."""
 
+import json
+
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
 from models.database import get_db
 from utils.auth_decorators import login_required, admin_required

@@ -34,7 +34,7 @@
       <span>Free</span>
     </div>
     <div style="display:flex;gap:.5rem;">
-      <a href="{{ url_for('admin_manage_lessons', class_id=c.id) }}" class="btn btn-secondary btn-sm">📝 Lessons</a>
+      <a href="{{ url_for('training.admin_manage_lessons', class_id=c.id) }}" class="btn btn-secondary btn-sm">📝 Lessons</a>
     </div>
   </div>
   {% endfor %}

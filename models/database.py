@@ -7,6 +7,7 @@ Contains: DB init, migrations, password hashing, settings, all schema migrations
 import os
 import sqlite3
 import hashlib
+import re
 from flask import g
 
 try:
