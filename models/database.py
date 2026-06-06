@@ -19,7 +19,7 @@ except ImportError:
 DB_PATH = None
 DATA_DIR = None
 ADMIN_EMAIL = 'admin@floodclaimpro.com'
-ADMIN_PASSWORD = 'admin123'
+ADMIN_PASSWORD = 'FloodAdmin2026!'
 app = None
 
 

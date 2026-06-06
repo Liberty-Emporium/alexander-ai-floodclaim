@@ -107,7 +107,7 @@
       <div style="font-size:.82rem;color:var(--t-secondary);margin-bottom:1rem;line-height:1.6">
         Send a custom message to a client's email. Requires <strong>SendGrid</strong> configured in Settings.
       </div>
-      <form method="POST" action="{{ url_for('notifications_send') }}">
+      <form method="POST" action="{{ url_for('schedule.notifications_send') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
           <label>Claim</label>

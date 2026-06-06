@@ -12,7 +12,7 @@ def login_required(f):
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
             flash('Your session expired — please log in again.', 'warning')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated
 
@@ -23,7 +23,7 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if session.get('role') not in ('admin', 'manager'):
             flash('Admin access required.', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('auth.dashboard'))
         return f(*args, **kwargs)
     return decorated
 
@@ -34,6 +34,6 @@ def manager_required(f):
     def decorated(*args, **kwargs):
         if session.get('role') not in ('admin', 'manager'):
             flash('Manager access required.', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('auth.dashboard'))
         return f(*args, **kwargs)
     return decorated

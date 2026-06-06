@@ -39,7 +39,7 @@ def settings():
         flash('Settings saved!', 'success')
         return redirect(url_for('admin.settings'))
 
-    env_key_set       = bool(OPENROUTER_KEY)
+    env_key_set       = bool(os.environ.get('OPENROUTER_API_KEY'))
     current_model     = get_setting('ai_model', 'openai/gpt-4o-mini')
     current_vision_model = get_setting('ai_vision_model', 'openrouter/auto')
     current_chat_model   = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')

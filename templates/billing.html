@@ -84,7 +84,7 @@
     </div>
   </div>
   <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-    <form method="POST" action="{{ url_for('billing_portal') }}">
+    <form method="POST" action="{{ url_for('billing.billing_portal') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-ghost btn-sm">⚙️ Manage Subscription</button>
     </form>
@@ -104,7 +104,7 @@
       <li>{{ f }}</li>
       {% endfor %}
     </ul>
-    <form method="POST" action="{{ url_for('billing_checkout') }}">
+    <form method="POST" action="{{ url_for('billing.billing_checkout') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="plan" value="{{ plan.id }}">
       <button type="submit"
@@ -125,7 +125,7 @@
   <br><br>
   <strong style="color:var(--amber)">⚠️ Stripe not yet configured.</strong>
   Add your <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_PUBLISHABLE_KEY</code>
-  in <a href="{{ url_for('settings') }}" style="color:var(--teal)">Settings</a> to activate payments.
+  in <a href="{{ url_for('admin.settings') }}" style="color:var(--teal)">Settings</a> to activate payments.
   {% endif %}
 </div>
 

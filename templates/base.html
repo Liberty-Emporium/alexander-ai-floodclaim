@@ -666,39 +666,39 @@
 
   <nav style="flex:1;padding:0.5rem 0;">
     <div class="nav-section">Main</div>
-    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+    <a href="{{ url_for('auth.dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
       <i data-lucide="layout-dashboard" class="nav-link-icon"></i> Dashboard
     </a>
-    <a href="{{ url_for('new_claim') }}" class="nav-link {% if request.endpoint=='new_claim' %}active{% endif %}">
+    <a href="{{ url_for('claims.new_claim') }}" class="nav-link {% if request.endpoint=='new_claim' %}active{% endif %}">
       <i data-lucide="plus-circle" class="nav-link-icon"></i> New Claim
     </a>
-    <a href="{{ url_for('pipeline') }}" class="nav-link {% if request.endpoint=='pipeline' %}active{% endif %}">
+    <a href="{{ url_for('pipeline.pipeline') }}" class="nav-link {% if request.endpoint=='pipeline' %}active{% endif %}">
       <i data-lucide="kanban" class="nav-link-icon"></i> Pipeline
     </a>
-    <a href="{{ url_for('schedule') }}" class="nav-link {% if request.endpoint=='schedule' %}active{% endif %}">
+    <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if request.endpoint=='schedule' %}active{% endif %}">
       <i data-lucide="calendar-check" class="nav-link-icon"></i> Schedule
     </a>
-    <a href="{{ url_for('analytics') }}" class="nav-link {% if request.endpoint=='analytics' %}active{% endif %}">
+    <a href="{{ url_for('analytics.analytics') }}" class="nav-link {% if request.endpoint=='analytics' %}active{% endif %}">
       <i data-lucide="bar-chart-2" class="nav-link-icon"></i> Analytics
     </a>
-    <a href="{{ url_for('notifications') }}" class="nav-link {% if request.endpoint=='notifications' %}active{% endif %}">
+    <a href="{{ url_for('schedule.notifications') }}" class="nav-link {% if request.endpoint=='notifications' %}active{% endif %}">
       <i data-lucide="bell" class="nav-link-icon"></i> Notifications
     </a>
 
     {% if session.role == 'admin' %}
     <div class="nav-section">Admin</div>
-    <a href="{{ url_for('feedback_studio') }}" class="nav-link {% if request.endpoint and 'feedback' in request.endpoint %}active{% endif %}">
+    <a href="{{ url_for('admin.feedback_studio') }}" class="nav-link {% if request.endpoint and 'feedback' in request.endpoint %}active{% endif %}">
       <i data-lucide="message-square" class="nav-link-icon"></i> Feedback
     </a>
-    <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
+    <a href="{{ url_for('admin.team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
       <i data-lucide="users" class="nav-link-icon"></i> Team
     </a>
-    <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint=='settings' %}active{% endif %}">
+    <a href="{{ url_for('admin.settings') }}" class="nav-link {% if request.endpoint=='settings' %}active{% endif %}">
       <i data-lucide="settings" class="nav-link-icon"></i> Settings
     </a>
     {% elif session.role == 'manager' %}
     <div class="nav-section">Management</div>
-    <a href="{{ url_for('team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
+    <a href="{{ url_for('admin.team') }}" class="nav-link {% if request.endpoint=='team' %}active{% endif %}">
       <i data-lucide="users" class="nav-link-icon"></i> Team
     </a>
     {% endif %}
@@ -710,7 +710,7 @@
       {{ session.role }}
     </span>
     <br>
-    <a href="{{ url_for('logout') }}" class="sidebar-logout">
+    <a href="{{ url_for('auth.logout') }}" class="sidebar-logout">
       <i data-lucide="log-out" style="width:12px;height:12px;"></i>
       Sign Out
     </a>
@@ -1143,7 +1143,7 @@
   <div class="help-body" id="help-body"></div>
   <div class="help-footer">
     💬 Need more help?
-    <a href="{{ url_for('willie') }}" style="color:var(--teal);font-weight:700;text-decoration:none">Ask Aquila →</a>
+    <a href="{{ url_for('willie.willie') }}" style="color:var(--teal);font-weight:700;text-decoration:none">Ask Aquila →</a>
   </div>
 </aside>
 

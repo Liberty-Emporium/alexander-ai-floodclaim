@@ -29,7 +29,7 @@
       <span>👥 {{ c.num_enrolled or 0 }} enrolled</span>
     </div>
     <div class="training-free">Free</div>
-    <form method="POST" action="{{ url_for('enroll_class', class_id=c.id) }}">
+    <form method="POST" action="{{ url_for('training.enroll_class', class_id=c.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-primary btn-enroll">🎓 Enroll Now</button>
     </form>

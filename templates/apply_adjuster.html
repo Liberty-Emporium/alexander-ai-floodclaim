@@ -22,7 +22,7 @@
     <p>Fill out the form below to get connected with agencies looking for flood adjusters. If you're not yet licensed, we'll help you get there.</p>
   </div>
 
-  <form method="POST" action="{{ url_for('apply_adjuster') }}">
+  <form method="POST" action="{{ url_for('training.apply_adjuster') }}">
     <div class="form-section">
       <h4>👤 Your Information</h4>
       <div class="form-group">
@@ -65,7 +65,7 @@
       <div class="form-group">
         <label>Practice Exam Score (optional)</label>
         <input type="number" name="exam_score" class="form-control" min="0" max="100" placeholder="If you took the practice exam, enter your score">
-        <div style="font-size:.72rem;color:var(--gray-400);margin-top:.25rem;">Take the <a href="{{ url_for('practice_exam') }}" style="color:var(--blue-light);">practice exam</a> first if you haven't yet.</div>
+        <div style="font-size:.72rem;color:var(--gray-400);margin-top:.25rem;">Take the <a href="{{ url_for('training.practice_exam') }}" style="color:var(--blue-light);">practice exam</a> first if you haven't yet.</div>
       </div>
     </div>
 
@@ -73,7 +73,7 @@
   </form>
 
   <div style="text-align:center;margin-top:1rem;">
-    <a href="{{ url_for('become_an_agent') }}" style="font-size:.82rem;color:var(--blue-light);text-decoration:none;">← Back to Training & Exams</a>
+    <a href="{{ url_for('training.become_an_agent') }}" style="font-size:.82rem;color:var(--blue-light);text-decoration:none;">← Back to Training & Exams</a>
   </div>
 </div>
 

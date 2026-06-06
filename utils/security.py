@@ -56,6 +56,10 @@ def csrf_protect():
             return  # API routes use token auth, skip CSRF
         if request.path.startswith('/portal/'):
             return  # Public client portal — no session/CSRF
+        if request.path == '/seed':
+            return  # DB seed endpoint
+        if request.path == '/login':
+            return  # Login form generates its own CSRF token
         import re
         if re.search(r'/claims/\d+/sign$', request.path):
             return  # Public signature endpoint — no session

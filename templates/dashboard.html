@@ -123,7 +123,7 @@ fetch('/api/dashboard/feedback')
 </script>
 
 <!-- Filter Bar -->
-<form method="GET" action="{{ url_for('dashboard') }}" id="filter-form">
+<form method="GET" action="{{ url_for('auth.dashboard') }}" id="filter-form">
 <div class="filter-bar">
   <div class="search-wrap">
     <label>Search</label>
@@ -176,7 +176,7 @@ fetch('/api/dashboard/feedback')
   {% if q or f_status or f_adjuster or f_priority or f_date_from or f_date_to %}
   <div class="fg" style="min-width:auto">
     <label>&nbsp;</label>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">✕ Clear</a>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-ghost btn-sm">✕ Clear</a>
   </div>
   {% endif %}
 </div>
@@ -195,15 +195,15 @@ fetch('/api/dashboard/feedback')
 {% endif %}
 
 <!-- Bulk action form wraps the table -->
-<form method="POST" action="{{ url_for('bulk_action') }}" id="bulk-form">
+<form method="POST" action="{{ url_for('claims.bulk_action') }}" id="bulk-form">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
 <div class="card">
   <div class="card-header">
     <div class="card-title">All Claims</div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-      <a href="{{ url_for('pipeline') }}" class="btn btn-ghost btn-sm">🗂 Pipeline View</a>
-      <a href="{{ url_for('new_claim') }}" class="btn btn-primary btn-sm">➕ New Claim</a>
+      <a href="{{ url_for('pipeline.pipeline') }}" class="btn btn-ghost btn-sm">🗂 Pipeline View</a>
+      <a href="{{ url_for('claims.new_claim') }}" class="btn btn-primary btn-sm">➕ New Claim</a>
     </div>
   </div>
 
@@ -289,9 +289,9 @@ fetch('/api/dashboard/feedback')
       {% if q or f_status or f_priority %}No claims match your filters{% else %}No claims yet{% endif %}
     </div>
     {% if q or f_status or f_priority %}
-    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">Clear filters</a>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-ghost btn-sm">Clear filters</a>
     {% else %}
-    <a href="{{ url_for('new_claim') }}" class="btn btn-primary">Create Your First Claim</a>
+    <a href="{{ url_for('claims.new_claim') }}" class="btn btn-primary">Create Your First Claim</a>
     {% endif %}
   </div>
   {% endif %}

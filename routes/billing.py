@@ -1,11 +1,26 @@
 """Routes for billing blueprint."""
 
+import os
+
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models.database import get_db, get_setting, set_setting
 from utils.auth_decorators import login_required
 from utils.security import csrf_required
 
 bp = Blueprint("billing", __name__)
+
+# Stripe configuration
+try:
+    import stripe as _stripe
+    STRIPE_OK = True
+except Exception:
+    STRIPE_OK = False
+
+STRIPE_PLANS = [
+    {'id': 'basic', 'name': 'Basic', 'price': 49, 'price_id': '', 'features': ['Up to 50 claims/month', 'AI photo analysis', 'Client portal']},
+    {'id': 'pro', 'name': 'Professional', 'price': 99, 'price_id': '', 'features': ['Unlimited claims', 'AI photo analysis', 'Client portal', 'Team management', 'Priority support']},
+    {'id': 'enterprise', 'name': 'Enterprise', 'price': 249, 'price_id': '', 'features': ['Everything in Pro', 'White-label', 'API access', 'Dedicated support']},
+]
 
 @bp.route('/billing')
 @login_required
