@@ -3,6 +3,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models.database import get_db
 from utils.auth_decorators import login_required
+from services.email import notify_client_status_change
+from routes.schedule import _log_notification
 
 bp = Blueprint("pipeline", __name__)
 

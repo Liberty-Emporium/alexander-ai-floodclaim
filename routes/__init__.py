@@ -11,7 +11,6 @@ from routes.photos import bp as photos_bp
 from routes.reports import bp as reports_bp
 from routes.admin import bp as admin_bp
 from routes.willie import bp as willie_bp
-from routes.training import bp as training_bp
 from routes.schedule import bp as schedule_bp
 from routes.analytics import bp as analytics_bp
 
@@ -30,6 +29,5 @@ def register_blueprints(app):
     app.register_blueprint(reports_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(willie_bp)
-    app.register_blueprint(training_bp)
     app.register_blueprint(schedule_bp)
     app.register_blueprint(analytics_bp)

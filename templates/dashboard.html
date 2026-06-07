@@ -185,7 +185,7 @@ fetch('/api/dashboard/feedback')
 <!-- Active filter chips -->
 {% if q or f_status or f_adjuster or f_priority or f_date_from or f_date_to %}
 <div class="active-filters">
-  {% if q %}<span class="filter-chip">🔍 "{{ q }}" <a href="{{ url_for('dashboard', status=f_status, adjuster_id=f_adjuster, priority=f_priority, date_from=f_date_from, date_to=f_date_to) }}">✕</a></span>{% endif %}
+  {% if q %}<span class="filter-chip">🔍 "{{ q }}" <a href="{{ url_for('auth.dashboard', status=f_status, adjuster_id=f_adjuster, priority=f_priority, date_from=f_date_from, date_to=f_date_to) }}">✕</a></span>{% endif %}
   {% if f_status %}<span class="filter-chip">📌 {{ f_status }}</span>{% endif %}
   {% if f_priority %}<span class="filter-chip">⚡ {{ f_priority }}</span>{% endif %}
   {% if f_date_from %}<span class="filter-chip">📅 From {{ f_date_from }}</span>{% endif %}
@@ -270,9 +270,9 @@ fetch('/api/dashboard/feedback')
         {% elif c.status == 'Closed' %}<span class="badge badge-closed">Closed</span>
         {% else %}<span class="badge">{{ c.status }}</span>{% endif %}
       </td>
-      <td><a href="{{ url_for('claim_detail', claim_id=c.id) }}" class="btn btn-ghost btn-sm">View →</a></td>
+      <td><a href="{{ url_for('claims.claim_detail', claim_id=c.id) }}" class="btn btn-ghost btn-sm">View →</a></td>
       <td>
-        <form method="POST" action="{{ url_for('delete_claim', claim_id=c.id) }}"
+        <form method="POST" action="{{ url_for('claims.delete_claim', claim_id=c.id) }}"
               onsubmit="return confirm('Delete {{ c.claim_number }} ({{ c.client_name }})? Cannot be undone.')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-danger btn-sm">🗑</button>

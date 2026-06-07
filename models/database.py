@@ -51,8 +51,6 @@ def _ensure_db_initialized():
             migrate_photos_columns()
             migrate_new_features_v2()
             _migrate_recruitment_tables()
-            _migrate_training_tables()
-            _seed_training_modules()
             migrate_batch_photo_columns()
             _db_initialized = True
         except Exception as e:
@@ -184,35 +182,6 @@ def init_db():
             content         TEXT NOT NULL,
             created         TEXT DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE TABLE IF NOT EXISTS training_classes (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            title           TEXT NOT NULL,
-            description     TEXT NOT NULL DEFAULT '',
-            price_cents     INTEGER NOT NULL DEFAULT 5000,
-            status          TEXT NOT NULL DEFAULT 'active',
-            image_url       TEXT DEFAULT '',
-            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS training_lessons (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            class_id        INTEGER REFERENCES training_classes(id) ON DELETE CASCADE,
-            title           TEXT NOT NULL,
-            content         TEXT NOT NULL DEFAULT '',
-            lesson_order    INTEGER NOT NULL DEFAULT 0,
-            video_url       TEXT DEFAULT '',
-            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS training_enrollments (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id         INTEGER REFERENCES users(id),
-            class_id        INTEGER REFERENCES training_classes(id),
-            stripe_session  TEXT DEFAULT '',
-            payment_status  TEXT NOT NULL DEFAULT 'pending',
-            progress_pct    INTEGER NOT NULL DEFAULT 0,
-            completed_at    TEXT DEFAULT NULL,
-            enrolled_at     TEXT DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, class_id)
-        );
         CREATE TABLE IF NOT EXISTS training_progress (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             enrollment_id   INTEGER REFERENCES training_enrollments(id) ON DELETE CASCADE,
@@ -256,30 +225,6 @@ def init_db():
     if admin:
         db.execute('UPDATE users SET password=? WHERE id=?',
                    (hash_pw(ADMIN_PASSWORD), admin['id']))
-    # Seed default training class if none exist
-    try:
-        tc = db.execute('SELECT COUNT(*) FROM training_classes').fetchone()[0]
-        if tc == 0:
-            db.execute('''INSERT INTO training_classes (title, description, price_cents, status) VALUES (?,?,?,?)''',
-                       ('Flood Adjusting Fundamentals',
-                        'Complete training for aspiring flood adjusters. Covers NFIP guidelines, water damage classification, claim documentation, using FloodClaims Pro platform, and passing the certification exam.',
-                        0, 'active'))
-            class_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-            # Seed lessons
-            lessons = [
-                ('Introduction to Flood Adjusting', 'Flood adjusting is a specialized field within the insurance industry that focuses on assessing and documenting damage caused by flooding events. As a flood adjuster, you will be responsible for inspecting properties, documenting damage, estimating repair costs, and working with policyholders through the claims process.\n\n<h4>What You Will Learn</h4>\n<ul>\n<li>The role and responsibilities of a flood insurance adjuster</li>\n<li>How the National Flood Insurance Program (NFIP) works</li>\n<li>Types of flood zones and their significance</li>\n<li>Insurance policy coverage limits and exclusions</li>\n</ul>\n\n<h4>Career Outlook</h4>\n<p>Flood adjusting offers both full-time and contract opportunities. During catastrophic events, demand for qualified adjusters increases significantly. Experienced flood adjusters can earn $500-$1,000+ per day during deployment periods.</p>', 0, ''),
-                ('Water Damage Classification', 'Flood damage is categorized by water category and class. Understanding these classifications is essential for accurate claim documentation.\n\n<h4>Water Categories</h4>\n<ul>\n<li><strong>Category 1 (Clean Water):</strong> Originates from a sanitary source. Examples: broken water supply lines, tub or sink overflows.</li>\n<li><strong>Category 2 (Gray Water):</strong> Contains significant contamination. Examples: dishwasher overflow, sump pump failure, toilet overflow (urine only).</li>\n<li><strong>Category 3 (Black Water):</strong> Grossly contaminated. Examples: sewage, seawater, river water, storm surge.</li>\n</ul>\n\n<h4>Water Classes (by evaporation rate)</h4>\n<ul>\n<li><strong>Class 1:</strong> Least affected. Only a portion of a room is affected.</li>\n<li><strong>Class 2:</strong> Affecting entire room. 12-24 inches up walls.</li>\n<li><strong>Class 3:</strong> Highest evaporation rate. Ceiling and walls fully saturated.</li>\n<li><strong>Class 4:</strong> Specialty drying. Hardwood, concrete, plaster — low permeance materials.</li>\n</ul>', 1, ''),
-                ('NFIP & FEMA Guidelines', 'The National Flood Insurance Program (NFIP) is the primary provider of flood insurance in the United States, administered by FEMA.\n\n<h4>Key Policy Facts</h4>\n<ul>\n<li><strong>Residential Building Coverage:</strong> Up to $250,000</li>\n<li><strong>Residential Contents Coverage:</strong> Up to $100,000</li>\n<li><strong>Commercial Building Coverage:</strong> Up to $500,000</li>\n<li><strong>Contents (Commercial):</strong> Up to $500,000</li>\n<li><strong>Waiting Period:</strong> 30 days before coverage begins</li>\n<li><strong>Deductible:</strong> Separate building and contents deductibles</li>\n</ul>\n\n<h4>Important Forms</h4>\n<ul>\n<li><strong>Proof of Loss (Form 81-31):</strong> Must be filed within 60 days</li>\n<li><strong>Elevation Certificate:</strong> Documents BFE and building elevation</li>\n<li><strong>Adjuster\'s Damage Inspection Report:</strong> Your primary documentation</li>\n</ul>', 2, ''),
-                ('FloodClaims Pro Platform Training', 'FloodClaims Pro is an integrated platform for managing flood insurance claims from start to finish.\n\n<h4>Platform Features</h4>\n<ul>\n<li><strong>Dashboard:</strong> View all claims, their status, and priority at a glance</li>\n<li><strong>Pipeline:</strong> Kanban-style board for tracking claim progress through stages</li>\n<li><strong>Inspection Scheduler:</strong> Schedule and manage property inspections</li>\n<li><strong>Photo Analysis:</strong> AI-powered photo assessment that automatically identifies and documents damage</li>\n<li><strong>Report Generation:</strong> Create professional reports with one click</li>\n<li><strong>Client Portal:</strong> Allow customers to upload photos and track claim status</li>\n<li><strong>Compliance Checker:</strong> Ensures all required fields are completed</li>\n</ul>\n\n<h4>Workflow</h4>\n<p>1. Create claim → 2. Inspect property → 3. Document with photos → 4. AI analysis → 5. Write report → 6. Submit package</p>', 3, ''),
-                ('Claim Documentation & Report Writing', 'Proper documentation is the foundation of every successful flood claim. Your reports must be thorough, accurate, and meet NFIP requirements.\n\n<h4>Essential Documentation</h4>\n<ul>\n<li>Flood water line heights (interior and exterior)</li>\n<li>Photos of all affected areas (minimum 20-30 per property)</li>\n<li>Room-by-room damage assessments</li>\n<li>Contents inventory with pre-loss condition</li>\n<li>Elevation certificate (if available)</li>\n<li>Previous flood claim history</li>\n</ul>\n\n<h4>Report Structure</h4>\n<p>1. Property Information → 2. Flood Event Details → 3. Room-by-Room Assessment → 4. Photo Documentation → 5. Damage Summary → 6. Recommendations</p>', 4, ''),
-            ]
-            for title, content, order, video_url in lessons:
-                db.execute('INSERT INTO training_lessons (class_id, title, content, lesson_order, video_url) VALUES (?,?,?,?,?)',
-                           (class_id, title, content, order, video_url))
-            _seed_training_questions(db, class_id)
-    except Exception:
-        pass  # Tables may not exist yet on older databases; migration will handle it
-    db.commit()
     db.close()
 
 def hash_pw(pw):
@@ -542,55 +487,6 @@ def _migrate_recruitment_tables():
     db.commit()
     db.close()
 
-def _migrate_training_tables():
-    """Create training and exam tables."""
-    db = sqlite3.connect(DB_PATH)
-    db.executescript('''
-        CREATE TABLE IF NOT EXISTS training_modules (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            module_num  INTEGER NOT NULL,
-            title       TEXT NOT NULL,
-            slug        TEXT NOT NULL UNIQUE,
-            content     TEXT NOT NULL,
-            duration_min INTEGER DEFAULT 30,
-            sort_order  INTEGER DEFAULT 0,
-            is_active   INTEGER DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS exam_sessions (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            candidate_name  TEXT NOT NULL,
-            candidate_email TEXT NOT NULL,
-            session_token   TEXT UNIQUE NOT NULL,
-            questions_json  TEXT NOT NULL,
-            answers_json    TEXT DEFAULT '{}',
-            score           INTEGER DEFAULT NULL,
-            total_questions INTEGER DEFAULT 0,
-            is_completed    INTEGER DEFAULT 0,
-            is_practice     INTEGER DEFAULT 1,
-            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
-            completed_at    TEXT DEFAULT NULL
-        );
-        CREATE TABLE IF NOT EXISTS adjuster_applications_v2 (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            name            TEXT NOT NULL,
-            email           TEXT NOT NULL,
-            phone           TEXT DEFAULT '',
-            state           TEXT NOT NULL,
-            licensed        INTEGER DEFAULT 0,
-            license_number  TEXT DEFAULT '',
-            exam_score      INTEGER DEFAULT NULL,
-            exam_session_id INTEGER DEFAULT NULL,
-            status          TEXT DEFAULT 'interested',
-            invited_by      TEXT DEFAULT '',
-            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
-            reviewed_at     TEXT DEFAULT NULL,
-            reviewed_by     INTEGER DEFAULT NULL
-        );
-    ''')
-    db.commit()
-    db.close()
-
-
 def _migrate_feedback_tables():
     """Create feedback conversation and message tables, plus client registry and poll state."""
     db = sqlite3.connect(DB_PATH)
@@ -651,143 +547,6 @@ def _migrate_feedback_tables():
     db.close()
 
 
-def _seed_training_modules():
-    """Seed default training modules if table is empty."""
-    db = sqlite3.connect(DB_PATH)
-    count = db.execute('SELECT COUNT(*) FROM training_modules').fetchone()[0]
-    if count > 0:
-        db.close()
-        return
-    modules = [
-        (1, "Flood Damage Fundamentals", "flood-damage-fundamentals", """<h2>Flood Damage Fundamentals</h2>
-<p>Welcome to the first module in your flood adjuster training. This course covers the essential knowledge you need to begin assessing flood damage professionally.</p>
-<h3>What is Flood Damage?</h3>
-<p>Flood damage refers to the destruction caused by water entering a building from external sources — river overflow, storm surge, heavy rainfall, or rapid snowmelt. Unlike internal water damage, flood water contacts the ground and may carry contaminants.</p>
-<h3>The Restoration Industry</h3>
-<p>The flood restoration industry includes emergency services (water extraction, board-up), drying & dehumidification, demolition, reconstruction, and contents cleaning.</p>
-<h3>Key Terminology</h3>
-<ul>
-<li><strong>NFIP:</strong> National Flood Insurance Program — FEMA's flood insurance program</li>
-<li><strong>WYO:</strong> Write Your Own — private insurers that sell NFIP policies</li>
-<li><strong>ICC:</strong> Increased Cost of Compliance — coverage for elevation/floodproofing (up to $30K)</li>
-<li><strong>SFHA:</strong> Special Flood Hazard Area — zones A and V</li>
-<li><strong>BFE:</strong> Base Flood Elevation — computed floodwater elevation</li>
-<li><strong>RCBAP:</strong> Residential Condominium Building Association Policy</li>
-</ul>
-<h3>Types of Flood Events</h3>
-<ul>
-<li><strong>Riverine:</strong> Rivers overflowing — slow onset, widespread</li>
-<li><strong>Flash:</strong> Rapid onset from intense rainfall — very dangerous</li>
-<li><strong>Coastal:</strong> Storm surge from hurricanes</li>
-<li><strong>Urban:</strong> Overwhelmed drainage systems</li>
-</ul>
-<h3>Major NC Flood Events</h3>
-<p>Hurricane Floyd (1999), Matthew (2016), Florence (2018), Dorian (2019), Helene (2024). NC has the 3rd most repetitive loss properties in the US.</p>""", 30, 1),
-        (2, "Water Categories & Classes", "water-categories-classes", """<h2>Water Categories & Classes</h2>
-<p>Understanding water classification is critical for proper damage assessment and determining remediation procedures.</p>
-<h3>Water Categories (Contamination Level)</h3>
-<ul>
-<li><strong>Category 1 — Clean Water:</strong> From a broken water line, faucet, or rainwater. No significant contamination. Lowest risk.</li>
-<li><strong>Category 2 — Grey Water:</strong> Contains significant chemical, biological, or physical contamination. Toilet overflow (urine only), dishwasher overflow, sump pump failure. Can cause discomfort or illness if consumed.</li>
-<li><strong>Category 3 — Black Water:</strong> Grossly contaminated. Sewage, floodwater, river water, storm surge, standing water that has become bacterial. Can cause serious illness or death.</li>
-</ul>
-<h3>Water Classes (Amount of Water & Evaporation Rate)</h3>
-<ul>
-<li><strong>Class 1 — Least Water:</strong> Only a portion of a room affected. Materials have absorbed minimal moisture. Fastest drying time.</li>
-<li><strong>Class 2 — Large Amount:</strong> Carpets and cushions affected. Water wicked up walls 12-24 inches. Moisture in structural materials.</li>
-<li><strong>Class 3 — Greatest Amount:</strong> Water from above. Ceiling, walls, insulation, carpet, subfloor — everything is saturated.</li>
-<li><strong>Class 4 — Specialty Drying:</strong> Materials with low permeability — hardwood, concrete, plaster, gypcrete. Requires specialized low-humidity drying.</li>
-</ul>
-<h3>How They're Used Together</h3>
-<p>A single claim may have multiple category/class combinations across different rooms. For example: a basement with Category 3 water would require full PPE and anti-microbial treatment, while a kitchen with Category 2 water from a dishwasher needs less aggressive remediation.</p>""", 25, 2),
-        (3, "NFIP & FEMA Guidelines", "nfip-fema-guidelines", """<h2>NFIP & FEMA Guidelines</h2>
-<p>The National Flood Insurance Program is the primary source of flood insurance in the United States. As an adjuster, you must understand how it works.</p>
-<h3>NFIP Policy Basics</h3>
-<ul>
-<li><strong>Residential coverage limits:</strong> $250,000 building / $100,000 contents</li>
-<li><strong>Commercial coverage limits:</strong> $500,000 building / $500,000 contents</li>
-<li><strong>Waiting period:</strong> 30 days for new policies to take effect (exceptions: renewals, map changes, mortgage closings)</li>
-<li><strong>Deductibles:</strong> Separate building and contents deductibles. Higher deductibles in SFHAs</li>
-</ul>
-<h3>WYO Companies</h3>
-<p>Write Your Own companies are private insurers that sell and service NFIP policies. The federal government underwrites the risk. Major WYO companies include Allstate, USAA, Assurant, and others.</p>
-<h3>Claims Process</h3>
-<ol>
-<li>Policyholder contacts insurer to report loss</li>
-<li>Insurance company assigns adjuster</li>
-<li>Adjuster inspects property, documents damage</li>
-<li>Proof of Loss filed within 60 days</li>
-<li>Claim settled and payment issued</li>
-</ol>
-<h3>ICC Coverage</h3>
-<p>Increased Cost of Compliance — up to $30,000 for buildings declared substantially damaged. Covers elevation, relocation, or demolition to bring building into compliance with current floodplain regulations.</p>
-<h3>Flood Zones</h3>
-<ul>
-<li><strong>Zone V:</strong> Coastal high-risk (wave action)</li>
-<li><strong>Zone VE:</strong> Coastal high-risk with detailed mapping</li>
-<li><strong>Zone A:</strong> Inland high-risk</li>
-<li><strong>Zone AE:</strong> Inland high-risk with detailed mapping</li>
-<li><strong>Zone X:</strong> Moderate to low risk</li>
-</ul>""", 40, 3),
-        (4, "Damage Assessment & Documentation", "damage-assessment", """<h2>Damage Assessment & Documentation</h2>
-<p>Thorough documentation is the foundation of every successful flood claim. Missing details can result in underpayment or denied claims.</p>
-<h3>Initial Inspection Steps</h3>
-<ol>
-<li><strong>Safety first:</strong> Check for structural damage, electrical hazards, gas leaks, mold</li>
-<li><strong>Establish water source:</strong> Where did the water come from? Category determination</li>
-<li><strong>Document the water line:</strong> Photograph and measure water stains on walls</li>
-<li><strong>Room-by-room survey:</strong> Systematic documentation of every affected room</li>
-</ol>
-<h3>Photo Documentation</h3>
-<ul>
-<li>Wide shots of each room showing overall damage</li>
-<li>Close-ups of specific damage areas</li>
-<li>Water line measurements with tape measure visible</li>
-<li>Serial numbers on damaged appliances and equipment</li>
-<li>Before photos if available</li>
-</ul>
-<h3>Building Materials to Identify</h3>
-<ul>
-<li><strong>Drywall:</strong> Note wicking height, staining, bubbling paint</li>
-<li><strong>Flooring:</strong> Material type, damage type (buckling, warping, delamination), affected sqft</li>
-<li><strong>Insulation:</strong> Fiberglass (unsalvageable if wet), spray foam (ok), cellulose (replace)</li>
-<li><strong>Electrical:</li>
-<li><strong>HVAC:</strong> Ductwork, air handler, thermostat damage</li>
-<li><strong>Cabinets:</strong> Base vs. upper, material, water line height</li>
-</ul>
-<h3>Mold Assessment</h3>
-<p>Mold can begin growing in 24-48 hours. Document any visible mold — location, color, coverage area, growth stage. Recommend professional mold remediation for Category 3 or large areas.</p>""", 35, 4),
-        (5, "Adjuster Licensing & Certification", "adjuster-licensing", """<h2>Adjuster Licensing & Certification</h2>
-<p>Each state has its own requirements for insurance adjuster licensing. Here's what you need to know to get started.</p>
-<h3>State Licensing</h3>
-<p>Most states require adjusters to be licensed through the state Department of Insurance. Requirements typically include:</p>
-<ul>
-<li>Complete a pre-licensing education course (20-40 hours)</li>
-<li>Pass the state adjuster licensing exam</li>
-<li>Submit application and fees</li>
-<li>Background check (some states)</li>
-<li>Maintain continuing education (typically 24 hours every 2 years)</li>
-</ul>
-<h3>Designated Home State (DHS)</h3>
-<p>If you're licensed in your home state, most other states will grant you a license through reciprocity. The National Insurance Producer Registry (NIPR) handles multi-state licensing.</p>
-<h3>FEMA Adjuster Exam</h3>
-<p>FEMA doesn't license adjusters, but they do offer training and certification for adjusters who work on NFIP claims. The FEMA adjuster exam covers NFIP policy details, claims procedures, and documentation requirements.</p>
-<h3>Independent vs. Staff Adjuster</h3>
-<ul>
-<li><strong>Staff adjuster:</strong> Employed by one insurance company. Steady work, benefits, company training.</li>
-<li><strong>Independent adjuster:</strong> Self-employed, contracted by multiple companies. More flexibility, storm chasing opportunities, higher earning potential during catastrophe events.</li>
-</ul>
-<h3>Career Path</h3>
-<p>Many successful adjusters start during storm events (hurricane season), build experience and relationships, then transition to full-time independent work. Average income for experienced independent adjusters ranges from $60K-$120K+, with some earning significantly more during major catastrophe events.</p>""", 20, 5),
-    ]
-    db.executemany(
-        'INSERT OR IGNORE INTO training_modules (module_num, title, slug, content, duration_min, sort_order) VALUES (?,?,?,?,?,?)',
-        modules
-    )
-    db.commit()
-    db.close()
-
-# _seed_training_modules() now called lazily in get_db()
 
 def migrate_batch_photo_columns():
     """Add columns to photos table for batch AI analysis."""
@@ -816,34 +575,5 @@ def migrate_batch_photo_columns():
 
 # migrate_batch_photo_columns() now called lazily in get_db()
 
-def _seed_training_questions(db, class_id):
-    """Seed flood adjustment exam questions for a class."""
-    existing = db.execute('SELECT COUNT(*) FROM training_exam_questions WHERE class_id=?', (class_id,)).fetchone()[0]
-    if existing:
-        return
-    questions = [
-        ("What is the maximum coverage under the NFIP for a single-family dwelling?", "$100,000 building / $100,000 contents", "$250,000 building / $100,000 contents", "$500,000 building / $250,000 contents", "$250,000 building / $250,000 contents", "b"),
-        ("How many days does a policyholder typically have to file a Proof of Loss?", "30 days", "60 days", "90 days", "1 year", "b"),
-        ("Which flood zone designation indicates high-risk coastal areas?", "Zone A", "Zone AE", "Zone V", "Zone X", "c"),
-        ("What does ICC (Increased Cost of Compliance) coverage help pay for?", "Temporary housing", "Building elevation or demolition costs", "Legal fees", "Landscaping", "b"),
-        ("What is the standard NFIP waiting period before coverage begins?", "15 days", "30 days", "45 days", "60 days", "b"),
-        ("Which form is used to report flood damage to NFIP?", "Form 81-31 (Proof of Loss)", "Form 1040", "HUD-1", "ACORD 25", "a"),
-        ("What is the maximum Increased Cost of Compliance (ICC) benefit?", "$15,000", "$20,000", "$30,000", "$50,000", "c"),
-        ("What type of flood damage is typically NOT covered by NFIP?", "Storm surge flooding", "Mudflow", "Sewer backup (without general flooding)", "River overflow", "c"),
-        ("Which elevation certificate component shows the lowest floor elevation?", "Section A - Property Information", "Section B - Flood Zone", "Section C - Building Elevation", "Section D - Surveyor Certification", "c"),
-        ("What is the deductible structure for NFIP policies per building and contents?", "One deductible per occurrence", "Separate building and contents deductibles", "No deductible required", "Flat $500 deductible", "b"),
-        ("What does the term 'Base Flood Elevation' (BFE) represent?", "The highest recorded flood level", "The computed elevation floodwater rises to in a 1% annual chance flood", "The lowest point of the property", "The average rainfall per year", "b"),
-        ("Which coverage type does NOT exist in a standard NFIP policy?", "Building property", "Personal property (contents)", "Additional living expenses", "Debris removal", "c"),
-        ("How is actual cash value (ACV) calculated for flood claims?", "Replacement cost", "Replacement cost minus depreciation", "Original purchase price", "Market value of the property", "b"),
-        ("What is the maximum personal property coverage under NFIP for residential?", "$100,000", "$200,000", "$250,000", "$500,000", "a"),
-        ("Which program backs the NFIP flood insurance policies?", "Private reinsurers", "Federal Emergency Management Agency (FEMA)", "State governments", "The National Weather Service", "b"),
-        ("What does 'substantial damage' mean in floodplain management?", "Damage > 25% of market value", "Damage > 50% of market value", "Damage > 75% of market value", "Total loss only", "b"),
-        ("How often must an elevation certificate be renewed?", "Every year", "Every 5 years", "Every 10 years", "No expiration — valid unless structure changes", "d"),
-        ("What is the first step when inspecting a flood-damaged property?", "Take photographs", "Review the policy and coverage", "Measure water lines", "Interview the homeowner", "b"),
-        ("What constitutes 'general flooding' required for NFIP coverage?", "One property affected", "Two or more properties and 2+ acres", "Any water entry from any source", "Federal disaster declaration only", "b"),
-        ("What is the purpose of a Damage Inspection Report?", "To finalize the claim", "To document findings and estimate damage", "To approve the claim", "To close the file", "b"),
-    ]
-    db.executemany('INSERT INTO training_exam_questions (class_id,question,option_a,option_b,option_c,option_d,correct_answer) VALUES (?,?,?,?,?,?,?)',
-                    [(class_id, q[0], q[1], q[2], q[3], q[4], q[5]) for q in questions])
-    db.commit()
+
 

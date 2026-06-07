@@ -690,9 +690,6 @@
     <a href="{{ url_for('willie.willie') }}" class="nav-link {% if request.endpoint and 'willie' in request.endpoint %}active{% endif %}">
       <i data-lucide="waves" class="nav-link-icon"></i> Aquila
     </a>
-    <a href="{{ url_for('training.training_classes') }}" class="nav-link {% if request.endpoint and 'training' in request.endpoint %}active{% endif %}">
-      <i data-lucide="graduation-cap" class="nav-link-icon"></i> Training
-    </a>
 
     {% if session.role == 'admin' %}
     <div class="nav-section">Admin</div>
