@@ -183,35 +183,6 @@ def init_db():
             content         TEXT NOT NULL,
             created         TEXT DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE TABLE IF NOT EXISTS training_progress (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            enrollment_id   INTEGER REFERENCES training_enrollments(id) ON DELETE CASCADE,
-            lesson_id       INTEGER REFERENCES training_lessons(id) ON DELETE CASCADE,
-            completed       INTEGER NOT NULL DEFAULT 0,
-            completed_at    TEXT DEFAULT NULL,
-            UNIQUE(enrollment_id, lesson_id)
-        );
-        CREATE TABLE IF NOT EXISTS training_exam_questions (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            class_id        INTEGER REFERENCES training_classes(id) ON DELETE CASCADE,
-            question        TEXT NOT NULL,
-            option_a        TEXT NOT NULL,
-            option_b        TEXT NOT NULL,
-            option_c        TEXT NOT NULL,
-            option_d        TEXT NOT NULL,
-            correct_answer  TEXT NOT NULL DEFAULT 'a',
-            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS training_certificates (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id         INTEGER REFERENCES users(id),
-            class_id        INTEGER REFERENCES training_classes(id),
-            enrollment_id   INTEGER REFERENCES training_enrollments(id),
-            score           INTEGER NOT NULL DEFAULT 0,
-            certificate_id  TEXT NOT NULL,
-            issued_at       TEXT DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, class_id)
-        );
     ''')
     cur = db.execute('SELECT id FROM users WHERE email=?', (ADMIN_EMAIL,))
     if not cur.fetchone():
@@ -226,6 +197,7 @@ def init_db():
     if admin:
         db.execute('UPDATE users SET password=? WHERE id=?',
                    (hash_pw(ADMIN_PASSWORD), admin['id']))
+    db.commit()
     db.close()
 
 def hash_pw(pw):
@@ -548,7 +520,6 @@ def _migrate_feedback_tables():
     db.close()
 
 
-
 def migrate_batch_photo_columns():
     """Add columns to photos table for batch AI analysis."""
     try:
@@ -601,5 +572,4 @@ def _migrate_aquila_tables():
         db.close()
     except Exception as e:
         print(f'_migrate_aquila_tables error: {e}')
-
 
