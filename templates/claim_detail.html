@@ -160,10 +160,11 @@
       </select>
       <button type="submit" class="btn btn-ghost btn-sm">Update</button>
     </form>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="if(typeof aaiToggle==='function'){window.claimId={{ claim.id }};aaiToggle();}else{location.href='{{ url_for('willie.willie') }}?claim_id={{ claim.id }}'}">🌊 Ask Aquila</button>
-    <a href="{{ url_for('claims.submit_package_page', claim_id=claim.id) }}" class="btn btn-primary btn-sm">📤 Submit to Carrier</a>
-    <a href="{{ url_for('reports.report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
-    <a href="{{ url_for('claims.compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="if(typeof aaiToggle==='function'){window.claimId={{ claim.id }};aaiToggle();}else{location.href='{{ url_for('willie') }}?claim_id={{ claim.id }}'}">🌊 Ask Aquila</button>
+    <a href="{{ url_for('aquila.aquila_panel', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">🦅 Aquila 3D</a>
+    <a href="{{ url_for('submit_package_page', claim_id=claim.id) }}" class="btn btn-primary btn-sm">📤 Submit to Carrier</a>
+    <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
+    <a href="{{ url_for('compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
 
     <a href="{{ url_for('claims.claim_qr', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📱 QR Upload</a>
     <a href="{{ url_for('claims.claim_activity', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📜 Activity</a>
@@ -172,10 +173,10 @@
       <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Duplicate this claim?')">⧉ Duplicate</button>
     </form>
     <a href="{{ url_for('auth.dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
-    <form method="POST" action="{{ url_for('claims.delete_claim', claim_id=claim.id) }}"
-          onsubmit="return confirm('Delete claim {{ claim.claim_number }} ({{ claim.client_name }})? This will permanently remove all rooms, photos, and line items.')">
+    <form method="POST" action="{{ url_for('claims.delete_claim', claim_id=claim.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn btn-danger btn-sm">🗑 Delete Claim</button>
+      <button type="submit" class="btn btn-danger btn-sm"
+              onclick="return confirm('Delete claim ' + {{ claim.claim_number | tojson }} + ' (' + {{ claim.client_name | tojson }} + ')? This will permanently remove all rooms, photos, and line items.')">🗑 Delete Claim</button>
     </form>
   </div>
 </div>

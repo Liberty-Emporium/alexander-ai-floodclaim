@@ -1,249 +1,331 @@
 """
-Aquila 3D — API Routes for FloodClaims Pro
-===========================================
-Endpoints for generating and viewing 3D models from flood damage photos.
+Aquila 3D Integration Blueprint for FloodClaims Pro.
 
-Flow:
-  1. User selects a photo → POST /aquila/generate
-  2. Backend sends image to Meshy → returns job_id
-  3. Client polls GET /aquila/status/<job_id> until complete
-  4. User views model via GET /aquila/view/<job_id> (3D viewer)
+Connects FloodClaims Pro photo workflow to Aquila's AI damage analysis
+and 3D model generation pipeline.
+
+Endpoints:
+  POST /claims/<id>/aquila/analyze     → Analyze all claim photos with Aquila
+  POST /claims/<id>/aquila/generate-3d  → Generate 3D model from claim photos
+  GET  /claims/<id>/aquila/status       → Check analysis/generation status
+  GET  /claims/<id>/aquila/report       → Get full damage report
+  GET  /claims/<id>/aquila/model/<mid>  → Download generated 3D model
 """
-import json
+
 import os
+import json
+import secrets
+import datetime
 import threading
-import logging
+import pathlib
+
 from flask import (
-    Blueprint, request, jsonify, session, redirect, url_for,
-    render_template, flash
+    Blueprint, render_template, request, redirect, url_for,
+    session, flash, jsonify, send_from_directory, current_app
 )
 from models.database import get_db, get_setting
 from utils.auth_decorators import login_required
-from utils.security import csrf_required
-from services.aquila import (
-    check_meshy_key, image_to_3d_from_file,
-    get_task_status, extract_model_urls,
-    save_aquila_job, update_aquila_job,
-    get_aquila_jobs, get_aquila_job,
-    MESHY_BASE_URL
-)
 
-logger = logging.getLogger(__name__)
+bp = Blueprint("aquila", __name__)
 
-bp = Blueprint('aquila', __name__, url_prefix='/aquila')
+# ── Aquila service URL (configurable via settings) ──────────────────────────
+AQUILA_BASE_URL = os.environ.get("AQUILA_API_URL", "http://localhost:8000")
 
-UPLOAD_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '/data')
+# ── Background job storage (in production, use Redis or DB table) ────────────
+_aquila_jobs = {}
+_jobs_lock = threading.Lock()
 
 
-# ── Key Management ────────────────────────────────────────────────────────────
-
-@bp.route('/key-check', methods=['GET'])
-@login_required
-def aquila_key_check():
-    """Check if Meshy API key is configured and valid."""
-    result = check_meshy_key()
-    return jsonify(result)
+def _get_aquila_url(path):
+    """Build Aquila API URL."""
+    return f"{AQUILA_BASE_URL}{path}"
 
 
-# ── 3D Generation ────────────────────────────────────────────────────────────
+def _submit_aquila_job(job_type, claim_id, photo_paths, params=None):
+    """Submit a job to Aquila and track it."""
+    job_id = f"aq-{secrets.token_hex(8)}"
+    job = {
+        "id": job_id,
+        "type": job_type,
+        "claim_id": claim_id,
+        "status": "pending",
+        "progress": 0,
+        "progress_msg": "Submitting to Aquila...",
+        "result": None,
+        "error": None,
+        "created_at": datetime.datetime.now().isoformat(),
+    }
+    with _jobs_lock:
+        _aquila_jobs[job_id] = job
 
-@bp.route('/generate', methods=['POST'])
-@login_required
-@csrf_required
-def aquila_generate():
-    """
-    Start a 3D model generation from a photo.
-    Accepts photo_id (from existing photos) or a new file upload.
-    Returns immediately with job_id for polling.
-    """
-    photo_id = request.form.get('photo_id') or request.json.get('photo_id') if request.is_json else None
-    model_name = request.form.get('model_name') or 'Aquila 3D Model'
+    # Launch background thread
+    t = threading.Thread(
+        target=_run_aquila_job,
+        args=(job_id, job_type, claim_paths, params or {}),
+        daemon=True,
+    )
+    t.start()
+    return job_id
 
-    db = get_db()
 
-    # Get the image — either from existing photo or new upload
-    if photo_id:
-        photo = db.execute('SELECT * FROM photos WHERE id=? AND claim_id=?',
-                           (photo_id, request.form.get('claim_id'))).fetchone()
-        if not photo:
-            return jsonify({'ok': False, 'error': 'Photo not found'}), 404
-        image_path = os.path.join(UPLOAD_DIR, 'uploads', photo['filename'])
-        claim_id = db.execute('SELECT claim_id FROM photos WHERE id=?', (photo_id,)).fetchone()['claim_id']
-    else:
-        # Handle new file upload
-        file = request.files.get('photo')
-        if not file:
-            return jsonify({'ok': False, 'error': 'No photo provided'}), 400
-        claim_id = request.form.get('claim_id')
-        if not claim_id:
-            return jsonify({'ok': False, 'error': 'claim_id required'}), 400
-        # Save the file
-        import secrets
-        from utils.security import allowed_file
-        if not allowed_file(file.filename):
-            return jsonify({'ok': False, 'error': 'Invalid file type'}), 400
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f'aquila_{secrets.token_hex(12)}.{ext}'
-        save_path = os.path.join(UPLOAD_DIR, 'uploads', filename)
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        file.save(save_path)
-        image_path = save_path
+def _run_aquila_job(job_id, job_type, photo_paths, params):
+    """Background thread: call Aquila API and update job status."""
+    import requests as _req
 
-        # Insert photo record
-        db.execute(
-            'INSERT INTO photos (claim_id, filename, caption) VALUES (?,?,?)',
-            (claim_id, filename, f'Aquila source: {model_name}')
-        )
-        db.commit()
-        photo_id = db.execute('SELECT id FROM photos WHERE rowid = last_insert_rowid()').fetchone()['id']
+    with _jobs_lock:
+        job = _aquila_jobs.get(job_id)
+    if not job:
+        return
 
-    # Submit to Meshy
     try:
-        result = image_to_3d_from_file(image_path, name=model_name, texture=True)
-        task_id = result['task_id']
-    except ValueError as e:
-        return jsonify({'ok': False, 'error': str(e)}), 400
-    except RuntimeError as e:
-        return jsonify({'ok': False, 'error': str(e)}), 502
+        if job_type == "analyze":
+            job["progress_msg"] = "Analyzing damage in photos..."
+            job["progress"] = 20
+            files = []
+            for p in photo_paths:
+                if os.path.exists(p):
+                    files.append(("files", open(p, "rb")))
+            resp = _req.post(
+                _get_aquila_url("/api/v1/analyze"),
+                files=files,
+                data={"claim_id": str(job["claim_id"])},
+                timeout=120,
+            )
+            for _, f in files:
+                f.close()
+            if resp.status_code == 200:
+                job["result"] = resp.json()
+                job["status"] = "done"
+                job["progress"] = 100
+                job["progress_msg"] = "Analysis complete"
+            else:
+                job["status"] = "error"
+                job["error"] = f"Aquila returned {resp.status_code}: {resp.text[:200]}"
+
+        elif job_type == "generate_3d":
+            job["progress_msg"] = "Generating 3D model..."
+            job["progress"] = 10
+            files = []
+            for p in photo_paths:
+                if os.path.exists(p):
+                    files.append(("files", open(p, "rb")))
+            resp = _req.post(
+                _get_aquila_url("/api/v1/generate-3d"),
+                files=files,
+                data={
+                    "claim_id": str(job["claim_id"]),
+                    "method": params.get("method", "auto"),
+                },
+                timeout=300,
+            )
+            for _, f in files:
+                f.close()
+            if resp.status_code == 200:
+                # Save the GLB file
+                upload_dir = current_app.config.get("UPLOAD_DIR", "/data/uploads")
+                model_filename = f"aquila_3d_{job_id}.glb"
+                model_path = os.path.join(upload_dir, model_filename)
+                with open(model_path, "wb") as f:
+                    f.write(resp.content)
+                job["result"] = {
+                    "model_id": job_id,
+                    "filename": model_filename,
+                    "file_path": model_path,
+                    "file_size": os.path.getsize(model_path),
+                    "format": "glb",
+                }
+                job["status"] = "done"
+                job["progress"] = 100
+                job["progress_msg"] = "3D model generated"
+            else:
+                job["status"] = "error"
+                job["error"] = f"Aquila returned {resp.status_code}: {resp.text[:200]}"
+
     except Exception as e:
-        logger.exception('Meshy submission failed')
-        return jsonify({'ok': False, 'error': f'Meshy API error: {e}'}), 500
+        job["status"] = "error"
+        job["error"] = str(e)
 
-    # Save job to database
-    job = save_aquila_job(claim_id, photo_id, task_id, model_name)
+    with _jobs_lock:
+        _aquila_jobs[job_id] = job
 
-    # Log activity
-    try:
-        actor = session.get('name', 'System')
-        db.execute(
-            'INSERT INTO activity_log (claim_id, actor, action) VALUES (?,?,?)',
-            (claim_id, actor, f'Aquila 3D generation started: {model_name} (task: {task_id[:12]}...)')
-        )
-        db.commit()
-    except Exception:
-        pass
+
+# ── Routes ──────────────────────────────────────────────────────────────────
+
+
+@bp.route("/claims/<int:claim_id>/aquila/analyze", methods=["POST"])
+@login_required
+def aquila_analyze(claim_id):
+    """Analyze all photos in a claim using Aquila AI."""
+    db = get_db()
+    claim = db.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
+    if not claim:
+        return jsonify({"ok": False, "error": "Claim not found"}), 404
+
+    # Get all photo paths for this claim
+    photos = db.execute(
+        "SELECT * FROM photos WHERE claim_id=? AND deleted_at IS NULL ORDER BY id",
+        (claim_id,),
+    ).fetchall()
+
+    if not photos:
+        return jsonify({"ok": False, "error": "No photos uploaded for this claim"}), 400
+
+    upload_dir = current_app.config.get("UPLOAD_DIR", "/data/uploads")
+    photo_paths = []
+    for p in photos:
+        full_path = os.path.join(upload_dir, p["filename"])
+        if os.path.exists(full_path):
+            photo_paths.append(full_path)
+
+    if not photo_paths:
+        return jsonify({"ok": False, "error": "Photo files not found on disk"}), 400
+
+    # Submit to Aquila
+    job_id = _submit_aquila_job("analyze", claim_id, photo_paths)
 
     return jsonify({
-        'ok': True,
-        'job_id': job['id'],
-        'meshy_task_id': task_id,
-        'status': 'pending',
-        'poll_url': f'/aquila/status/{job["id"]}',
-        'message': '3D model generation started. Poll for status.',
+        "ok": True,
+        "job_id": job_id,
+        "status": "pending",
+        "photo_count": len(photo_paths),
+        "poll_url": f"/claims/{claim_id}/aquila/status?job_id={job_id}",
     })
 
 
-@bp.route('/status/<int:job_id>', methods=['GET'])
+@bp.route("/claims/<int:claim_id>/aquila/generate-3d", methods=["POST"])
 @login_required
-def aquila_status(job_id):
-    """Check the status of an Aquila 3D generation job."""
-    job = get_aquila_job(job_id)
-    if not job:
-        return jsonify({'ok': False, 'error': 'Job not found'}), 404
+def aquila_generate_3d(claim_id):
+    """Generate a 3D model from claim photos."""
+    db = get_db()
+    claim = db.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
+    if not claim:
+        return jsonify({"ok": False, "error": "Claim not found"}), 404
 
-    # If still pending, check with Meshy
-    if job['status'] in ('pending', 'processing'):
-        try:
-            task_data = get_task_status(job['meshy_task_id'])
-            status = task_data.get('status', 'PROCESSING').lower()
-            progress = task_data.get('progress', 0)
+    photos = db.execute(
+        "SELECT * FROM photos WHERE claim_id=? AND deleted_at IS NULL ORDER BY id",
+        (claim_id,),
+    ).fetchall()
 
-            if status == 'succeeded':
-                urls = extract_model_urls(task_data)
-                update_aquila_job(job_id, 'succeeded', model_url=urls['glb'], model_data=urls)
-                return jsonify({
-                    'ok': True, 'status': 'succeeded',
-                    'progress': 100,
-                    'model_url': urls['glb'],
-                    'thumbnail': urls['thumbnail'],
-                    'viewer_url': f'/aquila/view/{job_id}',
-                })
-            elif status == 'failed':
-                error = task_data.get('task_error', 'Unknown error')
-                update_aquila_job(job_id, 'failed', error=error)
-                return jsonify({'ok': False, 'status': 'failed', 'error': error})
-            else:
-                update_aquila_job(job_id, 'processing')
-                return jsonify({
-                    'ok': True, 'status': 'processing',
-                    'progress': progress,
-                    'message': f'Generating 3D model... {progress}%',
-                })
-        except Exception as e:
-            logger.exception(f'Aquila status check failed for job {job_id}')
-            return jsonify({'ok': True, 'status': job['status'], 'progress': 0,
-                            'message': 'Checking...'})
+    if not photos:
+        return jsonify({"ok": False, "error": "No photos uploaded"}), 400
 
-    # Return cached status
-    result = {
-        'ok': True,
-        'status': job['status'],
-        'progress': 100 if job['status'] == 'succeeded' else 0,
-    }
-    if job['status'] == 'succeeded':
-        result['model_url'] = job['model_url']
-        result['viewer_url'] = f'/aquila/view/{job_id}'
-    elif job['status'] == 'failed':
-        result['error'] = job['error'] or 'Generation failed'
-    return jsonify(result)
+    upload_dir = current_app.config.get("UPLOAD_DIR", "/data/uploads")
+    photo_paths = []
+    for p in photos:
+        full_path = os.path.join(upload_dir, p["filename"])
+        if os.path.exists(full_path):
+            photo_paths.append(full_path)
+
+    if not photo_paths:
+        return jsonify({"ok": False, "error": "Photo files not found"}), 400
+
+    data = request.get_json(silent=True) or {}
+    method = data.get("method", "auto")
+
+    job_id = _submit_aquila_job("generate_3d", claim_id, photo_paths, {"method": method})
+
+    return jsonify({
+        "ok": True,
+        "job_id": job_id,
+        "status": "pending",
+        "photo_count": len(photo_paths),
+        "poll_url": f"/claims/{claim_id}/aquila/status?job_id={job_id}",
+    })
 
 
-# ── 3D Viewer ────────────────────────────────────────────────────────────────
-
-@bp.route('/view/<int:job_id>')
+@bp.route("/claims/<int:claim_id>/aquila/status", methods=["GET"])
 @login_required
-def aquila_view(job_id):
-    """Render the 3D viewer page for a completed model."""
-    job = get_aquila_job(job_id)
+def aquila_status(claim_id):
+    """Check status of an Aquila job."""
+    job_id = request.args.get("job_id")
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+
+    with _jobs_lock:
+        job = _aquila_jobs.get(job_id)
+
     if not job:
-        flash('3D model not found.', 'error')
-        return redirect(url_for('auth.dashboard'))
-    if job['status'] != 'succeeded':
-        flash('3D model is still being generated. Check back shortly.', 'info')
-        return redirect(url_for('auth.dashboard'))
+        return jsonify({"ok": False, "error": "Job not found"}), 404
 
-    model_data = {}
-    if job['model_data']:
-        try:
-            model_data = json.loads(job['model_data'])
-        except Exception:
-            pass
+    return jsonify({
+        "ok": True,
+        "job_id": job_id,
+        "type": job["type"],
+        "status": job["status"],
+        "progress": job["progress"],
+        "progress_msg": job["progress_msg"],
+        "result": job["result"],
+        "error": job["error"],
+    })
 
-    return render_template(
-        'aquila_viewer.html',
-        job=job,
-        model_url=job['model_url'],
-        thumbnail=model_data.get('thumbnail', ''),
-        model_name=job['model_name'] or 'Aquila 3D Model',
+
+@bp.route("/claims/<int:claim_id>/aquila/report", methods=["GET"])
+@login_required
+def aquila_report(claim_id):
+    """Get the latest Aquila damage report for a claim."""
+    job_id = request.args.get("job_id")
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+
+    with _jobs_lock:
+        job = _aquila_jobs.get(job_id)
+
+    if not job:
+        return jsonify({"ok": False, "error": "Job not found"}), 404
+
+    if job["status"] != "done":
+        return jsonify({"ok": False, "error": f"Job status: {job['status']}"}), 202
+
+    return jsonify({
+        "ok": True,
+        "report": job["result"],
+    })
+
+
+@bp.route("/claims/<int:claim_id>/aquila/model/<job_id>", methods=["GET"])
+@login_required
+def aquila_download_model(claim_id, job_id):
+    """Download a generated 3D model file."""
+    with _jobs_lock:
+        job = _aquila_jobs.get(job_id)
+
+    if not job or job["status"] != "done":
+        return jsonify({"ok": False, "error": "Model not ready"}), 404
+
+    result = job.get("result", {})
+    file_path = result.get("file_path")
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({"ok": False, "error": "Model file not found"}), 404
+
+    upload_dir = current_app.config.get("UPLOAD_DIR", "/data/uploads")
+    filename = result.get("filename", f"{job_id}.glb")
+
+    return send_from_directory(
+        upload_dir,
+        filename,
+        as_attachment=True,
+        download_name=f"aquila_3d_model_{claim_id}.glb",
     )
 
 
-# ── Job Listing ──────────────────────────────────────────────────────────────
-
-@bp.route('/jobs/<int:claim_id>', methods=['GET'])
+@bp.route("/claims/<int:claim_id>/aquila/panel")
 @login_required
-def aquila_jobs(claim_id):
-    """List all Aquila 3D jobs for a claim."""
-    jobs = get_aquila_jobs(claim_id)
-    return jsonify({
-        'ok': True,
-        'jobs': [dict(j) for j in jobs],
-    })
+def aquila_panel(claim_id):
+    """Render the Aquila 3D analysis panel for a claim."""
+    db = get_db()
+    claim = db.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
+    if not claim:
+        flash("Claim not found.", "error")
+        return redirect(url_for("auth.dashboard"))
 
+    photos = db.execute(
+        "SELECT * FROM photos WHERE claim_id=? AND deleted_at IS NULL ORDER BY id",
+        (claim_id,),
+    ).fetchall()
 
-# ── Settings ─────────────────────────────────────────────────────────────────
-
-@bp.route('/settings', methods=['POST'])
-@login_required
-@csrf_required
-def aquila_save_settings():
-    """Save Meshy API key to settings."""
-    data = request.get_json(silent=True) or {}
-    api_key = data.get('meshy_api_key', '').strip()
-    if not api_key:
-        return jsonify({'ok': False, 'error': 'API key required'}), 400
-    from models.database import set_setting
-    set_setting('meshy_api_key', api_key)
-    # Verify the key works
-    result = check_meshy_key()
-    return jsonify(result)
+    return render_template(
+        "aquila_panel.html",
+        claim=claim,
+        photos=photos,
+        aquila_url=AQUILA_BASE_URL,
+    )

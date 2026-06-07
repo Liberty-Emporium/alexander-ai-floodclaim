@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}Aquila 3D — Claim #{{ claim['claim_number'] }}{% endblock %}
+
+{% block content %}
+<div class="aquila-panel" style="max-width:900px;margin:0 auto;padding:16px;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <div style="width:48px;height:48px;background:linear-gradient(135deg,#d4a853,#b8860b);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;">
+      🦅
+    </div>
+    <div>
+      <h2 style="margin:0;font-size:1.4em;color:#1a1a1a;">Aquila 3D Analysis</h2>
+      <p style="margin:0;color:#666;font-size:0.9em;">
+        Claim #{{ claim['claim_number'] }} — {{ claim['client_name'] }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Photo Summary -->
+  <div style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:16px;">
+    <h3 style="margin:0 0 8px 0;font-size:1.1em;">📸 Claim Photos ({{ photos|length }})</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      {% for photo in photos %}
+      <div style="width:80px;height:80px;border-radius:8px;overflow:hidden;border:2px solid #e0e0e0;">
+        <img src="/uploads/{{ photo['filename'] }}" alt="{{ photo['caption'] or photo['filename'] }}"
+             style="width:100%;height:100%;object-fit:cover;"
+             onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:24px;\\'>📷</div>'">
+      </div>
+      {% endfor %}
+      {% if not photos %}
+      <p style="color:#999;margin:0;">No photos uploaded yet. Upload photos to enable Aquila analysis.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+    <button id="btn-analyze" onclick="startAnalysis()"
+            style="flex:1;min-width:200px;padding:16px 24px;background:linear-gradient(135deg,#d4a853,#b8860b);color:#fff;border:none;border-radius:12px;font-size:1em;font-weight:600;cursor:pointer;min-height:56px;">
+      🔬 Analyze Damage with Aquila
+    </button>
+    <button id="btn-3d" onclick="start3D()"
+            style="flex:1;min-width:200px;padding:16px 24px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:12px;font-size:1em;font-weight:600;cursor:pointer;min-height:56px;">
+      🧊 Generate 3D Model
+    </button>
+  </div>
+
+  <!-- Status Panel -->
+  <div id="status-panel" style="display:none;background:#fff;border:2px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div id="status-icon" style="width:40px;height:40px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:20px;">
+        ⏳
+      </div>
+      <div>
+        <div id="status-title" style="font-weight:600;font-size:1.1em;">Processing...</div>
+        <div id="status-msg" style="color:#666;font-size:0.9em;">Submitting to Aquila...</div>
+      </div>
+    </div>
+    <div style="background:#f0f0f0;border-radius:8px;height:8px;overflow:hidden;">
+      <div id="progress-bar" style="height:100%;background:linear-gradient(90deg,#d4a853,#b8860b);width:0%;transition:width 0.5s;"></div>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div id="results-panel" style="display:none;background:#fff;border:2px solid #d4a853;border-radius:12px;padding:20px;">
+    <h3 style="margin:0 0 12px 0;color:#1a1a1a;">🦅 Aquila Damage Report</h3>
+    <div id="results-content"></div>
+  </div>
+
+  <!-- 3D Model Panel -->
+  <div id="model-panel" style="display:none;background:#fff;border:2px solid #6366f1;border-radius:12px;padding:20px;">
+    <h3 style="margin:0 0 12px 0;color:#1a1a1a;">🧊 3D Model Generated</h3>
+    <div id="model-content"></div>
+    <a id="model-download" href="#" class="btn"
+       style="display:inline-block;margin-top:12px;padding:12px 24px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">
+      ⬇ Download GLB Model
+    </a>
+  </div>
+
+  <!-- Back Link -->
+  <div style="margin-top:20px;text-align:center;">
+    <a href="/claims/{{ claim['id'] }}" style="color:#666;text-decoration:none;font-size:0.9em;">
+      ← Back to Claim Detail
+    </a>
+  </div>
+</div>
+
+<script>
+let currentJobId = null;
+let pollInterval = null;
+
+function showStatus() {
+  document.getElementById('status-panel').style.display = 'block';
+}
+
+function hideStatus() {
+  document.getElementById('status-panel').style.display = 'none';
+}
+
+function updateStatus(icon, title, msg, pct) {
+  document.getElementById('status-icon').textContent = icon;
+  document.getElementById('status-title').textContent = title;
+  document.getElementById('status-msg').textContent = msg;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function showError(msg) {
+  updateStatus('❌', 'Error', msg, 0);
+  setTimeout(hideStatus, 5000);
+}
+
+function startAnalysis() {
+  {% if not photos %}
+  alert('Please upload photos first before running Aquila analysis.');
+  return;
+  {% endif %}
+
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyzing...';
+  showStatus();
+  updateStatus('🔬', 'Analyzing Damage...', 'Submitting photos to Aquila AI...', 10);
+
+  fetch('/claims/{{ claim["id"] }}/aquila/analyze', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      showError(data.error || 'Analysis failed');
+      btn.disabled = false;
+      btn.textContent = '🔬 Analyze Damage with Aquila';
+      return;
+    }
+    currentJobId = data.job_id;
+    startPolling(data.job_id, 'analyze');
+  })
+  .catch(err => {
+    showError('Network error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '🔬 Analyze Damage with Aquila';
+  });
+}
+
+function start3D() {
+  {% if not photos %}
+  alert('Please upload photos first before generating a 3D model.');
+  return;
+  {% endif %}
+
+  const btn = document.getElementById('btn-3d');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating 3D Model...';
+  showStatus();
+  updateStatus('🧊', 'Generating 3D Model...', 'This may take 1-3 minutes...', 5);
+
+  fetch('/claims/{{ claim["id"] }}/aquila/generate-3d', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({method: 'auto'}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      showError(data.error || '3D generation failed');
+      btn.disabled = false;
+      btn.textContent = '🧊 Generate 3D Model';
+      return;
+    }
+    currentJobId = data.job_id;
+    startPolling(data.job_id, '3d');
+  })
+  .catch(err => {
+    showError('Network error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '🧊 Generate 3D Model';
+  });
+}
+
+function startPolling(jobId, type) {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(() => {
+    fetch(`/claims/{{ claim["id"] }}/aquila/status?job_id=${jobId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      updateStatus(
+        data.status === 'done' ? '✅' : data.status === 'error' ? '❌' : '⏳',
+        data.status === 'done' ? 'Complete!' : data.status === 'error' ? 'Failed' : 'Processing...',
+        data.progress_msg || '',
+        data.progress || 0
+      );
+      if (data.status === 'done') {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        if (type === 'analyze') showAnalysisResults(data.result);
+        else show3DResults(data.result, jobId);
+        document.getElementById('btn-analyze').disabled = false;
+        document.getElementById('btn-analyze').textContent = '🔬 Analyze Damage with Aquila';
+        document.getElementById('btn-3d').disabled = false;
+        document.getElementById('btn-3d').textContent = '🧊 Generate 3D Model';
+      } else if (data.status === 'error') {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        showError(data.error || 'Unknown error');
+        document.getElementById('btn-analyze').disabled = false;
+        document.getElementById('btn-analyze').textContent = '🔬 Analyze Damage with Aquila';
+        document.getElementById('btn-3d').disabled = false;
+        document.getElementById('btn-3d').textContent = '🧊 Generate 3D Model';
+      }
+    });
+  }, 2000);
+}
+
+function showAnalysisResults(result) {
+  const panel = document.getElementById('results-panel');
+  const content = document.getElementById('results-content');
+  let html = '';
+
+  if (result && result.findings && result.findings.length > 0) {
+    html += `<div style="margin-bottom:12px;"><strong>Overall Severity:</strong>
+             <span style="color:${severityColor(result.overall_severity)};font-weight:600;">
+             ${result.overall_severity.toUpperCase()}</span></div>`;
+    html += `<div style="margin-bottom:12px;"><strong>Summary:</strong> ${result.summary || 'N/A'}</div>`;
+
+    html += '<h4 style="margin:12px 0 8px 0;">Damage Findings</h4>';
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    result.findings.forEach(f => {
+      html += `<div style="background:#f8f9fa;border-radius:8px;padding:12px;border-left:4px solid ${severityColor(f.severity)};">
+        <div style="font-weight:600;">${f.damage_type || 'Unknown'} — ${f.severity || 'unknown'}</div>
+        <div style="color:#666;font-size:0.9em;margin-top:4px;">${f.description || ''}</div>
+        <div style="color:#999;font-size:0.8em;margin-top:4px;">Location: ${f.location || 'N/A'} | Confidence: ${Math.round((f.confidence || 0) * 100)}%</div>
+      </div>`;
+    });
+    html += '</div>';
+
+    if (result.recommendations && result.recommendations.length > 0) {
+      html += '<h4 style="margin:16px 0 8px 0;">Recommendations</h4><ul style="padding-left:20px;">';
+      result.recommendations.forEach(r => { html += `<li style="margin-bottom:4px;">${r}</li>`; });
+      html += '</ul>';
+    }
+  } else {
+    html = '<p style="color:#666;">No damage findings returned. Try uploading clearer photos.</p>';
+  }
+
+  content.innerHTML = html;
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior: 'smooth'});
+}
+
+function show3DResults(result, jobId) {
+  const panel = document.getElementById('model-panel');
+  const content = document.getElementById('model-content');
+  let html = '';
+
+  if (result && result.file_path) {
+    const sizeKB = result.file_size ? Math.round(result.file_size / 1024) : '?';
+    html = `<div style="display:flex;gap:16px;align-items:center;">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px;">🧊</div>
+      <div>
+        <div style="font-weight:600;">3D Model Ready</div>
+        <div style="color:#666;font-size:0.9em;">Format: ${result.format ? result.format.toUpperCase() : 'GLB'} | Size: ${sizeKB} KB</div>
+        <div style="color:#999;font-size:0.8em;">Model ID: ${result.model_id || jobId}</div>
+      </div>
+    </div>`;
+    document.getElementById('model-download').href = `/claims/{{ claim["id"] }}/aquila/model/${jobId}`;
+  } else {
+    html = '<p style="color:#666;">3D model generation completed but no file was returned.</p>';
+  }
+
+  content.innerHTML = html;
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior: 'smooth'});
+}
+
+function severityColor(sev) {
+  const colors = {none:'#22c55e', minor:'#84cc16', moderate:'#eab308', severe:'#f97316', catastrophic:'#ef4444'};
+  return colors[sev] || '#6b7280';
+}
+</script>
+{% endblock %}

@@ -12,6 +12,7 @@ from routes.reports import bp as reports_bp
 from routes.admin import bp as admin_bp
 from routes.willie import bp as willie_bp
 from routes.schedule import bp as schedule_bp
+from routes.aquila import bp as aquila_bp
 from routes.analytics import bp as analytics_bp
 from routes.aquila import bp as aquila_bp
 
@@ -31,5 +32,6 @@ def register_blueprints(app):
     app.register_blueprint(admin_bp)
     app.register_blueprint(willie_bp)
     app.register_blueprint(schedule_bp)
+    app.register_blueprint(aquila_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(aquila_bp)
