@@ -107,7 +107,7 @@
           <div class="slot-info">
             <div class="slot-time">🕐 {{ s.slot_time }}{% if is_today %}<span class="today-chip">TODAY</span>{% endif %}</div>
             <div class="slot-claim">
-              <a href="{{ url_for('claim_detail', claim_id=s.claim_id) }}" style="color:var(--t-primary);text-decoration:none;">
+              <a href="{{ url_for('claims.claim_detail', claim_id=s.claim_id) }}" style="color:var(--t-primary);text-decoration:none;">
                 {{ s.claim_number }} — {{ s.client_name }}
               </a>
             </div>
@@ -118,7 +118,7 @@
           <div class="slot-actions">
             <span class="status-pill s-{{ s.status }}">{{ s.status }}</span>
             <!-- Quick status update -->
-            <form method="POST" action="{{ url_for('schedule_update_status', slot_id=s.id) }}" style="display:flex;gap:.3rem">
+            <form method="POST" action="{{ url_for('schedule.schedule_update_status', slot_id=s.id) }}" style="display:flex;gap:.3rem">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="status" class="form-control" style="font-size:.72rem;padding:.2rem .5rem;width:auto" onchange="this.form.submit()">
                 <option value="pending"   {% if s.status=='pending'   %}selected{% endif %}>Pending</option>
@@ -127,7 +127,7 @@
                 <option value="cancelled" {% if s.status=='cancelled' %}selected{% endif %}>Cancelled</option>
               </select>
             </form>
-            <form method="POST" action="{{ url_for('schedule_delete', slot_id=s.id) }}"
+            <form method="POST" action="{{ url_for('schedule.schedule_delete', slot_id=s.id) }}"
                   onsubmit="return confirm('Remove this inspection?')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-danger btn-sm" style="padding:.25rem .6rem;font-size:.72rem">🗑</button>

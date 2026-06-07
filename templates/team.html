@@ -45,17 +45,17 @@
           {% if u.id != session.user_id %}
           <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEdit('edit-{{ u.id }}')">✏️ Edit</button>
           {% if u.is_active %}
-          <form method="POST" action="{{ url_for('deactivate_adjuster', user_id=u.id) }}" onsubmit="return confirm('Deactivate {{ u.name or u.email }}? They will lose access but claims remain assigned.')" style="display:inline">
+          <form method="POST" action="{{ url_for('admin.deactivate_adjuster', user_id=u.id) }}" onsubmit="return confirm('Deactivate {{ u.name or u.email }}? They will lose access but claims remain assigned.')" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-amber btn-sm">⏸️ Deactivate</button>
           </form>
           {% else %}
-          <form method="POST" action="{{ url_for('reactivate_adjuster', user_id=u.id) }}" style="display:inline">
+          <form method="POST" action="{{ url_for('admin.reactivate_adjuster', user_id=u.id) }}" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-success btn-sm">▶️ Reactivate</button>
           </form>
           {% endif %}
-          <form method="POST" action="{{ url_for('delete_team_member', user_id=u.id) }}" onsubmit="return confirm('PERMANENTLY remove {{ u.name or u.email }}? Their claims will become unassigned.')" style="display:inline">
+          <form method="POST" action="{{ url_for('admin.delete_team_member', user_id=u.id) }}" onsubmit="return confirm('PERMANENTLY remove {{ u.name or u.email }}? Their claims will become unassigned.')" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-danger btn-sm">🗑️ Remove</button>
           </form>
@@ -67,7 +67,7 @@
     </tr>
     <tr class="edit-row" id="edit-{{ u.id }}">
       <td colspan="6">
-        <form method="POST" action="{{ url_for('edit_team_member', user_id=u.id) }}" class="edit-form">
+        <form method="POST" action="{{ url_for('admin.edit_team_member', user_id=u.id) }}" class="edit-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
             <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b;">Name</label>

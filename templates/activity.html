@@ -8,7 +8,7 @@
     <div style="font-weight:800;font-size:1.1rem">{{ claim.client_name }}</div>
     <div style="font-size:.85rem;color:var(--t-secondary)">{{ claim.claim_number }} · {{ claim.property_address }}</div>
   </div>
-  <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
+  <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
 </div>
 
 <div class="card">

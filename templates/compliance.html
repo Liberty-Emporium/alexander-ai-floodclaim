@@ -77,8 +77,8 @@
     </div>
   </div>
   <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-    <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
-    <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 View Report</a>
+    <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
+    <a href="{{ url_for('reports.report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 View Report</a>
   </div>
 </div>
 
@@ -140,7 +140,7 @@
   <div class="card" style="margin:0">
     <div class="card-header">
       <div class="card-title">📋 NFIP Compliance Checklist</div>
-      <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-primary btn-sm">✏️ Fill Gaps</a>
+      <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-primary btn-sm">✏️ Fill Gaps</a>
     </div>
     {% for key, label in checklist %}
     <div class="checklist-item">

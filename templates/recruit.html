@@ -125,7 +125,7 @@
         <td><span class="badge-status badge-{{ a.status }}">{{ a.status|title }}</span></td>
         <td>
           {% if a.status == 'pending' %}
-          <form method="POST" action="{{ url_for('approve_application', app_id=a.id) }}" style="display:inline">
+          <form method="POST" action="{{ url_for('admin.approve_adjuster_application', app_id=a.id) }}" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary btn-sm" style="font-size:.68rem;padding:2px 8px;">✓ Approve</button>
           </form>
@@ -196,7 +196,7 @@
         </td>
         <td><span class="badge-status badge-{{ c.status }}">{{ c.status|title }}</span></td>
         <td>
-          <a href="{{ url_for('contractor_detail', app_id=c.id) }}" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:2px 8px;">View</a>
+          <a href="{{ url_for('admin.contractor_detail', app_id=c.id) }}" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:2px 8px;">View</a>
         </td>
       </tr>
       {% endfor %}
@@ -208,20 +208,6 @@
       No contractor applications yet.
     </div>
     {% endif %}
-  </div>
-
-  <!-- ═══ TRAINING CLASSES CTA ═══ -->
-  <div class="card" style="grid-column: 1 / -1;">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
-      <div>
-        <h3 style="font-size:1rem;font-weight:800;margin-bottom:.25rem;">🎓 Paid Training Classes</h3>
-        <p style="font-size:.82rem;color:var(--gray-600);">Enroll contractors and new adjusters in certified flood adjustment training. $50 per class, includes lessons, exam, and certificate.</p>
-      </div>
-      <div style="display:flex;gap:.5rem;">
-        <a href="{{ url_for('training.training_classes') }}" class="btn btn-secondary btn-sm">Browse Classes</a>
-        <a href="{{ url_for('training.admin_training') }}" class="btn btn-primary btn-sm">Manage Training</a>
-      </div>
-    </div>
   </div>
 
 </div>

@@ -75,7 +75,7 @@
         <div class="notif-body">
           <div class="notif-claim">
             {% if n.claim_number %}
-            <a href="{{ url_for('claim_detail', claim_id=n.claim_id) }}" style="color:var(--teal);text-decoration:none">
+            <a href="{{ url_for('claims.claim_detail', claim_id=n.claim_id) }}" style="color:var(--teal);text-decoration:none">
               {{ n.claim_number }} — {{ n.client_name }}
             </a>
             {% else %}—{% endif %}

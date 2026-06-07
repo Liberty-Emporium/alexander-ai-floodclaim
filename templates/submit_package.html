@@ -104,9 +104,9 @@
     <div style="font-size:.85rem;color:var(--t-secondary)">{{ claim.claim_number }} · {{ claim.property_address }}</div>
   </div>
   <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-    <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
-    <a href="{{ url_for('compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
-    <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Preview Report</a>
+    <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
+    <a href="{{ url_for('claims.compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
+    <a href="{{ url_for('reports.report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Preview Report</a>
   </div>
 </div>
 
@@ -125,7 +125,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('submit_package_download', claim_id=claim.id) }}">
+    <form method="POST" action="{{ url_for('claims.submit_package_download', claim_id=claim.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <!-- Carrier selection -->
@@ -231,7 +231,7 @@
             {% else %}Not Ready ❌{% endif %}
           </div>
           <div style="font-size:.75rem;color:var(--t-secondary);margin-top:.15rem">
-            <a href="{{ url_for('compliance', claim_id=claim.id) }}" style="color:var(--teal)">View full NFIP checklist →</a>
+            <a href="{{ url_for('claims.compliance', claim_id=claim.id) }}" style="color:var(--teal)">View full NFIP checklist →</a>
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@
       {% if missing %}
       <div style="margin-top:.75rem;padding:.75rem;background:rgba(248,113,113,.07);border-radius:8px;font-size:.78rem;color:var(--red)">
         ⚠️ Fix {{ missing|length }} item{{ 's' if missing|length != 1 }} before submitting for best results.
-        <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" style="color:var(--red);font-weight:700"> Fill gaps →</a>
+        <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" style="color:var(--red);font-weight:700"> Fill gaps →</a>
       </div>
       {% endif %}
     </div>

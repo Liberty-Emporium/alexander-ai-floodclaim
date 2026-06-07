@@ -150,8 +150,8 @@
             <span class="adj">{{ c.adjuster_name or '—' }}</span>
           </div>
           <div class="actions">
-            <a href="{{ url_for('claim_detail', claim_id=c.id) }}" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">View →</a>
-            <a href="{{ url_for('compliance', claim_id=c.id) }}" class="btn btn-amber btn-sm" title="NFIP Compliance">✅</a>
+            <a href="{{ url_for('claims.claim_detail', claim_id=c.id) }}" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">View →</a>
+            <a href="{{ url_for('claims.compliance', claim_id=c.id) }}" class="btn btn-amber btn-sm" title="NFIP Compliance">✅</a>
           </div>
         </div>
         {% endfor %}

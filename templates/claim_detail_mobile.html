@@ -45,10 +45,10 @@
 
 <!-- Quick Actions -->
 <div class="mob-action-grid">
-  <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📋 Full View</a>
-  <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
+  <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📋 Full View</a>
+  <a href="{{ url_for('reports.report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
   <button onclick="runAIEstimate()" class="btn btn-primary btn-sm">🤖 AI Estimate</button>
-  <a href="{{ url_for('submit_package_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📤 Submit</a>
+  <a href="{{ url_for('claims.submit_package_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📤 Submit</a>
 </div>
 
 <!-- Rooms -->
@@ -72,7 +72,7 @@
     {% if rd.room_photos %}
     <div class="mob-photo-grid">
       {% for p in rd.room_photos[:5] %}
-      <img src="{{ url_for('uploaded_file', filename=p.filename) }}" alt="{{ p.caption or 'Photo' }}" onclick="window.open(this.src)">
+      <img src="{{ url_for('photos.uploaded_file', filename=p.filename) }}" alt="{{ p.caption or 'Photo' }}" onclick="window.open(this.src)">
       {% endfor %}
     </div>
     {% endif %}
@@ -87,7 +87,7 @@
   <h3>📷 Unassigned Photos ({{ unassigned_photos|length }})</h3>
   <div class="mob-photo-grid">
     {% for p in unassigned_photos[:8] %}
-    <img src="{{ url_for('uploaded_file', filename=p.filename) }}" alt="{{ p.caption or 'Photo' }}" onclick="window.open(this.src)">
+    <img src="{{ url_for('photos.uploaded_file', filename=p.filename) }}" alt="{{ p.caption or 'Photo' }}" onclick="window.open(this.src)">
     {% endfor %}
   </div>
 </div>
