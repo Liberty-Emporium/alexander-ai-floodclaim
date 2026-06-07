@@ -179,7 +179,7 @@
     <div class="card-header">
       <div class="card-title">➕ Schedule Inspection</div>
     </div>
-    <form method="POST" action="{{ url_for('schedule_add') }}">
+    <form method="POST" action="{{ url_for('schedule.schedule_add') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label>Claim</label>

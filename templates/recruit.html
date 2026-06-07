@@ -34,7 +34,7 @@
   </p>
 
   <!-- From Email Setting -->
-  <form method="POST" action="{{ url_for('save_setting') }}" style="margin-bottom:1.25rem;">
+  <form method="POST" action="{{ url_for('admin.save_setting') }}" style="margin-bottom:1.25rem;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="setting_key" value="from_email">
     <div class="form-group" style="margin-bottom:.5rem;">
@@ -57,7 +57,7 @@
   <hr style="border:none;border-top:1px solid var(--gray-200);margin:1.25rem 0;">
 
   <!-- Send Invitation -->
-  <form method="POST" action="{{ url_for('send_recruit_invite') }}">
+  <form method="POST" action="{{ url_for('admin.send_recruit_invite') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);margin-bottom:.5rem;">Send Recruitment Invitation</div>
     <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;">
@@ -218,8 +218,8 @@
         <p style="font-size:.82rem;color:var(--gray-600);">Enroll contractors and new adjusters in certified flood adjustment training. $50 per class, includes lessons, exam, and certificate.</p>
       </div>
       <div style="display:flex;gap:.5rem;">
-        <a href="{{ url_for('training_classes') }}" class="btn btn-secondary btn-sm">Browse Classes</a>
-        <a href="{{ url_for('admin_training') }}" class="btn btn-primary btn-sm">Manage Training</a>
+        <a href="{{ url_for('training.training_classes') }}" class="btn btn-secondary btn-sm">Browse Classes</a>
+        <a href="{{ url_for('training.admin_training') }}" class="btn btn-primary btn-sm">Manage Training</a>
       </div>
     </div>
   </div>

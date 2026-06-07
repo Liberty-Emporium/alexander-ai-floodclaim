@@ -53,10 +53,10 @@
   {% endfor %}
 
   <div style="text-align:center;margin-top:1.5rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
-    <a href="{{ url_for('practice_exam') }}" class="btn btn-ghost">🔄 Retake Exam</a>
-    <a href="{{ url_for('become_an_agent') }}" class="btn btn-ghost">📚 Training Modules</a>
+    <a href="{{ url_for('training.practice_exam') }}" class="btn btn-ghost">🔄 Retake Exam</a>
+    <a href="{{ url_for('training.become_an_agent') }}" class="btn btn-ghost">📚 Training Modules</a>
     {% if score >= 70 %}
-    <a href="{{ url_for('apply_adjuster') }}" class="btn btn-primary">📝 Apply Now</a>
+    <a href="{{ url_for('training.apply_adjuster') }}" class="btn btn-primary">📝 Apply Now</a>
     {% endif %}
   </div>
 </div>

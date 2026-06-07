@@ -18,8 +18,8 @@ except ImportError:
 # ── Config (set by app.py before use) ─────────────────────────────────────────
 DB_PATH = None
 DATA_DIR = None
-ADMIN_EMAIL = 'admin@floodclaimpro.com'
-ADMIN_PASSWORD = 'admin123'
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@floodclaimpro.com')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'FloodAdmin2026!')
 app = None
 
 

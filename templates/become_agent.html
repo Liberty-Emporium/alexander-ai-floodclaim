@@ -36,8 +36,8 @@
   <p>FloodClaims Pro makes it easy to become a certified flood claims adjuster. Take free training classes, practice with AI-generated exams, and get connected with agencies looking for adjusters — all from one place.</p>
   <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
     <a href="#training" class="btn btn-primary">📚 Start Free Training</a>
-    <a href="{{ url_for('practice_exam') }}" class="btn btn-ghost">🧪 Take Practice Exam</a>
-    <a href="{{ url_for('apply_adjuster') }}" class="btn btn-ghost">📝 Apply Now</a>
+    <a href="{{ url_for('training.practice_exam') }}" class="btn btn-ghost">🧪 Take Practice Exam</a>
+    <a href="{{ url_for('training.apply_adjuster') }}" class="btn btn-ghost">📝 Apply Now</a>
   </div>
 </div>
 
@@ -53,7 +53,7 @@
     <div class="icon">📋</div>
     <h3>Already Licensed?</h3>
     <p>If you already have an adjuster license, skip the training. Take the practice exam to prove your knowledge, then apply directly.</p>
-    <a href="{{ url_for('apply_adjuster') }}" class="btn btn-primary btn-sm">Apply as Licensed</a>
+    <a href="{{ url_for('training.apply_adjuster') }}" class="btn btn-primary btn-sm">Apply as Licensed</a>
   </div>
   <div class="path-card">
     <div class="icon">🏗️</div>
@@ -123,7 +123,7 @@
 <div class="exam-section" style="margin-bottom:2.5rem;">
   <h3>🧪 Practice Exam</h3>
   <p>Test your knowledge with 20 randomly generated questions every time. No sign-up required. Get instant results and see which topics you need to study more.</p>
-  <a href="{{ url_for('practice_exam') }}" class="btn btn-primary" style="font-size:1rem;padding:.6rem 1.5rem;">Start Practice Exam →</a>
+  <a href="{{ url_for('training.practice_exam') }}" class="btn btn-primary" style="font-size:1rem;padding:.6rem 1.5rem;">Start Practice Exam →</a>
 </div>
 
 <!-- Certification Links -->
@@ -172,7 +172,7 @@
 <div style="text-align:center;padding:2rem;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(6,214,199,.06));border-radius:16px;max-width:600px;margin:0 auto 2rem;">
   <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:.5rem;">Ready to Join?</h3>
   <p style="font-size:.85rem;color:var(--gray-600);margin-bottom:1.25rem;">Submit your application and get connected with agencies hiring flood adjusters.</p>
-  <a href="{{ url_for('apply_adjuster') }}" class="btn btn-primary" style="font-size:1rem;padding:.6rem 1.5rem;">📝 Apply to Become an Adjuster</a>
+  <a href="{{ url_for('training.apply_adjuster') }}" class="btn btn-primary" style="font-size:1rem;padding:.6rem 1.5rem;">📝 Apply to Become an Adjuster</a>
 </div>
 
 {% endblock %}

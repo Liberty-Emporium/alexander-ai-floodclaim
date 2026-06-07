@@ -347,7 +347,7 @@
       Choose an icon or upload your own image. Set the bot name and greeting message.
     </div>
 
-    <form method="POST" enctype="multipart/form-data" id="bubbleForm" action="{{ url_for('save_chat_bubble') }}">
+    <form method="POST" enctype="multipart/form-data" id="bubbleForm" action="{{ url_for('admin.save_chat_bubble') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <!-- Bot Name -->
@@ -484,7 +484,7 @@
         <button type="submit" class="btn btn-ghost btn-sm">💾 Save Email</button>
       </form>
     </div>
-    <form method="POST" action="{{ url_for('send_weekly_report') }}" style="margin-top:1rem">
+    <form method="POST" action="{{ url_for('admin.send_weekly_report') }}" style="margin-top:1rem">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-primary btn-sm"
               onclick="return confirm('Send weekly report now to the saved email?')">

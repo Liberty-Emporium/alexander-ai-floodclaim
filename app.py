@@ -52,7 +52,7 @@ app.secret_key = _SECRET_KEY
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+app.config['SESSION_COOKIE_SECURE'] = False
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '/data')

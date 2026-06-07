@@ -16,7 +16,7 @@
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
   <h2 style="font-size:1.2rem;font-weight:800;margin:0;">Training Classes</h2>
-  <a href="{{ url_for('admin_new_class') }}" class="btn btn-primary btn-sm">+ New Class</a>
+  <a href="{{ url_for('training.admin_new_class') }}" class="btn btn-primary btn-sm">+ New Class</a>
 </div>
 
 {% if classes %}
@@ -44,7 +44,7 @@
   <div style="font-size:2.5rem;margin-bottom:.5rem;">📚</div>
   <h3>No Training Classes Yet</h3>
   <p style="font-size:.82rem;color:var(--gray-500);margin-bottom:1rem;">Create your first class to start training adjusters.</p>
-  <a href="{{ url_for('admin_new_class') }}" class="btn btn-primary">+ Create First Class</a>
+  <a href="{{ url_for('training.admin_new_class') }}" class="btn btn-primary">+ Create First Class</a>
 </div>
 {% endif %}
 {% endblock %}

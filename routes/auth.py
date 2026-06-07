@@ -30,11 +30,8 @@ def login():
         pw    = request.form.get('password', '')
         db    = get_db()
         user  = db.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
-        if not user:
-            flash(f'User not found: {email}', 'error')
-            return render_template('login.html')
-        if not check_pw(pw, user['password']):
-            flash(f'Password mismatch. Hash prefix: {user["password"][:10]}...', 'error')
+        if not user or not check_pw(pw, user['password']):
+            flash('Invalid email or password.', 'error')
             return render_template('login.html')
         # Check if user is active (managers/admins can be deactivated by admin)
         if not user.get('is_active', 1):
@@ -60,6 +57,47 @@ def logout():
     session.clear()
     return redirect(url_for('auth.login'))
 
+
+@bp.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        pw = request.form.get('password', '')
+        name = request.form.get('name', '').strip()
+        if not email or not pw or not name:
+            flash('All fields are required.', 'error')
+            return render_template('login.html')
+        db = get_db()
+        existing = db.execute('SELECT id FROM users WHERE email=?', (email,)).fetchone()
+        if existing:
+            flash('An account with this email already exists.', 'error')
+            return render_template('login.html')
+        db.execute(
+            'INSERT INTO users (email, password, name, role, is_active) VALUES (?,?,?,?,?)',
+            (email, hash_pw(pw), name, 'adjuster', 1)
+        )
+        db.commit()
+        flash('Account created! Please sign in.', 'success')
+        return redirect(url_for('auth.login'))
+    return render_template('login.html')
+
+
+@bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if not email:
+            flash('Please enter your email address.', 'error')
+            return render_template('login.html')
+        db = get_db()
+        user = db.execute('SELECT id FROM users WHERE email=?', (email,)).fetchone()
+        if user:
+            # In production, send reset email. For now, show message.
+            flash('If an account exists with that email, a reset link has been sent.', 'success')
+        else:
+            flash('If an account exists with that email, a reset link has been sent.', 'success')
+        return redirect(url_for('auth.login'))
+    return render_template('login.html')
 
 
 @bp.route('/dashboard')
