@@ -366,12 +366,16 @@ def new_claim():
 @login_required
 @csrf_required
 def delete_claim(claim_id):
-    """Delete a claim and all its rooms, line items, and photos."""
+    """Delete a claim and all related records."""
     db = get_db()
     claim = db.execute('SELECT id, client_name, claim_number FROM claims WHERE id=?', (claim_id,)).fetchone()
     if not claim:
         flash('Claim not found.', 'error')
         return redirect(url_for('auth.dashboard'))
+
+    claim_num  = claim['claim_number']
+    client_name = claim['client_name']
+
     # Delete uploaded photo files from disk
     photos = db.execute('SELECT filename FROM photos WHERE claim_id=?', (claim_id,)).fetchall()
     for p in photos:
@@ -381,16 +385,34 @@ def delete_claim(claim_id):
                 os.remove(path)
         except Exception:
             pass
-    # Log activity BEFORE deleting (FK constraint on claim_id)
-    _log_activity(claim_id, f'Claim {claim["claim_number"]} deleted')
-    # Delete related DB records first (order matters for FK safety)
-    db.execute('DELETE FROM photos WHERE claim_id=?', (claim_id,))
+
+    # Delete related DB records in proper FK order (children first)
+    # Tables with ON DELETE CASCADE on claims.id: rooms, photos, client_portal_tokens,
+    # signatures, inspection_slots, notifications_log, activity_log, aquila_jobs,
+    # estimate_jobs (after migration). We explicitly delete for safety and completeness.
     db.execute('DELETE FROM line_items WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM photos WHERE claim_id=?', (claim_id,))
     db.execute('DELETE FROM rooms WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM estimate_jobs WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM client_portal_tokens WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM signatures WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM inspection_slots WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM notifications_log WHERE claim_id=?', (claim_id,))
     db.execute('DELETE FROM activity_log WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM aquila_jobs WHERE claim_id=?', (claim_id,))
     db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
     db.commit()
-    flash(f'Claim {claim["claim_number"]} ({claim["client_name"]}) deleted.', 'success')
+
+    # Log the deletion to a system-wide log (activity_log is gone with the claim)
+    try:
+        db.execute(
+            "INSERT INTO activity_log (claim_id, actor, action) VALUES (0, ?, ?)",
+            (session.get('name', 'System'), f'Claim {claim_num} deleted'))
+        db.commit()
+    except Exception:
+        pass
+
+    flash(f'Claim {claim_num} ({client_name}) deleted.', 'success')
     return redirect(url_for('auth.dashboard'))
 
 

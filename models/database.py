@@ -161,6 +161,8 @@ def init_db():
     _li_cols = [r[1] for r in db.execute('PRAGMA table_info(line_items)').fetchall()]
     if 'deleted_at' not in _li_cols:
         db.execute('ALTER TABLE line_items ADD COLUMN deleted_at TEXT DEFAULT NULL')
+    if 'claim_id' not in _li_cols:
+        db.execute('ALTER TABLE line_items ADD COLUMN claim_id INTEGER REFERENCES claims(id) ON DELETE CASCADE')
     _photo_cols = [r[1] for r in db.execute('PRAGMA table_info(photos)').fetchall()]
     if 'deleted_at' not in _photo_cols:
         db.execute('ALTER TABLE photos ADD COLUMN deleted_at TEXT DEFAULT NULL')
@@ -309,6 +311,26 @@ def migrate_new_features():
             db.execute('ALTER TABLE estimate_jobs ADD COLUMN progress INTEGER DEFAULT 0')
         if 'progress_msg' not in _ej_cols:
             db.execute('ALTER TABLE estimate_jobs ADD COLUMN progress_msg TEXT DEFAULT ""')
+        # Migrate: add ON DELETE CASCADE to claim_id (SQLite requires table rebuild)
+        _ej_fk = db.execute('PRAGMA foreign_key_list(estimate_jobs)').fetchall()
+        _ej_has_cascade = any(fk['table'] == 'claims' and fk['on_delete'] == 'CASCADE' for fk in _ej_fk)
+        if not _ej_has_cascade:
+            db.executescript('''
+                CREATE TABLE IF NOT EXISTS estimate_jobs_new (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    claim_id    INTEGER NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
+                    status      TEXT DEFAULT 'pending',
+                    progress    INTEGER DEFAULT 0,
+                    progress_msg TEXT DEFAULT '',
+                    result      TEXT DEFAULT '',
+                    error       TEXT DEFAULT '',
+                    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO estimate_jobs_new SELECT * FROM estimate_jobs;
+                DROP TABLE estimate_jobs;
+                ALTER TABLE estimate_jobs_new RENAME TO estimate_jobs;
+            ''')
         cols = [r[1] for r in db.execute('PRAGMA table_info(claims)').fetchall()]
         extras = [
             ('flood_zone',     'TEXT DEFAULT ""'),
@@ -536,6 +558,16 @@ def migrate_batch_photo_columns():
             ('ai_confidence',  'REAL DEFAULT 0'),
             ('customer_submitted', 'INTEGER DEFAULT 0'),
             ('analysis_status',    'TEXT DEFAULT "pending"'),
+            ('ai_damage_severity', 'TEXT DEFAULT ""'),
+            ('ai_room_type',       'TEXT DEFAULT ""'),
+            ('ai_water_evidence',  'TEXT DEFAULT ""'),
+            ('ai_mold_detected',   'INTEGER DEFAULT 0'),
+            ('ai_structural_damage', 'INTEGER DEFAULT 0'),
+            ('ai_flooring_type',   'TEXT DEFAULT ""'),
+            ('ai_flooring_damage', 'TEXT DEFAULT ""'),
+            ('ai_wall_damage',     'TEXT DEFAULT ""'),
+            ('ai_suggested_items', 'TEXT DEFAULT "[]"'),
+            ('ai_analysis_json',   'TEXT DEFAULT ""'),
         ]
         for col, typedef in extras:
             if col not in cols:
