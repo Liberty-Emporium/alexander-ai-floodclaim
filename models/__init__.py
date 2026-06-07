@@ -16,6 +16,7 @@ from models.database import (
     _migrate_recruitment_tables,
     _migrate_feedback_tables,
     migrate_batch_photo_columns,
+    _migrate_aquila_tables,
     get_setting,
     set_setting,
     _set_app,
