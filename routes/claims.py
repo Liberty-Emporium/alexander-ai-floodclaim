@@ -381,6 +381,11 @@ def delete_claim(claim_id):
                 os.remove(path)
         except Exception:
             pass
+    # Delete related DB records first (order matters for FK safety)
+    db.execute('DELETE FROM photos WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM line_items WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM rooms WHERE claim_id=?', (claim_id,))
+    db.execute('DELETE FROM activity_log WHERE claim_id=?', (claim_id,))
     db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
     db.commit()
     _log_activity(claim_id, f'Claim {claim["claim_number"]} deleted')
