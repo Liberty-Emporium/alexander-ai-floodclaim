@@ -52,6 +52,7 @@ def _ensure_db_initialized():
             migrate_new_features_v2()
             _migrate_recruitment_tables()
             migrate_batch_photo_columns()
+            _migrate_aquila_tables()
             _db_initialized = True
         except Exception as e:
             import sys
@@ -575,5 +576,30 @@ def migrate_batch_photo_columns():
 
 # migrate_batch_photo_columns() now called lazily in get_db()
 
+
+def _migrate_aquila_tables():
+    """Create Aquila 3D model generation tables if they don't exist."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        db.executescript('''
+            CREATE TABLE IF NOT EXISTS aquila_jobs (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                claim_id        INTEGER NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
+                photo_id        INTEGER REFERENCES photos(id) ON DELETE SET NULL,
+                meshy_task_id   TEXT NOT NULL,
+                model_name      TEXT DEFAULT '',
+                model_url       TEXT DEFAULT '',
+                model_data      TEXT DEFAULT '',
+                status          TEXT DEFAULT 'pending',
+                error           TEXT DEFAULT '',
+                created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+                completed_at    TEXT DEFAULT NULL
+            );
+        ''')
+        db.commit()
+        db.close()
+    except Exception as e:
+        print(f'_migrate_aquila_tables error: {e}')
 
 

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aquila 3D — {{ model_name }}</title>
+  <!-- Google Model Viewer — zero-code 3D viewer -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer@3.4.0/dist/model-viewer.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-bottom: 1px solid #1e3a5f;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #06b6d4, #3b82f6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff;
+    }
+    .header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+    .header .subtitle {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .back-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .back-btn:hover {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    /* ── Viewer Container ── */
+    .viewer-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 20px;
+    }
+
+    model-viewer {
+      width: 100%;
+      max-width: 900px;
+      height: 60vh;
+      min-height: 400px;
+      background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+      border-radius: 16px;
+      border: 1px solid #1e3a5f;
+      --progress-bar-color: #06b6d4;
+      --progress-bar-height: 3px;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .ctrl-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ctrl-btn:hover {
+      background: #334155;
+      color: #f1f5f9;
+      border-color: #475569;
+    }
+    .ctrl-btn.primary {
+      background: linear-gradient(135deg, #06b6d4, #3b82f6);
+      border-color: transparent;
+      color: #fff;
+    }
+    .ctrl-btn.primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    /* ── Info Panel ── */
+    .info-panel {
+      background: #0f172a;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 16px 24px;
+      max-width: 900px;
+      width: 100%;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .info-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .info-value {
+      font-size: 14px;
+      color: #e2e8f0;
+      font-weight: 500;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-badge.success {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .status-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ── Hotspot annotation ── */
+    .hotspot-annotation {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      max-width: 200px;
+      border: 1px solid #1e3a5f;
+    }
+
+    /* ── Loading state ── */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 14, 26, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 100;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid #1e3a5f;
+      border-top-color: #06b6d4;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .header { padding: 10px 16px; }
+      .header h1 { font-size: 14px; }
+      model-viewer { height: 50vh; min-height: 300px; }
+      .info-panel { padding: 12px 16px; gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">A</div>
+      <div>
+        <h1>Aquila 3D Viewer</h1>
+        <div class="subtitle">{{ model_name }}</div>
+      </div>
+    </div>
+    <a href="javascript:history.back()" class="back-btn">← Back to Claim</a>
+  </div>
+
+  <!-- Viewer -->
+  <div class="viewer-container">
+    <model-viewer
+      src="{{ model_url }}"
+      alt="3D model of flood damage scene"
+      auto-rotate
+      camera-controls
+      shadow-intensity="1"
+      environment-image="neutral"
+      exposure="1"
+      interaction-prompt="auto"
+      loading="lazy"
+      reveal="auto"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      style="--poster-color: #0f172a;"
+    >
+      <!-- Progress bar -->
+      <div slot="progress-bar" style="display:none;"></div>
+
+      <!-- AR button -->
+      <button slot="ar-button" style="
+        position: absolute; bottom: 16px; right: 16px;
+        background: linear-gradient(135deg, #06b6d4, #3b82f6);
+        color: #fff; border: none; border-radius: 10px;
+        padding: 10px 20px; font-size: 13px; font-weight: 600;
+        cursor: pointer; z-index: 10;
+      ">
+        📱 View in AR
+      </button>
+    </model-viewer>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="ctrl-btn primary" onclick="document.querySelector('model-viewer').cameraOrbit='auto auto auto'">
+        🔄 Auto-Rotate
+      </button>
+      <button class="ctrl-btn" onclick="resetCamera()">
+        🎯 Reset View
+      </button>
+      <button class="ctrl-btn" onclick="toggleWireframe()">
+        🔲 Wireframe
+      </button>
+      <a href="{{ model_url }}" download class="ctrl-btn" style="text-decoration:none;">
+        ⬇️ Download GLB
+      </a>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <div class="info-item">
+        <span class="info-label">Model</span>
+        <span class="info-value">{{ model_name }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Status</span>
+        <span class="status-badge success">Generated</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Format</span>
+        <span class="info-value">GLB (Binary glTF)</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Generated</span>
+        <span class="info-value">{{ job['completed_at'] or job['updated_at'] or 'Just now' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mv = document.querySelector('model-viewer');
+
+    function resetCamera() {
+      mv.cameraOrbit = '0deg 75deg 105%';
+      mv.cameraTarget = 'auto auto auto';
+      mv.fieldOfView = '30deg';
+    }
+
+    let wireframeMode = false;
+    function toggleWireframe() {
+      wireframeMode = !wireframeMode;
+      if (wireframeMode) {
+        mv.style.filter = 'grayscale(1) contrast(1.2)';
+      } else {
+        mv.style.filter = '';
+      }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'r') resetCamera();
+      if (e.key === ' ') { e.preventDefault(); mv.autoRotate = !mv.autoRotate; }
+    });
+  </script>
+</body>
+</html>
