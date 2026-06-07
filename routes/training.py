@@ -1,12 +1,14 @@
 """Routes for training blueprint."""
 
+import json
+import datetime
+import os
+import re
+
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
 from models.database import get_db, get_setting
 from utils.auth_decorators import login_required, admin_required
 from utils.security import csrf_required
-import json
-import datetime
-import os
 
 bp = Blueprint("training", __name__)
 

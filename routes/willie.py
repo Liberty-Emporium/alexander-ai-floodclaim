@@ -6,6 +6,7 @@ from utils.auth_decorators import login_required, admin_required
 from services.ai import call_openrouter, _build_pricing_kb, _build_estimate_prompt
 from services.email import send_email, notify_client_status_change
 from services.fema import lookup_fema_flood_zone
+from services.willie import willie_auth
 from services.claims import gen_claim_number, recalc_claim
 import json
 import datetime

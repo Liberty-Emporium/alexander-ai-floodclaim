@@ -34,7 +34,7 @@ def login():
             flash('Invalid email or password.', 'error')
             return render_template('login.html')
         # Check if user is active (managers/admins can be deactivated by admin)
-        if not user.get('is_active', 1):
+        if not user['is_active']:
             flash('Your account has been deactivated. Contact your administrator.', 'error')
             return render_template('login.html')
         # Transparent bcrypt upgrade: if stored hash is legacy sha256, re-hash now
