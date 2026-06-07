@@ -381,6 +381,8 @@ def delete_claim(claim_id):
                 os.remove(path)
         except Exception:
             pass
+    # Log activity BEFORE deleting (FK constraint on claim_id)
+    _log_activity(claim_id, f'Claim {claim["claim_number"]} deleted')
     # Delete related DB records first (order matters for FK safety)
     db.execute('DELETE FROM photos WHERE claim_id=?', (claim_id,))
     db.execute('DELETE FROM line_items WHERE claim_id=?', (claim_id,))
@@ -388,7 +390,6 @@ def delete_claim(claim_id):
     db.execute('DELETE FROM activity_log WHERE claim_id=?', (claim_id,))
     db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
     db.commit()
-    _log_activity(claim_id, f'Claim {claim["claim_number"]} deleted')
     flash(f'Claim {claim["claim_number"]} ({claim["client_name"]}) deleted.', 'success')
     return redirect(url_for('auth.dashboard'))
 
