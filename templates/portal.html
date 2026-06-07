@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Your Flood Damage Claim — {{ claim.claim_number }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f8fafc;--surface:#fff;--border:#e2e8f0;--teal:#06D6C7;--navy:#0a1628;
+  --t-primary:#0f172a;--t-secondary:#475569;--t-muted:#94a3b8;
+  --green:#10b981;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--t-primary);line-height:1.6;}
+.container{max-width:800px;margin:0 auto;padding:1.5rem;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem;}
+.card-title{font-weight:800;font-size:1rem;margin-bottom:1rem;color:var(--navy);}
+.header{text-align:center;padding:2rem 1rem;background:linear-gradient(135deg,#0a1628,#1e3a5f);color:#fff;border-radius:0 0 24px 24px;margin-bottom:1.5rem;}
+.header h1{font-size:1.4rem;margin-bottom:.5rem;}
+.header .claim-num{font-family:monospace;background:rgba(255,255,255,.15);padding:.3rem .8rem;border-radius:6px;font-size:.9rem;}
+.status-badge{display:inline-block;padding:.3rem .8rem;border-radius:999px;font-size:.75rem;font-weight:700;}
+.status-New{background:rgba(6,214,199,.1);color:#0d9488;}
+.status-InProgress{background:rgba(245,158,11,.1);color:#b45309;}
+.status-Submitted{background:rgba(59,130,246,.1);color:#1d4ed8;}
+.status-Closed{background:rgba(16,185,129,.1);color:#047857;}
+.timeline{position:relative;padding-left:2rem;}
+.timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--border);}
+.timeline-item{position:relative;padding-bottom:1.5rem;}
+.timeline-item::before{content:'';position:absolute;left:-21px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--teal);border:2px solid #fff;box-shadow:0 0 0 2px var(--teal);}
+.timeline-item .time{font-size:.7rem;color:var(--t-muted);margin-bottom:.2rem;}
+.timeline-item .action{font-size:.85rem;}
+.room-block{border:1px solid var(--border);border-radius:12px;margin-bottom:1rem;overflow:hidden;}
+.room-header{background:#f1f5f9;padding:.75rem 1rem;font-weight:700;font-size:.9rem;display:flex;justify-content:space-between;cursor:pointer;}
+.room-body{padding:1rem;}
+.room-body table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.room-body th{text-align:left;padding:.5rem;border-bottom:1px solid var(--border);color:var(--t-secondary);font-size:.65rem;text-transform:uppercase;}
+.room-body td{padding:.5rem;border-bottom:1px solid #f1f5f9;}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;margin-top:.75rem;}
+.photo-grid img{width:100%;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);}
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s;margin-top:1rem;}
+.upload-zone:hover{border-color:var(--teal);}
+.upload-zone input{display:none;}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;border-radius:999px;border:none;font-weight:700;font-size:.85rem;cursor:pointer;text-decoration:none;}
+.btn-primary{background:var(--teal);color:#0a1628;}
+.btn-ghost{background:#f1f5f9;color:var(--t-secondary);}
+.btn-ghost:hover{background:#e2e8f0;}
+.signature-box{border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;margin-top:1rem;}
+.signature-pad{border:2px solid var(--border);border-radius:8px;height:120px;margin:1rem 0;touch-action:none;}
+.water-cat{display:inline-block;padding:.2rem .6rem;border-radius:6px;font-weight:800;font-size:.8rem;}
+.cat-3{background:#fee2e2;color:#991b1b;}
+.cat-2{background:#fef3c7;color:#92400e;}
+.cat-1{background:#d1fae5;color:#065f46;}
+#online-status{position:fixed;bottom:1rem;right:1rem;padding:.4rem .8rem;border-radius:999px;font-size:.7rem;font-weight:700;background:var(--surface);border:1px solid var(--border);z-index:100;}
+</style>
+</head>
+<body>
+
+<div id="online-status">🟢 Online</div>
+
+<div class="header">
+  <h1>🏠 Your Flood Damage Claim</h1>
+  <div class="claim-num">{{ claim.claim_number }}</div>
+  <div style="margin-top:1rem">
+    <span class="status-badge status-{{ claim.status|replace(' ','') }}">{{ claim.status }}</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Claim Summary -->
+  <div class="card">
+    <div class="card-title">📋 Claim Summary</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <div style="font-size:.7rem;color:var(--t-secondary);text-transform:uppercase">Property</div>
+        <div style="font-weight:600">{{ claim.property_address }}</div>
+      </div>
+      <div>
+        <div style="font-size:.7rem;color:var(--t-secondary);text-transform:uppercase">Flood Date</div>
+        <div style="font-weight:600">{{ claim.flood_date }}</div>
+      </div>
+      <div>
+        <div style="font-size:.7rem;color:var(--t-secondary);text-transform:uppercase">Water Category</div>
+        <span class="water-cat cat-{{ claim.water_category or '3' }}">Category {{ claim.water_category or '3' }}</span>
+      </div>
+      <div>
+        <div style="font-size:.7rem;color:var(--t-secondary);text-transform:uppercase">Total Estimate</div>
+        <div style="font-weight:800;font-size:1.2rem;color:var(--green)">${{ "{:,.2f}".format(claim.total_estimate) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Timeline -->
+  <div class="card">
+    <div class="card-title">📊 Claim Progress</div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem">
+      {% for status in status_order %}
+      <div style="text-align:center;flex:1">
+        <div style="width:28px;height:28px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;
+          {% if loop.index0 <= current_status_idx %}background:var(--teal);color:#fff{% else %}background:#e2e8f0;color:var(--t-muted){% endif %}">
+          {{ loop.index }}
+        </div>
+        <div style="font-size:.65rem;font-weight:600;color:{% if loop.index0 <= current_status_idx %}var(--navy){% else %}var(--t-muted){% endif %}">{{ status }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Damage by Room -->
+  <div class="card">
+    <div class="card-title">🛠️ Damage by Room</div>
+    {% for rd in room_data %}
+    <div class="room-block">
+      <div class="room-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <span>🏠 {{ rd.room.name }}</span>
+        <span style="color:var(--green)">${{ "{:,.2f}".format(rd.room.subtotal) }} ▾</span>
+      </div>
+      <div class="room-body" style="display:none">
+        <table>
+          <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Cost</th><th>Total</th></tr></thead>
+          <tbody>
+          {% for item in rd.line_items %}
+          <tr>
+            <td>{{ item.description }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit }}</td>
+            <td>${{ "{:,.2f}".format(item.unit_cost) }}</td>
+            <td style="font-weight:700">${{ "{:,.2f}".format(item.total) }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% if rd.room_photos %}
+        <div class="photo-grid">
+          {% for p in rd.room_photos %}
+          <img src="/uploads/{{ claim.id }}/{{ p.filename }}" alt="{{ p.caption or 'Damage photo' }}" loading="lazy">
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Upload Photos -->
+  <div class="card">
+    <div class="card-title">📸 Upload Your Photos</div>
+    <div style="font-size:.8rem;color:var(--t-secondary);margin-bottom:1rem">
+      Have additional photos of the damage? Upload them here and your adjuster will review them.
+    </div>
+    <div class="upload-zone" onclick="document.getElementById('portal-photos').click()">
+      <input type="file" id="portal-photos" multiple accept="image/*" onchange="uploadPhotos(this.files)">
+      <div style="font-size:2rem;margin-bottom:.5rem">📷</div>
+      <div style="font-weight:600">Tap to select photos</div>
+      <div style="font-size:.75rem;color:var(--t-muted);margin-top:.3rem">JPG, PNG — up to 10 photos</div>
+    </div>
+    <div id="upload-status" style="margin-top:.5rem;font-size:.8rem;"></div>
+  </div>
+
+  <!-- Activity Log -->
+  <div class="card">
+    <div class="card-title">📜 Activity</div>
+    <div class="timeline">
+      {% for act in activities[-10:]|reverse %}
+      <div class="timeline-item">
+        <div class="time">{{ act.created_at[:16] if act.created_at else '' }}</div>
+        <div class="action"><strong>{{ act.actor }}:</strong> {{ act.action }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- E-Signature -->
+  <div class="card">
+    <div class="card-title">✍️ Sign Documents</div>
+    {% if signature %}
+    <div style="text-align:center;padding:1rem;color:var(--green)">
+      <div style="font-size:2rem">✅</div>
+      <div style="font-weight:700;margin-top:.5rem">Signed by {{ signature.signer }}</div>
+      <div style="font-size:.75rem;color:var(--t-muted)">{{ signature.signed_at[:10] if signature.signed_at else '' }}</div>
+    </div>
+    {% else %}
+    <div class="signature-box">
+      <div style="font-size:.8rem;color:var(--t-secondary);margin-bottom:.5rem">Sign below to approve the Proof of Loss</div>
+      <canvas id="sig-pad" class="signature-pad" width="400" height="120"></canvas>
+      <div style="display:flex;gap:.5rem;justify-content:center">
+        <button class="btn btn-ghost btn-sm" onclick="clearSig()">Clear</button>
+        <button class="btn btn-primary btn-sm" onclick="submitSig()">Submit Signature</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="text-align:center;padding:1rem;font-size:.7rem;color:var(--t-muted)">
+    FloodClaims Pro · Claim {{ claim.claim_number }} · Generated {{ generated }}
+  </div>
+</div>
+
+<script>
+// ── Photo Upload ──────────────────────────────────────────────────────────────
+async function uploadPhotos(files) {
+  const status = document.getElementById('upload-status');
+  status.textContent = 'Uploading...';
+  const formData = new FormData();
+  for (let i = 0; i < Math.min(files.length, 10); i++) {
+    formData.append('photos', files[i]);
+  }
+  try {
+    const resp = await fetch('/portal/{{ token }}/upload', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.success) {
+      status.innerHTML = '<span style="color:var(--green)">✅ ' + data.photos_uploaded + ' photo(s) uploaded successfully!</span>';
+    } else {
+      status.innerHTML = '<span style="color:var(--red)">❌ Upload failed: ' + (data.error || 'Unknown error') + '</span>';
+    }
+  } catch (e) {
+    status.innerHTML = '<span style="color:var(--red)">❌ Upload failed. Please try again.</span>';
+  }
+}
+
+// ── Signature Pad ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('sig-pad');
+if (canvas) {
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  ctx.strokeStyle = '#0a1628';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+  }
+
+  canvas.addEventListener('mousedown', e => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener('mousemove', e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  canvas.addEventListener('mouseup', () => drawing = false);
+  canvas.addEventListener('mouseleave', () => drawing = false);
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  canvas.addEventListener('touchend', () => drawing = false);
+}
+
+function clearSig() {
+  if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+async function submitSig() {
+  if (!canvas) return;
+  const data = canvas.toDataURL('image/png');
+  try {
+    const resp = await fetch('/portal/{{ token }}/sign', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ sig_data: data, signer: '{{ claim.client_name }}' })
+    });
+    const result = await resp.json();
+    if (result.success) {
+      alert('✅ Signature submitted successfully!');
+      location.reload();
+    } else {
+      alert('❌ ' + (result.error || 'Signature failed'));
+    }
+  } catch (e) {
+    alert('❌ Signature submission failed. Please try again.');
+  }
+}
+
+// ── Auto-refresh status ───────────────────────────────────────────────────────
+setInterval(async () => {
+  try {
+    const r = await fetch('/portal/{{ token }}/status');
+    if (r.ok) {
+      const d = await r.json();
+      // Could update status badge here
+    }
+  } catch(e) {}
+}, 30000);
+</script>
+</body>
+</html>

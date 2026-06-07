@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% block title %}Supplement Builder — {{ claim.claim_number }}{% endblock %}
+{% block page_title %}➕ Supplement Builder — {{ claim.claim_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .suggestion-card {
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:1rem;margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:center;
+  }
+  .suggestion-card.high { border-left:4px solid #ef4444; }
+  .suggestion-card.medium { border-left:4px solid #f59e0b; }
+  .supplement-item {
+    background:var(--elevated);border:1px solid var(--border);border-radius:10px;
+    padding:1rem;margin-bottom:.5rem;
+  }
+  .total-box {
+    background:linear-gradient(135deg,rgba(6,214,199,.1),rgba(59,123,255,.1));
+    border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;margin-top:1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+  <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
+  <div style="display:flex;gap:.5rem">
+    <button class="btn btn-ghost btn-sm" onclick="aiSuggestSupplements()">🤖 AI Suggest Items</button>
+    <button class="btn btn-primary btn-sm" onclick="generateSupplement()">📥 Generate & Download</button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+  <!-- Left: AI Suggestions & Add Items -->
+  <div>
+    <div class="card">
+      <div class="card-title">🤖 AI Supplement Suggestions</div>
+      <div style="font-size:.75rem;color:var(--t-secondary);margin-bottom:1rem">
+       AI-analyzed photos and line items to find commonly missed flood damage items.
+      </div>
+      <div id="suggestions-list">
+        {% if suggestions %}
+          {% for s in suggestions %}
+          <div class="suggestion-card {{ s.priority|lower }}">
+            <div>
+              <div style="font-weight:700;font-size:.85rem">{{ s.category }}</div>
+              <div style="font-size:.75rem;color:var(--t-secondary);margin-top:3px">{{ s.description }}</div>
+              <div style="font-size:.7rem;color:var(--t-muted);margin-top:3px">{{ s.reason }}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;margin-left:1rem">
+              <div style="font-weight:800;color:var(--green)">${{ "{:,.2f}".format(s.estimated_cost) }}</div>
+              <button class="btn btn-sm btn-ghost" style="margin-top:4px" onclick="addSuggestion('{{ s.description|escape }}', {{ s.estimated_cost }})">+ Add</button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align:center;padding:2rem;color:var(--t-muted)">
+            <div style="font-size:2rem;margin-bottom:.5rem">🤖</div>
+            <div>Click "AI Suggest Items" to analyze this claim for potential supplement items</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Manual Add -->
+    <div class="card" style="margin-top:1rem">
+      <div class="card-title">✏️ Add Manual Item</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:.5rem;align-items:end">
+        <div class="form-group" style="margin:0">
+          <label>Description</label>
+          <input class="form-control" id="manual-desc" placeholder="e.g. Drywall replacement">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Qty</label>
+          <input class="form-control" id="manual-qty" type="number" value="1" step="0.5">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Unit</label>
+          <select class="form-control" id="manual-unit">
+            <option>sf</option><option>ea</option><option>lf</option><option>hr</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Unit Cost</label>
+          <input class="form-control" id="manual-cost" type="number" value="0" step="0.01">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addManualItem()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Supplement Builder -->
+  <div>
+    <div class="card">
+      <div class="card-title">📋 Supplement Items</div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--t-secondary)">Supplement Reason</label>
+        <select class="form-control" id="supplement-reason" style="margin-top:.3rem">
+          <option value="additional_damage">Additional Damage Discovered</option>
+          <option value="carrier_underpaid">Carrier Estimate Insufficient</option>
+          <option value="hidden_damage">Hidden Damage Found During Repairs</option>
+          <option value="code_upgrade">Building Code Upgrade Required</option>
+          <option value="matching">Matching / Betterment</option>
+        </select>
+      </div>
+      <div id="supplement-items">
+        <div style="text-align:center;padding:2rem;color:var(--t-muted)">
+          No supplement items yet. Add items from AI suggestions or manually.
+        </div>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="total-box">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem">
+        <span style="color:var(--t-secondary)">Original Estimate</span>
+        <span style="font-weight:700">${{ "{:,.2f}".format(claim.total_estimate) }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem">
+        <span style="color:var(--t-secondary)">Supplement Amount</span>
+        <span style="font-weight:700;color:var(--teal)" id="supplement-total">$0.00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:.5rem;border-top:1px solid var(--border)">
+        <span style="font-weight:800">Revised Total</span>
+        <span style="font-weight:800;font-size:1.2rem;color:var(--teal)" id="revised-total">${{ "{:,.2f}".format(claim.total_estimate) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let supplementItems = [];
+const originalTotal = {{ claim.total_estimate }};
+
+function addSuggestion(desc, cost) {
+  supplementItems.push({
+    room_name: 'General',
+    description: desc,
+    quantity: 1,
+    unit: 'ea',
+    unit_cost: cost,
+    reason: 'AI suggested'
+  });
+  renderSupplementItems();
+}
+
+function addManualItem() {
+  const desc = document.getElementById('manual-desc').value;
+  const qty = parseFloat(document.getElementById('manual-qty').value) || 1;
+  const unit = document.getElementById('manual-unit').value;
+  const cost = parseFloat(document.getElementById('manual-cost').value) || 0;
+  if (!desc) { alert('Please enter a description'); return; }
+  supplementItems.push({ room_name: 'General', description: desc, quantity: qty, unit, unit_cost: cost, reason: 'Manual' });
+  renderSupplementItems();
+  document.getElementById('manual-desc').value = '';
+  document.getElementById('manual-cost').value = '0';
+}
+
+function removeItem(idx) {
+  supplementItems.splice(idx, 1);
+  renderSupplementItems();
+}
+
+function renderSupplementItems() {
+  const container = document.getElementById('supplement-items');
+  if (supplementItems.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--t-muted)">No supplement items yet.</div>';
+  } else {
+    container.innerHTML = supplementItems.map((item, i) => `
+      <div class="supplement-item">
+        <div style="display:flex;justify-content:space-between">
+          <div>
+            <div style="font-weight:700">${item.description}</div>
+            <div style="font-size:.75rem;color:var(--t-secondary)">${item.quantity} ${item.unit} @ $${item.unit_cost.toFixed(2)} = <strong>$${(item.quantity * item.unit_cost).toFixed(2)}</strong></div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="removeItem(${i})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  const suppTotal = supplementItems.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
+  document.getElementById('supplement-total').textContent = '$' + suppTotal.toFixed(2);
+  document.getElementById('revised-total').textContent = '$' + (originalTotal + suppTotal).toFixed(2);
+}
+
+function aiSuggestSupplements() {
+  fetch('{{ url_for("enhanced.supplement_suggestions", claim_id=claim.id) }}')
+    .then(r => r.json())
+    .then(d => {
+      const container = document.getElementById('suggestions-list');
+      if (d.suggestions && d.suggestions.length > 0) {
+        container.innerHTML = d.suggestions.map(s => `
+          <div class="suggestion-card ${s.priority.toLowerCase()}">
+            <div>
+              <div style="font-weight:700;font-size:.85rem">${s.category}</div>
+              <div style="font-size:.75rem;color:var(--t-secondary)">${s.description}</div>
+              <div style="font-size:.7rem;color:var(--t-muted)">${s.reason}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:800;color:var(--green)">$${s.estimated_cost.toFixed(2)}</div>
+              <button class="btn btn-sm btn-ghost" onclick="addSuggestion('${s.description.replace(/'/g, "\\'")}', ${s.estimated_cost})">+ Add</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--t-muted)">No additional items suggested. Claim looks complete!</div>';
+      }
+    });
+}
+
+function generateSupplement() {
+  if (supplementItems.length === 0) { alert('Add at least one item first.'); return; }
+  const reason = document.getElementById('supplement-reason').value;
+  fetch('{{ url_for("enhanced.download_supplement", claim_id=claim.id) }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({items: supplementItems, reason: reason})
+  }).then(r => r.blob()).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Supplement_{{ claim.claim_number }}.txt';
+    a.click();
+  });
+}
+</script>
+
+{% endblock %}
