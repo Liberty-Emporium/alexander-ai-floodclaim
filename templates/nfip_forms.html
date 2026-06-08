@@ -28,7 +28,7 @@
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
   <div>
-    <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
+    <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
   </div>
   <div style="display:flex;gap:.5rem">
     <a href="{{ url_for('enhanced.download_all_nfip_forms', claim_id=claim.id) }}" class="btn btn-primary btn-sm">

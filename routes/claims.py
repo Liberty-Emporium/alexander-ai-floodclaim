@@ -355,7 +355,7 @@ def new_claim():
         db.commit()
         _log_activity(claim['id'], f'Claim created: {claim_num}')
         flash(f'Claim {claim_num} created!', 'success')
-        return redirect(url_for('claim_detail', claim_id=claim['id']))
+        return redirect(url_for('claims.claim_detail', claim_id=claim['id']))
     adjusters = db.execute('SELECT * FROM users ORDER BY name').fetchall() \
                 if session['role'] == 'admin' else []
     return render_template('new_claim.html', adjusters=adjusters)
@@ -453,7 +453,7 @@ def nfip_quick_fill(claim_id):
     ))
     db.commit()
     flash('NFIP fields saved — recheck your compliance score!', 'success')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 
@@ -472,7 +472,7 @@ def update_claim_notes(claim_id):
     db.commit()
     _log_activity(claim_id, 'Notes updated')
     flash('Notes saved.', 'success')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 
@@ -567,7 +567,7 @@ def update_status(claim_id):
     if claim:
         notify_client_status_change(claim, status)
         _log_activity(claim_id, f'Status changed to {status}')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 
@@ -619,7 +619,7 @@ def duplicate_claim(claim_id):
     recalc_claim(new_claim['id'])
     _log_activity(new_claim['id'], 'Claim duplicated from ' + src['claim_number'])
     flash(f'Claim duplicated as {new_num}.', 'success')
-    return redirect(url_for('claim_detail', claim_id=new_claim['id']))
+    return redirect(url_for('claims.claim_detail', claim_id=new_claim['id']))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -667,7 +667,7 @@ def send_claim_sms(claim_id):
         flash(f'SMS sent to {claim["client_phone"]}.', 'success')
     else:
         flash('SMS not sent — configure Twilio in Settings.', 'error')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

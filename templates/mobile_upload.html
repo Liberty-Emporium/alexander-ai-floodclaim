@@ -151,7 +151,7 @@ async function uploadPhotos() {
   const iv = setInterval(() => { pct = Math.min(pct + 8, 85); fill.style.width = pct + '%'; }, 200);
 
   try {
-    const r = await fetch('{{ url_for("mobile_upload_post", claim_id=claim.id) }}?t={{ token }}', {
+    const r = await fetch('{{ url_for("claims.mobile_upload_post", claim_id=claim.id) }}?t={{ token }}', {
       method: 'POST', body: fd
     });
     const d = await r.json();

@@ -24,7 +24,7 @@
 {% block content %}
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
-  <a href="{{ url_for('claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
+  <a href="{{ url_for('claims.claim_detail', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">← Back to Claim</a>
   <div style="display:flex;gap:.5rem">
     <button class="btn btn-ghost btn-sm" onclick="aiSuggestSupplements()">🤖 AI Suggest Items</button>
     <button class="btn btn-primary btn-sm" onclick="generateSupplement()">📥 Generate & Download</button>

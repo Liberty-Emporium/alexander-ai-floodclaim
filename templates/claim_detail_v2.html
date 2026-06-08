@@ -151,7 +151,7 @@
     <div style="font-size:.9rem;color:#64748b;margin-top:.2rem">📍 {{ claim.property_address }}</div>
   </div>
   <div class="claim-actions" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
-    <form method="POST" action="{{ url_for('update_status', claim_id=claim.id) }}" style="display:flex;gap:.5rem;align-items:center">
+    <form method="POST" action="{{ url_for('claims.update_status', claim_id=claim.id) }}" style="display:flex;gap:.5rem;align-items:center">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <select name="status" class="form-control" style="width:auto;padding:.4rem .75rem;font-size:.85rem">
         {% for s in ['New','In Progress','Submitted','Closed'] %}
@@ -161,18 +161,18 @@
       <button type="submit" class="btn btn-ghost btn-sm">Update</button>
     </form>
     <button type="button" class="btn btn-ghost btn-sm" onclick="if(typeof aaiToggle==='function'){window.claimId={{ claim.id }};aaiToggle();}else{location.href='{{ url_for('willie.willie') }}?claim_id={{ claim.id }}'}">🌊 Ask Aquila</button>
-    <a href="{{ url_for('submit_package_page', claim_id=claim.id) }}" class="btn btn-primary btn-sm">📤 Submit to Carrier</a>
-    <a href="{{ url_for('report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
-    <a href="{{ url_for('compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
+    <a href="{{ url_for('claims.submit_package_page', claim_id=claim.id) }}" class="btn btn-primary btn-sm">📤 Submit to Carrier</a>
+    <a href="{{ url_for('reports.report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
+    <a href="{{ url_for('claims.compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
 
-    <a href="{{ url_for('claim_qr', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📱 QR Upload</a>
-    <a href="{{ url_for('claim_activity', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📜 Activity</a>
-    <form method="POST" action="{{ url_for('duplicate_claim', claim_id=claim.id) }}" style="display:inline">
+    <a href="{{ url_for('claims.claim_qr', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📱 QR Upload</a>
+    <a href="{{ url_for('claims.claim_activity', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📜 Activity</a>
+    <form method="POST" action="{{ url_for('claims.duplicate_claim', claim_id=claim.id) }}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Duplicate this claim?')">⧉ Duplicate</button>
     </form>
     <a href="{{ url_for('auth.dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
-    <form method="POST" action="{{ url_for('delete_claim', claim_id=claim.id) }}">
+    <form method="POST" action="{{ url_for('claims.delete_claim', claim_id=claim.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger btn-sm"
               onclick="return confirm('Delete claim ' + {{ claim.claim_number | tojson }} + ' (' + {{ claim.client_name | tojson }} + ')? This will permanently remove all rooms, photos, and line items.')">🗑 Delete Claim</button>
@@ -233,7 +233,7 @@
   <div class="card-header">
     <div class="card-title">📸 Upload Damage Photo</div>
   </div>
-  <form method="POST" action="{{ url_for('upload_photo', claim_id=claim.id) }}" enctype="multipart/form-data">
+  <form method="POST" action="{{ url_for('photos.upload_photo', claim_id=claim.id) }}" enctype="multipart/form-data">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:1rem;align-items:end">
       <div class="form-group" style="margin:0">
@@ -266,9 +266,9 @@
            data-photo-id="{{ photo.id }}"
            data-caption="{{ photo.caption|e }}"
            data-room-id=""
-           data-src="{{ url_for('uploaded_file', filename=photo.filename) }}">
+           data-src="{{ url_for('photos.uploaded_file', filename=photo.filename) }}">
         <div class="photo-thumb-wrap">
-          <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" alt="{{ photo.caption|e }}"/>
+          <img src="{{ url_for('photos.uploaded_file', filename=photo.filename) }}" alt="{{ photo.caption|e }}"/>
         </div>
         <div class="photo-card-body">
           {% if photo.caption %}<div class="photo-caption-label">{{ photo.caption }}</div>{% endif %}
@@ -398,7 +398,7 @@
 <div class="card">
   <div class="card-header">
     <div class="card-title">🛠️ Room-by-Room Damage</div>
-    <form method="POST" action="{{ url_for('add_room', claim_id=claim.id) }}" style="display:flex;gap:.5rem">
+    <form method="POST" action="{{ url_for('rooms.add_room', claim_id=claim.id) }}" style="display:flex;gap:.5rem">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input class="form-control" type="text" name="room_name" placeholder="e.g. Living Room" style="width:180px"/>
       <button type="submit" class="btn btn-success btn-sm">+ Add Room</button>
@@ -411,7 +411,7 @@
       <span>🏠 {{ rd.room.name }}</span>
       <span style="display:flex;align-items:center;gap:.75rem">
         <span style="color:#10b981;font-size:.95rem">${{ "{:,.2f}".format(rd.room.subtotal) }} <span style="color:#94a3b8;font-size:.75rem;font-weight:400">▾</span></span>
-        <form method="POST" action="{{ url_for('delete_room', room_id=rd.room.id) }}" onsubmit="return confirm('Delete room \'{{ rd.room.name }}\' and all its items? This cannot be undone.')" onclick="event.stopPropagation()">
+        <form method="POST" action="{{ url_for('rooms.delete_room', room_id=rd.room.id) }}" onsubmit="return confirm('Delete room \'{{ rd.room.name }}\' and all its items? This cannot be undone.')" onclick="event.stopPropagation()">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-danger btn-sm" style="padding:.2rem .5rem;font-size:.75rem" title="Delete room">🗑 Remove</button>
         </form>
@@ -426,9 +426,9 @@
              data-photo-id="{{ photo.id }}"
              data-caption="{{ photo.caption|e }}"
              data-room-id="{{ rd.room.id }}"
-             data-src="{{ url_for('uploaded_file', filename=photo.filename) }}">
+             data-src="{{ url_for('photos.uploaded_file', filename=photo.filename) }}">
           <div class="photo-thumb-wrap">
-            <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" alt="{{ photo.caption|e }}"/>
+            <img src="{{ url_for('photos.uploaded_file', filename=photo.filename) }}" alt="{{ photo.caption|e }}"/>
           </div>
           <div class="photo-card-body">
             {% if photo.caption %}<div class="photo-caption-label">{{ photo.caption }}</div>{% endif %}
@@ -466,7 +466,7 @@
       </table></div>
       {% endif %}
 
-      <form method="POST" action="{{ url_for('add_item', room_id=rd.room.id) }}">
+      <form method="POST" action="{{ url_for('rooms.add_item', room_id=rd.room.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="add-item-grid" style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr auto;gap:.5rem;align-items:end">
           <div class="form-group item-desc" style="margin:0">

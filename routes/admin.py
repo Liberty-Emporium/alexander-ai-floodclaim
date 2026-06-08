@@ -486,7 +486,7 @@ def contractor_detail(app_id):
                            (session['user_id'], app_id))
                 db.commit()
                 flash(f'✅ {app["name"]} certified and added to team as Adjuster!', 'success')
-        return redirect(url_for('contractor_detail', app_id=app_id))
+        return redirect(url_for('admin.contractor_detail', app_id=app_id))
 
     app = db.execute('SELECT * FROM contractor_applications WHERE id=?', (app_id,)).fetchone()
     if not app:
