@@ -160,7 +160,7 @@
       </select>
       <button type="submit" class="btn btn-ghost btn-sm">Update</button>
     </form>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="if(typeof aaiToggle==='function'){window.claimId={{ claim.id }};aaiToggle();}else{location.href='{{ url_for('willie') }}?claim_id={{ claim.id }}'}">🌊 Ask Aquila</button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="if(typeof aaiToggle==='function'){window.claimId={{ claim.id }};aaiToggle();}else{location.href='{{ url_for('willie.willie') }}?claim_id={{ claim.id }}'}">🌊 Ask Aquila</button>
     <a href="{{ url_for('aquila.aquila_panel', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">🦅 Aquila 3D</a>
     <a href="{{ url_for('enhanced.nfip_forms_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📋 NFIP Forms</a>
     <a href="{{ url_for('enhanced.supplement_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">➕ Supplement</a>
@@ -175,7 +175,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Duplicate this claim?')">⧉ Duplicate</button>
     </form>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
     <form method="POST" action="{{ url_for('delete_claim', claim_id=claim.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger btn-sm"

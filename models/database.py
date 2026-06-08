@@ -53,6 +53,7 @@ def _ensure_db_initialized():
             _migrate_recruitment_tables()
             migrate_batch_photo_columns()
             _migrate_aquila_tables()
+            _migrate_feedback_tables()
             _db_initialized = True
         except Exception as e:
             import sys
