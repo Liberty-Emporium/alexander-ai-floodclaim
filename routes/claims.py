@@ -387,21 +387,32 @@ def delete_claim(claim_id):
             pass
 
     # Delete related DB records in proper FK order (children first)
-    # Tables with ON DELETE CASCADE on claims.id: rooms, photos, client_portal_tokens,
-    # signatures, inspection_slots, notifications_log, activity_log, aquila_jobs,
-    # estimate_jobs (after migration). We explicitly delete for safety and completeness.
-    db.execute('DELETE FROM line_items WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM photos WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM rooms WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM estimate_jobs WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM client_portal_tokens WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM signatures WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM inspection_slots WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM notifications_log WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM activity_log WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM aquila_jobs WHERE claim_id=?', (claim_id,))
-    db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
-    db.commit()
+    try:
+        # line_items may or may not have claim_id column (added via migration)
+        try:
+            db.execute('DELETE FROM line_items WHERE claim_id=?', (claim_id,))
+        except Exception:
+            # Fallback: delete via room_id join
+            db.execute('DELETE FROM line_items WHERE room_id IN (SELECT id FROM rooms WHERE claim_id=?)', (claim_id,))
+        db.execute('DELETE FROM photos WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM rooms WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM estimate_jobs WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM client_portal_tokens WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM signatures WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM inspection_slots WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM notifications_log WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM activity_log WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM aquila_jobs WHERE claim_id=?', (claim_id,))
+        db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        import traceback
+        error_msg = f'Deleting claim {claim_num} failed: {e}'
+        print(error_msg)
+        traceback.print_exc()
+        flash(error_msg, 'error')
+        return redirect(url_for('auth.dashboard'))
 
     # Log the deletion to a system-wide log (activity_log is gone with the claim)
     try:
