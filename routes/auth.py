@@ -17,7 +17,6 @@ def index():
 
 
 @bp.route('/login', methods=['GET', 'POST'])
-@csrf_required
 def login():
     if 'user_id' in session:
         return redirect(url_for('auth.dashboard'))

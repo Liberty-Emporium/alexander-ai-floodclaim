@@ -20,14 +20,14 @@ def upload_photo(claim_id):
     caption = request.form.get('caption', '')
     if not file or not allowed_file(file.filename):
         flash('Invalid file type. Please upload a PNG, JPG, GIF, or WEBP.', 'error')
-        return redirect(url_for('claim_detail', claim_id=claim_id))
+        return redirect(url_for('claims.claim_detail', claim_id=claim_id))
     # ── File size check (10MB max) ──
     file.seek(0, 2)  # seek to end
     file_size = file.tell()
     file.seek(0)  # reset
     if file_size > 10 * 1024 * 1024:
         flash('File too large. Maximum size is 10MB. Please compress your image and try again.', 'error')
-        return redirect(url_for('claim_detail', claim_id=claim_id))
+        return redirect(url_for('claims.claim_detail', claim_id=claim_id))
     ext       = file.filename.rsplit('.', 1)[1].lower()
     filename  = f'{secrets.token_hex(12)}.{ext}'
     save_path = os.path.join(UPLOAD_DIR, filename)
@@ -70,7 +70,7 @@ def upload_photo(claim_id):
     _log_activity(claim_id, f'Photo uploaded: {filename}')
     flash(flash_msg + (' AI analysis complete.' if ai_desc else
           ' Add an OpenRouter key in Settings to enable AI analysis.'), 'success')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 
@@ -151,6 +151,6 @@ def edit_photo(photo_id):
                (caption, room_id, photo_id))
     db.commit()
     flash('Photo updated!', 'success')
-    return redirect(url_for('claim_detail', claim_id=photo['claim_id']))
+    return redirect(url_for('claims.claim_detail', claim_id=photo['claim_id']))
 
 

@@ -508,7 +508,7 @@ def claim_detail(claim_id):
         unassigned_photos = db.execute(
             'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL ORDER BY id',
             (claim_id,)).fetchall()
-        recalc_claim(claim_id)
+        recalc_claim(claim_id, get_db)
         # Re-fetch after recalc so totals are fresh
         claim = db.execute('''SELECT c.*, u.name as adjuster_name
             FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''',
@@ -627,7 +627,7 @@ def duplicate_claim(claim_id):
             db.execute('INSERT INTO line_items (room_id, description, quantity, unit, unit_cost, total) VALUES (?,?,?,?,?,?)',
                        (new_room['id'], item['description'], item['quantity'], item['unit'], item['unit_cost'], item['total']))
     db.commit()
-    recalc_claim(new_claim['id'])
+    recalc_claim(new_claim['id'], get_db)
     _log_activity(new_claim['id'], 'Claim duplicated from ' + src['claim_number'])
     flash(f'Claim duplicated as {new_num}.', 'success')
     return redirect(url_for('claims.claim_detail', claim_id=new_claim['id']))
@@ -891,7 +891,7 @@ def submit_package_page(claim_id):
         photo_count += len(photos)
     unassigned = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
     photo_count += len(unassigned)
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
 
@@ -957,7 +957,7 @@ def submit_package_download(claim_id):
         photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
     unassigned = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
 
@@ -1274,7 +1274,7 @@ def ai_populate_claim(claim_id):
             continue
 
     db.commit()
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     db.close()
 
     return jsonify({

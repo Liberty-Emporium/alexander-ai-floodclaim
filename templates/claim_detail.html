@@ -237,7 +237,7 @@
   <div class="card-header">
     <div class="card-title">📸 Upload Damage Photo</div>
   </div>
-  <form method="POST" action="{{ url_for('photos.upload_photo', claim_id=claim.id) }}" enctype="multipart/form-data">
+  <form method="POST" action="{{ url_for('claims.mobile_upload_post', claim_id=claim.id) }}" enctype="multipart/form-data">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:1rem;align-items:end">
       <div class="form-group" style="margin:0">

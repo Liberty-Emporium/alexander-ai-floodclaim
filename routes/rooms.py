@@ -21,7 +21,7 @@ def add_room(claim_id):
         db.execute('INSERT INTO rooms (claim_id, name) VALUES (?,?)', (claim_id, name))
         db.commit()
         _log_activity(claim_id, f'Room added: {name}')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 
@@ -41,7 +41,7 @@ def delete_room(room_id):
     db.commit()
     recalc_claim(claim_id)
     _log_activity(claim_id, f'Room soft-deleted: {room["name"]}')
-    return redirect(url_for('claim_detail', claim_id=claim_id))
+    return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
 
 
@@ -65,7 +65,7 @@ def add_item(room_id):
     db.commit()
     recalc_claim(room['claim_id'])
     _log_activity(room['claim_id'], f'Line item added: {desc} x{qty} {unit} @${unit_cost:.2f}')
-    return redirect(url_for('claim_detail', claim_id=room['claim_id']))
+    return redirect(url_for('claims.claim_detail', claim_id=room['claim_id']))
 
 
 
