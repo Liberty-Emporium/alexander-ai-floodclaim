@@ -1289,7 +1289,7 @@ def ai_populate_claim(claim_id):
 # NOT behind /admin/ — avoids Railway WAF blocking
 # ─────────────────────────────────────────────────────────────────────────────
 
-@bp.route('/emergency/delete-claim', methods=['POST'])
+@bp.route('/claims/emergency-delete', methods=['POST'])
 def emergency_delete_claim_public():
     """Force-delete a claim by claim_number using ADMIN_PASSWORD auth.
     Use ONLY when normal delete fails. Requires ADMIN_PASSWORD env var."""

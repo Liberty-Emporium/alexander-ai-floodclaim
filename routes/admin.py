@@ -993,7 +993,7 @@ def sales_page():
 # EMERGENCY: Force delete claim by number (ADMIN_PASSWORD auth)
 # ─────────────────────────────────────────────────────────────────────────────
 
-@bp.route('/emergency/delete-claim', methods=['POST'])
+@bp.route('/admin/emergency-delete', methods=['POST'])
 def emergency_delete_claim():
     """Force-delete a claim by claim_number using ADMIN_PASSWORD auth.
     Use ONLY when normal delete fails. Requires ADMIN_PASSWORD env var."""
