@@ -60,6 +60,8 @@ def csrf_protect():
             return  # DB seed endpoint
         if request.path == '/login':
             return  # Login form generates its own CSRF token
+        if request.path == '/admin/reset-admin-password':
+            return  # Admin password reset — protected by env var token
         import re
         if re.search(r'/claims/\d+/sign$', request.path):
             return  # Public signature endpoint — no session

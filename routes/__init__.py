@@ -16,6 +16,7 @@ from routes.aquila import bp as aquila_bp
 from routes.analytics import bp as analytics_bp
 from routes.portal import bp as portal_bp
 from routes.enhanced import bp as enhanced_bp
+from routes.password_reset import bp as password_reset_bp
 
 
 def register_blueprints(app):
@@ -37,3 +38,4 @@ def register_blueprints(app):
     app.register_blueprint(analytics_bp)
     app.register_blueprint(portal_bp)
     app.register_blueprint(enhanced_bp)
+    app.register_blueprint(password_reset_bp)
