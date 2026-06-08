@@ -163,6 +163,12 @@ def reset_password(token):
     return render_template('reset_password.html')
 
 
+@bp.route('/admin/reset-password', methods=['GET'])
+def admin_reset_page():
+    """Serve the admin password reset page."""
+    return render_template('admin_reset_password.html')
+
+
 @bp.route('/admin/reset-admin-password', methods=['POST'])
 def admin_reset_password():
     """
