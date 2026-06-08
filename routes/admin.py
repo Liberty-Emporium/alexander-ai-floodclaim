@@ -997,7 +997,6 @@ def sales_page():
 def emergency_delete_claim():
     """Force-delete a claim by claim_number using ADMIN_PASSWORD auth.
     Use ONLY when normal delete fails. Requires ADMIN_PASSWORD env var."""
-    from flask import current_app
     import traceback
 
     data = request.get_json(force=True, silent=True) or request.form

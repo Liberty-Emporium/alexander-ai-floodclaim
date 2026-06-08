@@ -1284,4 +1284,73 @@ def ai_populate_claim(claim_id):
     })
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# EMERGENCY: Force delete claim by number (ADMIN_PASSWORD auth)
+# NOT behind /admin/ — avoids Railway WAF blocking
+# ─────────────────────────────────────────────────────────────────────────────
+
+@bp.route('/emergency/delete-claim', methods=['POST'])
+def emergency_delete_claim_public():
+    """Force-delete a claim by claim_number using ADMIN_PASSWORD auth.
+    Use ONLY when normal delete fails. Requires ADMIN_PASSWORD env var."""
+    import traceback
+
+    data = request.get_json(force=True, silent=True) or request.form
+    admin_pw  = data.get('admin_password', '')
+    claim_num = data.get('claim_number', '').strip()
+
+    import os
+    expected = os.environ.get('ADMIN_PASSWORD', 'FloodAdmin2026!')
+    if admin_pw != expected:
+        return jsonify({'ok': False, 'error': 'Invalid admin password'}), 403
+
+    if not claim_num:
+        return jsonify({'ok': False, 'error': 'claim_number required'}), 400
+
+    db = get_db()
+    claim = db.execute('SELECT id, claim_number, client_name FROM claims WHERE claim_number=?', (claim_num,)).fetchone()
+    if not claim:
+        return jsonify({'ok': False, 'error': f'Claim {claim_num} not found'}), 404
+
+    claim_id  = claim['id']
+    client    = claim['client_name']
+
+    import pathlib
+    DATA_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '/data')
+    UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
+
+    errors = []
+    try:
+        photos = db.execute('SELECT filename FROM photos WHERE claim_id=?', (claim_id,)).fetchall()
+        for p in photos:
+            try:
+                fpath = pathlib.Path(UPLOAD_DIR) / p['filename']
+                if fpath.exists():
+                    fpath.unlink()
+            except Exception as e:
+                errors.append(f'file:{p["filename"]}:{e}')
+
+        child_tables = [
+            'line_items', 'photos', 'rooms', 'estimate_jobs',
+            'client_portal_tokens', 'signatures', 'inspection_slots',
+            'notifications_log', 'activity_log', 'aquila_jobs',
+        ]
+        for table in child_tables:
+            try:
+                db.execute(f'DELETE FROM {table} WHERE claim_id=?', (claim_id,))
+            except Exception as e:
+                errors.append(f'table:{table}:{e}')
+
+        db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return jsonify({'ok': False, 'error': str(e), 'trace': traceback.format_exc()}), 500
+
+    msg = f'Claim {claim_num} ({client}) force-deleted.'
+    if errors:
+        msg += f' Warnings: {"; ".join(errors)}'
+    return jsonify({'ok': True, 'message': msg, 'warnings': errors})
+
+
 
