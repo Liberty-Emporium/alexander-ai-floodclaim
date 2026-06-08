@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models.database import get_db, get_setting, set_setting
 from utils.auth_decorators import login_required, admin_required
+from utils.helpers import _log_activity
 from services.ai import call_openrouter, _build_pricing_kb, _build_estimate_prompt
 from services.email import send_email, notify_client_status_change
 from services.fema import lookup_fema_flood_zone
@@ -1134,7 +1135,7 @@ def willie_add_item(claim_id, room_id):
     db.execute('INSERT INTO line_items (room_id,description,quantity,unit,unit_cost,total) VALUES (?,?,?,?,?,?)',
                (room_id, desc, qty, unit, unit_cost, total))
     db.commit()
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     return jsonify({'ok': True, 'description': desc, 'total': total,
                     'message': f'Added "{desc}" — {qty} {unit} @ ${unit_cost} = ${total:.2f}'})
 

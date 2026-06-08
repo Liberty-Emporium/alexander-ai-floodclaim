@@ -264,7 +264,7 @@ def report_pdf(claim_id):
         photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
     unassigned_photos = db.execute('SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
     signature = db.execute(
@@ -454,7 +454,7 @@ def report(claim_id):
         room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
     unassigned_photos = db.execute(
         'SELECT * FROM photos WHERE claim_id=? AND room_id IS NULL AND deleted_at IS NULL', (claim_id,)).fetchall()
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
         FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''',
         (claim_id,)).fetchone()

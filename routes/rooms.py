@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from models.database import get_db
 from utils.auth_decorators import login_required
+from utils.helpers import _log_activity
 from utils.security import csrf_required
 
 bp = Blueprint("rooms", __name__)
@@ -39,7 +40,7 @@ def delete_room(room_id):
     db.execute('UPDATE line_items SET deleted_at=CURRENT_TIMESTAMP WHERE room_id=?', (room_id,))
     db.execute('UPDATE photos SET room_id=NULL WHERE room_id=?', (room_id,))
     db.commit()
-    recalc_claim(claim_id)
+    recalc_claim(claim_id, get_db)
     _log_activity(claim_id, f'Room soft-deleted: {room["name"]}')
     return redirect(url_for('claims.claim_detail', claim_id=claim_id))
 
@@ -63,7 +64,7 @@ def add_item(room_id):
         'VALUES (?,?,?,?,?,?)',
         (room_id, desc, qty, unit, unit_cost, total))
     db.commit()
-    recalc_claim(room['claim_id'])
+    recalc_claim(room['claim_id'], get_db)
     _log_activity(room['claim_id'], f'Line item added: {desc} x{qty} {unit} @${unit_cost:.2f}')
     return redirect(url_for('claims.claim_detail', claim_id=room['claim_id']))
 
@@ -80,7 +81,7 @@ def delete_item(item_id):
     db.execute('UPDATE line_items SET deleted_at=CURRENT_TIMESTAMP WHERE id=?', (item_id,))
     db.commit()
     if item:
-        recalc_claim(item['claim_id'])
+        recalc_claim(item['claim_id'], get_db)
         _log_activity(item['claim_id'], 'Line item soft-deleted')
     return jsonify({'ok': True})
 

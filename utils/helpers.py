@@ -48,3 +48,19 @@ def is_rate_limited(key, max_calls=5, window=60):
         return True
     _rate_store[key].append(now)
     return False
+
+
+def _log_activity(claim_id, action, user_name=None):
+    """Write an entry to the claim activity log."""
+    try:
+        from flask import session as _session
+        from models.database import get_db
+        db  = get_db()
+        who = user_name or _session.get('name', 'System')
+        db.execute(
+            'INSERT INTO activity_log (claim_id, actor, action) VALUES (?,?,?)',
+            (claim_id, who, action)
+        )
+        db.commit()
+    except Exception as e:
+        print(f'_log_activity error: {e}')

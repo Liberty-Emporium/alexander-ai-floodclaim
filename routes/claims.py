@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from models.database import get_db, get_setting, set_setting
 from utils.auth_decorators import login_required, admin_required, manager_required
+from utils.helpers import _log_activity
 from utils.security import allowed_file, csrf_required
 from services.ai import call_openrouter, ai_describe_photo, ai_describe_photo_detailed
 from services.email import send_email, notify_client_status_change
@@ -15,18 +16,6 @@ import pathlib
 
 bp = Blueprint("claims", __name__)
 
-def _log_activity(claim_id, action, user_name=None):
-    """Write an entry to the claim activity log."""
-    try:
-        db   = get_db()
-        who  = user_name or session.get('name', 'System')
-        db.execute(
-            'INSERT INTO activity_log (claim_id, actor, action) VALUES (?,?,?)',
-            (claim_id, who, action)
-        )
-        db.commit()
-    except Exception as e:
-        print(f'_log_activity error: {e}')
 
 
 

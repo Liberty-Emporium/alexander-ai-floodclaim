@@ -522,7 +522,7 @@ def send_recruit_invite():
         flash('⚠️ No "From" email set. Set it below before sending invitations.', 'error')
         return redirect(url_for('admin.recruit'))
 
-    join_url = request.host_url.rstrip('/') + url_for('become_agent')
+    join_url = request.host_url.rstrip('/') + url_for('auth.signup')
     name_greeting = f"Hi {invite_name}," if invite_name else "Hi there,"
 
     html_body = f'''<div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:600px;margin:0 auto;color:#1e293b">
