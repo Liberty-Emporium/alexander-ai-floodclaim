@@ -1003,10 +1003,10 @@ def emergency_delete_claim():
     admin_pw  = data.get('admin_password', '')
     claim_num = data.get('claim_number', '').strip()
 
-    # Verify admin password against env var
+    # Verify admin password against env var — no fallback
     import os
-    expected = os.environ.get('ADMIN_PASSWORD', 'FloodAdmin2026!')
-    if admin_pw != expected:
+    expected = os.environ.get('ADMIN_PASSWORD', '')
+    if not expected or admin_pw != expected:
         return jsonify({'ok': False, 'error': 'Invalid admin password'}), 403
 
     if not claim_num:

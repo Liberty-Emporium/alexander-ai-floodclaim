@@ -2,9 +2,8 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from models.database import get_db, hash_pw, check_pw, get_setting, BCRYPT_OK
-from utils.auth_decorators import login_required
-from utils.security import csrf_required
-from utils.helpers import is_rate_limited
+from utils.auth_decorators import login_required, admin_required
+from utils.helpers import _log_activity, is_rate_limited
 
 bp = Blueprint("auth", __name__)
 
@@ -81,22 +80,7 @@ def signup():
     return render_template('login.html')
 
 
-@bp.route('/forgot-password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        if not email:
-            flash('Please enter your email address.', 'error')
-            return render_template('login.html')
-        db = get_db()
-        user = db.execute('SELECT id FROM users WHERE email=?', (email,)).fetchone()
-        if user:
-            # In production, send reset email. For now, show message.
-            flash('If an account exists with that email, a reset link has been sent.', 'success')
-        else:
-            flash('If an account exists with that email, a reset link has been sent.', 'success')
-        return redirect(url_for('auth.login'))
-    return render_template('login.html')
+
 
 
 @bp.route('/dashboard')
