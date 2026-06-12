@@ -345,68 +345,7 @@ def fema_lookup(claim_id):
     return jsonify({'ok': True, **result})
 
 
-# ── Client Portal ─────────────────────────────────────────────────────────────
 
-
-@bp.route('/claims/<int:claim_id>/portal/generate', methods=['POST'])
-@login_required
-def generate_portal_link(claim_id):
-    db = get_db()
-    token = secrets.token_urlsafe(24)
-    db.execute('DELETE FROM client_portal_tokens WHERE claim_id=?', (claim_id,))
-    db.execute('INSERT INTO client_portal_tokens (claim_id, token) VALUES (?,?)', (claim_id, token))
-    db.commit()
-    portal_url = url_for('client_portal', token=token, _external=True)
-    claim = db.execute('SELECT * FROM claims WHERE id=?', (claim_id,)).fetchone()
-    if claim['client_email']:
-        subject = f'View Your Flood Damage Claim — {claim["claim_number"]}'
-        html = f'''<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-            <h2 style="color:#0a1628">Your Claim Portal</h2>
-            <p>Hello {claim["client_name"]},</p>
-            <p>Your adjuster has shared your flood damage claim with you.</p>
-            <p><a href="{portal_url}" style="background:#0a1628;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">View My Claim ↗</a></p>
-            <p style="font-size:12px;color:#94a3b8">Claim: {claim["claim_number"]} · FloodClaims Pro</p></div>'''
-        send_email(claim['client_email'], subject, html)
-    return jsonify({'ok': True, 'portal_url': portal_url, 'token': token})
-
-
-
-
-@bp.route('/portal/<token>')
-def client_portal(token):
-    db = get_db()
-    row = db.execute('SELECT claim_id FROM client_portal_tokens WHERE token=?', (token,)).fetchone()
-    if not row:
-        return render_template('portal_invalid.html'), 404
-    claim_id = row['claim_id']
-    claim = db.execute('''SELECT c.*, u.name as adjuster_name, u.email as adjuster_email
-        FROM claims c LEFT JOIN users u ON c.adjuster_id=u.id WHERE c.id=?''', (claim_id,)).fetchone()
-    rooms = db.execute('SELECT * FROM rooms WHERE claim_id=? AND deleted_at IS NULL ORDER BY id', (claim_id,)).fetchall()
-    room_data = []
-    for room in rooms:
-        items  = db.execute('SELECT * FROM line_items WHERE room_id=? ORDER BY id', (room['id'],)).fetchall()
-        photos = db.execute('SELECT * FROM photos WHERE room_id=? AND deleted_at IS NULL ORDER BY id', (room['id'],)).fetchall()
-        room_data.append({'room': room, 'line_items': items, 'room_photos': photos})
-    return render_template('client_portal.html', claim=claim, room_data=room_data, token=token,
-                           generated=datetime.datetime.now().strftime('%B %d, %Y'))
-
-
-# ── Digital Signature ─────────────────────────────────────────────────────────
-
-
-@bp.route('/claims/<int:claim_id>/sign', methods=['POST'])
-def sign_claim(claim_id):
-    data = request.get_json(silent=True) or {}
-    signer   = data.get('signer', 'Client').strip()
-    sig_data = data.get('sig_data', '').strip()
-    if not sig_data:
-        return jsonify({'error': 'sig_data required'}), 400
-    db = get_db()
-    db.execute('DELETE FROM signatures WHERE claim_id=?', (claim_id,))
-    db.execute('INSERT INTO signatures (claim_id, signer, sig_data) VALUES (?,?,?)',
-               (claim_id, signer, sig_data))
-    db.commit()
-    return jsonify({'ok': True, 'message': f'Claim signed by {signer}'})
 
 
 

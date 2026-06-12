@@ -39,6 +39,9 @@ app.secret_key = _get_secret_key()
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# ── Upload limit ──────────────────────────────────────────────────────────────
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB for batch uploads
 # Railway edge terminates TLS; plain HTTP to container. Secure=False required
 # so the session cookie is sent back on the internal HTTP connection.
 app.config['SESSION_COOKIE_SECURE'] = False
