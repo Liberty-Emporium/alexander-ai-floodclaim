@@ -3,13 +3,17 @@ Aquila's Built-In Cron Scheduler (Health Monitor)
 ==================================================
 Runs INSIDE the Flask app process on Railway.
 Aquila wakes up on schedule, runs health checks,
-saves results to the DB, and attempts self-healing.
-
-No SMS. No email. All results visible in-app.
+saves results to the DB, attempts self-healing,
+and reports to the agent on Tailscale.
 
 Schedule:
   - Health check: every 30 minutes
   - Daily summary: every day at 9:00 AM (ET)
+
+Tailscale reporting:
+  - Sends health reports to bull (100.123.226.4) over Tailscale
+  - Receiver runs on port 8080
+  - Configurable via HEALTH_REPORT_URL env var
 """
 import os
 import sys
@@ -18,6 +22,8 @@ import time
 import threading
 import datetime
 import logging
+import urllib.request
+import urllib.error
 import sqlite3
 
 logger = logging.getLogger(__name__)
@@ -94,6 +100,31 @@ def _get_et_hour():
     return (utc_now.hour + ET_OFFSET) % 24, utc_now.minute
 
 
+def send_tailscale_report(report):
+    """Send health report to the agent on Tailscale (bull)."""
+    report_url = os.environ.get(
+        'HEALTH_REPORT_URL',
+        'http://100.123.226.4:8080/api/report'
+    )
+    try:
+        data = json.dumps(report).encode('utf-8')
+        req = urllib.request.Request(
+            report_url,
+            data=data,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                logger.info(f"[AQUILA_CRON] Report sent to Tailscale agent at {report_url}")
+            else:
+                logger.warning(f"[AQUILA_CRON] Tailscale report returned status {resp.status}")
+    except urllib.error.URLError as e:
+        logger.warning(f"[AQUILA_CRON] Could not reach Tailscale agent: {e}")
+    except Exception as e:
+        logger.warning(f"[AQUILA_CRON] Tailscale report error: {e}")
+
+
 def run_health_cycle():
     """Run one health check cycle. Save results to DB."""
     from services.health_monitor import run_all_checks
@@ -139,6 +170,9 @@ def run_health_cycle():
                 db.close()
             except Exception:
                 pass
+
+    # Report to Tailscale agent (bull) — every health check
+    send_tailscale_report(report)
 
 
 def run_daily_summary():
