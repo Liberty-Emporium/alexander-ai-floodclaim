@@ -211,51 +211,6 @@ def portal_activity(token):
     })
 
 
-# ── Adjender-Facing: Generate & Send Portal Link ──────────────────────────────
-
-@bp.route("/claims/<int:claim_id>/portal/generate", methods=["POST"])
-@login_required
-def generate_portal_link(claim_id):
-    """Generate a client portal link and optionally email it."""
-    db = get_db()
-    claim = db.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
-    if not claim:
-        return jsonify({"error": "claim_not_found"}), 404
-
-    token = secrets.token_urlsafe(24)
-    db.execute("DELETE FROM client_portal_tokens WHERE claim_id=?", (claim_id,))
-    db.execute(
-        "INSERT INTO client_portal_tokens (claim_id, token) VALUES (?,?)", (claim_id, token)
-    )
-    db.commit()
-
-    portal_url = url_for("portal.portal_home", token=token, _external=True)
-
-    # Send email if client has email
-    emailed = False
-    if claim["client_email"]:
-        subject = f"Your Flood Damage Claim — {claim['claim_number']}"
-        html = f'''<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-            <h2 style="color:#0a1628">Your Flood Claim Portal</h2>
-            <p>Hello {claim["client_name"]},</p>
-            <p>Your adjuster has created a portal for your flood damage claim.
-            You can view the claim status, see photos and damage details, upload
-            your own photos, and sign documents — all from your phone.</p>
-            <p><a href="{portal_url}" style="background:#06D6C7;color:#0a1628;padding:14px 28px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0;font-weight:700">Open My Claim Portal ↗</a></p>
-            <p style="font-size:13px;color:#64748b">Claim: {claim["claim_number"]}<br>FloodClaims Pro</p></div>'''
-        try:
-            send_email(claim["client_email"], subject, html)
-            emailed = True
-        except Exception:
-            pass
-
-    # Generate SMS-friendly link
-    sms_msg = f"FloodClaims Pro: View your claim {claim['claim_number']} — {portal_url}"
-
-    return jsonify({
-        "success": True,
-        "portal_url": portal_url,
-        "token": token,
-        "emailed": emailed,
-        "sms_message": sms_msg,
-    })
+# ── Adjuster-Facing: Generate & Send Portal Link ──────────────────────────────
+# NOTE: This route has been moved to routes/claims.py as generate_portal_link
+# to avoid URL prefix issues (portal blueprint has url_prefix="/portal")
