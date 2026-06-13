@@ -5,6 +5,7 @@ from models.database import get_db
 from utils.auth_decorators import login_required
 from utils.helpers import _log_activity
 from utils.security import csrf_required
+from services.claims import recalc_claim
 
 bp = Blueprint("rooms", __name__)
 
