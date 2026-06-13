@@ -3,6 +3,7 @@
 Extracted from app.py Phase 1 (lines 56-76, 1563-1572).
 """
 import os
+import re
 import secrets
 import time
 
@@ -64,3 +65,16 @@ def _log_activity(claim_id, action, user_name=None):
         db.commit()
     except Exception as e:
         print(f'_log_activity error: {e}')
+
+
+def _validate_password(pw):
+    """Validate password strength. Returns (ok, error_message)."""
+    if len(pw) < 8:
+        return False, 'Password must be at least 8 characters.'
+    if not re.search(r'[A-Z]', pw):
+        return False, 'Password must contain at least one uppercase letter.'
+    if not re.search(r'[a-z]', pw):
+        return False, 'Password must contain at least one lowercase letter.'
+    if not re.search(r'[0-9]', pw):
+        return False, 'Password must contain at least one number.'
+    return True, ''

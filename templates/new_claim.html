@@ -119,6 +119,30 @@
 <form method="POST" enctype="multipart/form-data" id="claim-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+  <!-- ── 0. CLAIM NUMBER ────────────────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="section-label">📋 Claim Details</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Claim Number</label>
+        <input class="form-control" type="text" name="claim_number" placeholder="Auto-generated if left blank"/>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <div class="priority-group">
+          <input type="radio" name="priority" value="Low" id="p-low" class="priority-opt"/>
+          <label for="p-low" class="priority-label">Low</label>
+          <input type="radio" name="priority" value="Normal" id="p-normal" class="priority-opt" checked/>
+          <label for="p-normal" class="priority-label">Normal</label>
+          <input type="radio" name="priority" value="High" id="p-high" class="priority-opt"/>
+          <label for="p-high" class="priority-label">High</label>
+          <input type="radio" name="priority" value="Urgent" id="p-urgent" class="priority-opt"/>
+          <label for="p-urgent" class="priority-label">Urgent</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── 1. CLIENT ─────────────────────────────────────────────────────────── -->
   <div class="card" style="margin-bottom:1.5rem">
     <div class="section-label">👤 Client Information</div>

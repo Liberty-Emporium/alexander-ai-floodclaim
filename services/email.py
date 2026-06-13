@@ -46,7 +46,7 @@ def send_email(to_email, subject, html_body):
 
 def notify_client_status_change(claim, new_status):
     """Email client when claim status changes."""
-    if not claim.get('client_email'):
+    if not claim['client_email']:
         return
     subject = f'FloodClaims Pro — Your Claim {claim["claim_number"]} Update'
     html = f'''<div style="font-family:sans-serif;max-width:600px;margin:0 auto">

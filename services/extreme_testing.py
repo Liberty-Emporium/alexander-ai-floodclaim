@@ -196,6 +196,20 @@ class AquilaTestRunner:
             self._log(category, label, "fail", f"Expected {expected_status}, got {resp.status_code}")
             return None
 
+    def _post_json(self, url, data=None, expected_status=200, category="api"):
+        """Test a POST request with JSON body. Returns response or None."""
+        start = time.time()
+        resp = self.client.post(url, json=data, follow_redirects=False)
+        duration = int((time.time() - start) * 1000)
+
+        label = f"POST {url} (JSON)"
+        if resp.status_code in (expected_status, 302):
+            self._log(category, label, "pass", f"{resp.status_code} ({duration}ms)")
+            return resp
+        else:
+            self._log(category, label, "fail", f"Expected {expected_status}, got {resp.status_code}")
+            return None
+
     def _login(self):
         """Log in as admin user."""
         # Get admin credentials from DB
@@ -405,8 +419,8 @@ class AquilaTestRunner:
             self._log(category, "Update status", "fail")
 
         # 5. Update estimate
-        resp = self._post(f'/claims/{claim_id}/update-estimate',
-                          data={'total_estimate': '15000'}, category=category)
+        resp = self._post_json(f'/claims/{claim_id}/update-estimate',
+                          data={'total_estimate': 15000}, category=category)
         self._log(category, "Update estimate", "pass" if resp and resp.status_code in (200, 302) else "fail")
 
         # 6. Add a room
@@ -495,9 +509,9 @@ class AquilaTestRunner:
             # Move through pipeline stages
             stages = ['In Progress', 'Submitted', 'Closed']
             for stage in stages:
-                resp = self._post('/pipeline/move', data={
-                    'claim_id': str(claim_id),
-                    'new_status': stage,
+                resp = self._post_json('/pipeline/move', data={
+                    'claim_id': claim_id,
+                    'status': stage,
                 }, category=category)
 
                 # Verify in DB
@@ -873,10 +887,6 @@ class AquilaTestRunner:
 
     def run_all_tests(self):
         """Run the complete extreme test suite."""
-        import uuid
-        self.run_id = str(uuid.uuid4())[:12]
-        _start_run(self.run_id)
-
         logger.info(f"═══ AQUILA EXTREME TESTING STARTED [{self.run_id}] ═══")
 
         suites = [
@@ -914,7 +924,10 @@ class AquilaTestRunner:
 
 def run_extreme_tests(app):
     """Entry point: run all extreme tests."""
+    import uuid
     runner = AquilaTestRunner(app)
+    runner.run_id = str(uuid.uuid4())[:12]
+    _start_run(runner.run_id)
     if runner._login():
         return runner.run_all_tests()
     else:
