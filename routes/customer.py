@@ -18,7 +18,7 @@ def customer_upload_page(token):
     try:
         db = get_db()
         portal = db.execute(
-            'SELECT * FROM client_portal_tokens WHERE token=? AND used=0',
+            'SELECT * FROM client_portal_tokens WHERE token=?',
             (token,)
         ).fetchone()
         if not portal:
@@ -34,7 +34,7 @@ def customer_upload_photos(token):
     try:
         db = get_db()
         portal = db.execute(
-            'SELECT * FROM client_portal_tokens WHERE token=? AND used=0',
+            'SELECT * FROM client_portal_tokens WHERE token=?',
             (token,)
         ).fetchone()
         if not portal:
@@ -62,7 +62,6 @@ def customer_upload_photos(token):
                 )
                 saved_count += 1
 
-        db.execute('UPDATE client_portal_tokens SET used=1 WHERE token=?', (token,))
         db.commit()
 
         return jsonify({
@@ -86,7 +85,7 @@ def generate_upload_link(claim_id):
 
         token = secrets.token_urlsafe(32)
         db.execute(
-            'INSERT INTO client_portal_tokens (claim_id, token, used, created_at) VALUES (?, ?, 0, ?)',
+            'INSERT INTO client_portal_tokens (claim_id, token, created_at) VALUES (?, ?, ?)',
             (claim_id, token, datetime.datetime.now().isoformat())
         )
         db.commit()
