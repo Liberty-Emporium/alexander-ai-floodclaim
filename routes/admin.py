@@ -965,7 +965,7 @@ def send_weekly_report():
             <div style="font-size:.75rem;color:#64748b;font-weight:700;text-transform:uppercase">Pipeline Value</div>
           </div>
         </div>
-        <p style="font-size:.85rem;color:#64748b">Log in to <a href="https://billy-floods.up.railway.app">FloodClaims Pro</a> to view full details.</p>
+        <p style="font-size:.85rem;color:#64748b">Log in to <a href="https://flood-claims.alexanderai.site">FloodClaims Pro</a> to view full details.</p>
       </div>
     </div>'''
     sent = send_email(admin_email, f'FloodClaims Pro — Weekly Report ({datetime.datetime.now().strftime("%b %d")})', html)

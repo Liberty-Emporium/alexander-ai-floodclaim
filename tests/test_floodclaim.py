@@ -11,7 +11,7 @@ import tempfile
 import sys
 
 # ── Config ────────────────────────────────────────────────────────────────────
-BASE_URL      = os.environ.get('FLOODCLAIM_URL', 'https://billy-floods.up.railway.app')
+BASE_URL      = os.environ.get('FLOODCLAIM_URL', 'https://flood-claims.alexanderai.site')
 ADMIN_EMAIL   = os.environ.get('ADMIN_EMAIL',    'admin@floodclaimpro.com')
 ADMIN_PASSWORD= os.environ.get('ADMIN_PASSWORD', 'admin1234')
 

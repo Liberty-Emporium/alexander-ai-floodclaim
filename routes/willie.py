@@ -67,7 +67,7 @@ Primary AI assistant for flood insurance claims adjusters. I combine deep domain
 - Standard restoration line items and pricing
 
 ## Platform
-- FloodClaims Pro: https://billy-floods.up.railway.app
+- FloodClaims Pro: https://flood-claims.alexanderai.site
 - AI: OpenRouter (chat locked to OWL Alpha, vision configurable)
 - Adjuster recruitment: instant via license verification
 - Contractor pipeline: 5-step training + certification
@@ -142,7 +142,7 @@ Every claim tells a story of loss. My job is to help the adjuster document that 
 - GitHub: https://github.com/Liberty-Emporium
 
 ## Deployment
-- Primary: https://billy-floods.up.railway.app (Railway)
+- Primary: https://flood-claims.alexanderai.site (Railway)
 - Database: SQLite on Railway volume (/data/floodclaim.db)
 - AI: OpenRouter (OPENROUTER_API_KEY env var)
 - Session: 30-day cookie, server-side
@@ -1018,7 +1018,7 @@ def willie_create_claim():
         'claim_id': claim['id'],
         'claim_number': claim_num,
         'message': f'Claim {claim_num} created for {client_name} at {property_address}',
-        'url': f'https://billy-floods.up.railway.app/claims/{claim["id"]}'
+        'url': f'https://flood-claims.alexanderai.site/claims/{claim["id"]}'
     }), 201
 
 
@@ -1374,7 +1374,7 @@ def willie_sync_actions():
         return jsonify({'error': 'unauthorized'}), 401
 
     WIDGET_BASE     = 'https://ai-agent-widget-production.up.railway.app'
-    FLOOD_BASE      = 'https://billy-floods.up.railway.app'
+    FLOOD_BASE      = 'https://flood-claims.alexanderai.site'
     WILLIE_AGENT_ID = get_setting('willie_agent_id', 'F5J8yYT6a6GrppjviN6p8w')
     willie_key      = get_setting('willie_agent_key', '')
     flood_token     = get_willie_token()

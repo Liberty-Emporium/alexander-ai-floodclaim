@@ -22,7 +22,7 @@ import time
 
 from playwright.sync_api import Page, expect, sync_playwright
 
-BASE_URL       = os.environ.get('FLOODCLAIM_URL',   'https://billy-floods.up.railway.app')
+BASE_URL       = os.environ.get('FLOODCLAIM_URL',   'https://flood-claims.alexanderai.site')
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL',       'admin@floodclaimpro.com')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD',    'admin1234')
 APP_PY         = os.path.join(os.path.dirname(__file__), '..', 'app.py')

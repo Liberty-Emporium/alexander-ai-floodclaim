@@ -90,7 +90,7 @@ def format_alert_message(report):
     if len(issues) > 5:
         lines.append(f'...and {len(issues) - 5} more')
     lines.append('')
-    lines.append('Dashboard: https://billy-floods.up.railway.app/health-dashboard/')
+    lines.append('Dashboard: https://flood-claims.alexanderai.site/health-dashboard/')
     return '\n'.join(lines)
 
 
@@ -131,7 +131,7 @@ def format_alert_email(report):
   </table>
 
   <div style="margin-top:1.5rem;text-align:center;">
-    <a href="https://billy-floods.up.railway.app/health-dashboard/"
+    <a href="https://flood-claims.alexanderai.site/health-dashboard/"
        style="display:inline-block;padding:.75rem 1.5rem;background:linear-gradient(135deg,#06D6C7,#3B7BFF);color:#fff;text-decoration:none;border-radius:8px;font-weight:700;">
       🏥 Open Health Dashboard
     </a>

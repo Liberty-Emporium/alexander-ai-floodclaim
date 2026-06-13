@@ -24,7 +24,7 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-BASE_URL  = 'https://billy-floods.up.railway.app'
+BASE_URL  = 'https://flood-claims.alexanderai.site'
 EMAIL     = os.getenv('BROWSER_TEST_EMAIL', '')
 PASSWORD   = os.getenv('BROWSER_TEST_PASSWORD', '')
 OR_KEY    = os.getenv('OPENAI_API_KEY', '')

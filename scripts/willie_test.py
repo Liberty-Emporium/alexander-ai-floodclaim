@@ -5,7 +5,7 @@ Tests every route, catches schema bugs, and reports a pass/fail summary.
 
 Usage:
     python3 willie_test.py
-    python3 willie_test.py --url https://billy-floods.up.railway.app
+    python3 willie_test.py --url https://flood-claims.alexanderai.site
     python3 willie_test.py --url http://localhost:5000 --token YOUR_TOKEN
 
 Exit code: 0 = all passed, 1 = failures found
@@ -15,7 +15,7 @@ import sys, os, json, argparse, time
 import urllib.request, urllib.error
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DEFAULT_URL   = 'https://billy-floods.up.railway.app'
+DEFAULT_URL   = 'https://flood-claims.alexanderai.site'
 DEFAULT_TOKEN = os.environ.get('WILLIE_TOKEN', '')
 
 PASS = '\033[92m✅\033[0m'
