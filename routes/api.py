@@ -1,14 +1,20 @@
 """Routes for api blueprint."""
 
 from flask import Blueprint, jsonify, request
-from models.database import get_db, hash_pw
+from models.database import get_db, hash_pw, get_openrouter_key
 import os, sqlite3
 
 bp = Blueprint("api", __name__)
 
 @bp.route('/health')
 def health():
-    return jsonify({'status': 'ok'})
+    # Report whether an OpenRouter key is configured (DB or env) WITHOUT leaking it.
+    # Lets us verify AI is set up on this instance without admin login.
+    try:
+        ai_configured = bool(get_openrouter_key())
+    except Exception:
+        ai_configured = False
+    return jsonify({'status': 'ok', 'ai_configured': ai_configured})
 
 
 @bp.route('/seed', methods=['GET', 'POST'])

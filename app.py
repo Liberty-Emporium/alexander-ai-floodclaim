@@ -19,7 +19,7 @@ from flask import Flask, render_template, jsonify
 from models.database import (
     _set_app, _set_paths,
     get_db, close_db, init_db,
-    get_setting,
+    get_setting, get_openrouter_key,
 )
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -101,7 +101,13 @@ def server_error(e):
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok'})
+    # Report whether an OpenRouter key is configured (DB or env) WITHOUT leaking it.
+    # Lets us verify AI is set up on this instance without admin login.
+    try:
+        ai_configured = bool(get_openrouter_key())
+    except Exception:
+        ai_configured = False
+    return jsonify({'status': 'ok', 'ai_configured': ai_configured})
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
