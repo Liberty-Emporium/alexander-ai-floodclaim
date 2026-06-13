@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Extreme Testing — FloodClaims Pro{% endblock %}
+{% block page_title %}🧪 Extreme Testing{% endblock %}
+
+{% block extra_css %}
+<style>
+  .test-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .test-stats {
+    display: flex; gap: 1.5rem; align-items: center;
+  }
+  .test-stat { text-align: center; }
+  .test-stat .num { font-size: 1.5rem; font-weight: 800; }
+  .test-stat .lbl { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--t-secondary); }
+  .num-pass { color: #34D399; }
+  .num-fail { color: #F87171; }
+  .num-warn { color: #FBBF24; }
+  .num-total { color: var(--teal); }
+
+  .test-result-row {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .6rem .85rem; border-bottom: 1px solid var(--border);
+    font-size: .82rem;
+  }
+  .test-result-row:last-child { border-bottom: none; }
+  .test-result-icon { font-size: 1rem; flex-shrink: 0; width: 20px; text-align: center; }
+  .test-result-name { flex: 1; color: var(--t-primary); }
+  .test-result-status {
+    padding: .2rem .6rem; border-radius: 999px; font-size: .65rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .status-pass { background: rgba(52,211,153,.1); color: #34D399; }
+  .status-fail { background: rgba(248,113,113,.1); color: #F87171; }
+  .status-warn { background: rgba(251,191,36,.1); color: #FBBF24; }
+  .status-pending { background: rgba(128,128,128,.1); color: #999; }
+
+  .test-category-header {
+    padding: .5rem .85rem; background: rgba(255,255,255,.03);
+    font-size: .72rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--teal);
+  }
+
+  .run-history-row {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem; border-bottom: 1px solid var(--border); font-size: .82rem;
+  }
+  .run-status-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .run-status-dot.done { background: var(--teal); }
+  .run-status-dot.running { background: var(--amber); }
+
+  .btn-run-test {
+    background: linear-gradient(135deg, #F87171 0%, #EF4444 100%);
+    color: #fff; border: none; padding: .75rem 1.5rem; border-radius: 999px;
+    font-weight: 800; font-size: .9rem; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(248,113,113,.3);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .btn-run-test:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(248,113,113,.4); }
+  .btn-run-test:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .test-detail { font-size: .72rem; color: var(--t-secondary); margin-top: .2rem; padding-left: 28px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="test-header">
+  <div>
+    <h2 style="margin:0 0 .25rem;">🧪 Aquila Extreme Testing</h2>
+    <p style="margin:0;font-size:.82rem;color:var(--t-secondary);">
+      Comprehensive end-to-end tests for every feature in FloodClaims Pro.
+      Tests run inside the app using the Flask test client.
+    </p>
+  </div>
+  <button class="btn-run-test" id="btnRunTests" onclick="runTests()">
+    🧪 Run All Tests
+  </button>
+</div>
+
+<!-- Latest Run Summary -->
+{% if latest %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header">
+    <div class="card-title">Latest Test Run — {{ latest.id }}</div>
+    <span style="font-size:.75rem;color:var(--t-secondary);">
+      {{ latest.started_at[:16] }} — {{ "%.1f"|format((latest.finished_at and (latest.finished_at > latest.started_at)) and 0 or 0) }}s
+    </span>
+  </div>
+  <div class="test-stats" style="padding:1rem;">
+    <div class="test-stat">
+      <div class="num num-total">{{ latest.total_tests }}</div>
+      <div class="lbl">Total</div>
+    </div>
+    <div class="test-stat">
+      <div class="num num-pass">{{ latest.passed }}</div>
+      <div class="lbl">Passed</div>
+    </div>
+    <div class="test-stat">
+      <div class="num num-fail">{{ latest.failed }}</div>
+      <div class="lbl">Failed</div>
+    </div>
+    <div class="test-stat">
+      <div class="num num-warn">{{ latest.warnings }}</div>
+      <div class="lbl">Warnings</div>
+    </div>
+  </div>
+  {% if latest.summary %}
+  <div style="padding:0 1rem 1rem;font-size:.85rem;color:var(--t-secondary);">
+    {{ latest.summary }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Test Results by Category -->
+{% if results %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header">
+    <div class="card-title">Test Results</div>
+  </div>
+  <div style="overflow-y:auto;max-height:600px;">
+    {% set current_cat = None %}
+    {% for r in results %}
+      {% if r.category != current_cat %}
+        {% set current_cat = r.category %}
+        <div class="test-category-header">{{ r.category }}</div>
+      {% endif %}
+      <div class="test-result-row">
+        <span class="test-result-icon">
+          {% if r.status == 'pass' %}✅{% elif r.status == 'fail' %}❌{% elif r.status == 'warn' %}⚠️{% else %}❓{% endif %}
+        </span>
+        <span class="test-result-name">{{ r.test_name }}</span>
+        <span class="test-result-status status-{{ r.status }}">{{ r.status }}</span>
+      </div>
+      {% if r.detail %}
+      <div class="test-detail">{{ r.detail }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;color:var(--t-secondary);">
+  <p style="font-size:2rem;margin:0;">🧪</p>
+  <p>No test runs yet. Click "Run All Tests" to start.</p>
+  <p style="font-size:.75rem;">This will test navigation, claims, pipeline, schedule, QR codes, analytics, notifications, AI, team, and settings.</p>
+</div>
+{% endif %}
+
+<!-- Run History -->
+{% if runs|length > 1 %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Run History</div>
+  </div>
+  {% for run in runs[1:] %}
+  <a href="/admin/extreme-test/" class="run-history-row" style="display:flex;text-decoration:none;color:inherit;">
+    <span class="run-status-dot {{ run.status }}"></span>
+    <span style="flex:1;">{{ run.id }}</span>
+    <span>{{ run.started_at[:16] }}</span>
+    <span style="color:#34D399;">✅{{ run.passed }}</span>
+    <span style="color:#F87171;">❌{{ run.failed }}</span>
+    <span style="color:#FBBF24;">⚠️{{ run.warnings }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function runTests() {
+  const btn = document.getElementById('btnRunTests');
+  btn.textContent = '⏳ Running...';
+  btn.disabled = true;
+
+  const csrf = document.querySelector('meta[name="csrf"]')?.content || '';
+
+  try {
+    const resp = await fetch('/admin/extreme-test/run', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrf,
+      },
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      const s = data.stats;
+      alert(`✅ Tests complete!\n\nTotal: ${s.total}\nPassed: ${s.passed}\nFailed: ${s.failed}\nWarnings: ${s.warnings}`);
+    } else {
+      alert('❌ Test run failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('❌ Error: ' + e);
+  }
+
+  // Reload to show results
+  setTimeout(() => window.location.reload(), 500);
+}
+</script>
+{% endblock %}

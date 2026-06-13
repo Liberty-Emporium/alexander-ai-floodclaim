@@ -19,6 +19,7 @@ from routes.enhanced import bp as enhanced_bp
 from routes.password_reset import bp as password_reset_bp
 
 
+from routes.extreme_test import bp as extreme_test_bp
 from routes.health import bp as health_bp
 from routes.setup_wizard import bp as setup_wizard_bp
 
@@ -45,3 +46,4 @@ def register_blueprints(app):
     app.register_blueprint(password_reset_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(setup_wizard_bp)
+    app.register_blueprint(extreme_test_bp)

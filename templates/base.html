@@ -702,6 +702,9 @@
     <a href="{{ url_for('admin.settings') }}" class="nav-link {% if request.endpoint=='admin.settings' %}active{% endif %}">
       <i data-lucide="settings" class="nav-link-icon"></i> Settings
     </a>
+    <a href="{{ url_for('extreme_test.test_dashboard') }}" class="nav-link {% if request.endpoint and 'extreme_test' in request.endpoint %}active{% endif %}">
+      <i data-lucide="flask-conical" class="nav-link-icon"></i> Testing
+    </a>
     {% elif session.role == 'manager' %}
     <div class="nav-section">Management</div>
     <a href="{{ url_for('admin.team') }}" class="nav-link {% if request.endpoint=='admin.team' %}active{% endif %}">
