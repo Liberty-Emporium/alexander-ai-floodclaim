@@ -72,6 +72,19 @@ app.jinja_env.globals['get_setting'] = get_setting
 # ── Register all blueprints ───────────────────────────────────────────────────
 register_blueprints(app)
 
+# ── Start Aquila's background cron scheduler ─────────────────────────────────
+# Only start in production (when running on Railway), not during local dev.
+# Railway sets PORT env var; local dev typically doesn't.
+if os.environ.get('PORT'):
+    try:
+        from services.aquila_cron import start_scheduler
+        start_scheduler()
+        print('[AQUILA] Background cron scheduler started')
+    except Exception as e:
+        print(f'[AQUILA] Failed to start scheduler: {e}')
+else:
+    print('[AQUILA] Local dev mode — scheduler not started (set PORT env var to enable)')
+
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
