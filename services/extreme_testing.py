@@ -617,20 +617,40 @@ class AquilaTestRunner:
         """Test QR code generation and portal upload flow."""
         category = "qr_portal"
 
-        # Create a test claim via the app's DB (same connection the routes use)
-        from flask import g as _g
-        with self.app.app_context():
-            from models.database import get_db
-            db = get_db()
-            cur = db.execute('''INSERT INTO claims (claim_number, client_name, property_address, flood_date, status)
-                VALUES (?,?,?,?,?)''', (f'QR-TEST-{int(time.time())}', 'QR Test', '321 QR Blvd',
-                                         '2026-06-01', 'New'))
-            db.commit()
-            claim_id = cur.lastrowid
+        # Create a test claim via the new claim form
+        import time as _time
+        claim_num = f'QR-TEST-{int(_time.time())}'
+        resp = self._post('/claims/new', data={
+            'claim_number': claim_num,
+            'client_name': 'QR Test Client',
+            'property_address': '321 QR Blvd, Liberty NC 27298',
+            'flood_date': '2026-06-01',
+            'flood_source': 'River overflow',
+            'water_category': '3',
+            'water_class': '2',
+            'water_depth_in': '12',
+            'insurance_company': 'NFIP',
+            'policy_number': 'TEST-QR-12345',
+            'deductible': '1000',
+            'cause_of_loss': 'Heavy rainfall',
+            'priority': 'High',
+        }, expected_status=302, category=category)
+
+        # Extract claim ID from redirect
+        claim_id = None
+        if resp and resp.status_code == 302:
+            location = resp.headers.get('Location', '')
+            import re as _re
+            match = _re.search(r'/claims/(\d+)', location)
+            claim_id = int(match.group(1)) if match else None
 
         if not claim_id:
-            self._log(category, "QR tests", "fail", "Could not create test claim")
-            return
+            # Fallback: look up by claim number
+            with self.app.app_context():
+                from models.database import get_db
+                row = get_db().execute('SELECT id FROM claims WHERE claim_number=?', (claim_num,)).fetchone()
+            if row:
+                claim_id = row[0]
 
         # 1. Generate portal link (QR code)
         resp = self._post(f'/claims/{claim_id}/portal/generate', data={}, category=category)
@@ -722,11 +742,9 @@ class AquilaTestRunner:
                 self._log(category, "OpenRouter key", "fail", "No API key in DB or environment")
 
         # 2. Initialize brain files if not already done
-        from flask import current_app as _ca
         with self.app.app_context():
             from models.database import get_setting, set_setting
             from routes.willie import _read_brain_file, _get_default_brain
-            import os
             brain_dir = os.path.join(os.path.dirname(__file__), '..', 'brain')
             for fname, setting_key in [
                 ('IDENTITY.md', 'brain_identity_md'),
