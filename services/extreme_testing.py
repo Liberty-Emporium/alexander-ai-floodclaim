@@ -436,7 +436,7 @@ class AquilaTestRunner:
 
         # 6. Add a room
         resp = self._post(f'/claims/{claim_id}/room/add',
-                          data={'name': 'Living Room', 'description': 'Main living area'}, category=category)
+                          data={'room_name': 'Living Room', 'description': 'Main living area'}, category=category)
         room_id = None
         if resp and resp.status_code in (200, 302):
             # Extract room ID
@@ -652,7 +652,13 @@ class AquilaTestRunner:
             if row:
                 claim_id = row[0]
 
-        # 1. Generate portal link (QR code)
+        # 1. Generate portal link (QR code) — get fresh CSRF token first
+        resp = self._get(f'/claims/{claim_id}', category=category)
+        if resp and resp.status_code == 200:
+            import re as _re
+            match = _re.search(r'name="csrf_token"\s+value="([^"]+)"', resp.data.decode())
+            if match:
+                self.csrf_token = match.group(1)
         resp = self._post(f'/claims/{claim_id}/portal/generate', data={}, category=category)
         if resp and resp.status_code in (200, 302):
             # Verify token created
