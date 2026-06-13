@@ -18,7 +18,18 @@ _app_ctx = None  # set by app.py after Flask app init
 
 
 def _get_setting(key, default=''):
-    """Read a setting from the DB, falling back to default."""
+    """Read a setting from the DB, falling back to default.
+
+    Delegates to models.database.get_setting (which holds the real DB_PATH).
+    This module's own DB_PATH is never populated after the monolith->modules
+    split, so reading it directly always failed silently. Fall back to the
+    local sqlite read only if the canonical import is unavailable.
+    """
+    try:
+        from models.database import get_setting as _canonical_get_setting
+        return _canonical_get_setting(key, default)
+    except Exception:
+        pass
     import sqlite3
     try:
         db = sqlite3.connect(DB_PATH)
@@ -32,7 +43,7 @@ def _get_setting(key, default=''):
 
 def call_openrouter(messages, model, key, max_tokens=4000):
     """Call OpenRouter chat completions API with automatic fallback. Returns response text or error string."""
-    fallback_model = _get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
+    fallback_model = _get_setting('ai_fallback_model', 'meta-llama/llama-4-maverick')
     models_to_try = [model]
     if fallback_model and fallback_model != model:
         models_to_try.append(fallback_model)
@@ -219,7 +230,14 @@ def _run_estimate_job(job_id, claim_id, claim, rooms, photo_analyses, photo_sect
 
 def ai_describe_photo(image_path):
     """Describe flood damage in a photo using vision AI. Returns description or empty string."""
-    key = OPENROUTER_KEY
+    # Resolve the active key via the canonical resolver (DB setting -> env var).
+    # services/ai.py's own DB_PATH is never set after the monolith split, so its
+    # local _get_setting can't read the DB — use models.database directly.
+    try:
+        from models.database import get_openrouter_key
+        key = get_openrouter_key() or OPENROUTER_KEY
+    except Exception:
+        key = _get_setting('openrouter_api_key') or os.environ.get('OPENROUTER_API_KEY', '') or OPENROUTER_KEY
     if not key:
         return ''
     try:

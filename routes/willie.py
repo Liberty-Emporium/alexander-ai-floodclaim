@@ -1,7 +1,7 @@
 """Routes for willie blueprint."""
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from models.database import get_db, get_setting, set_setting
+from models.database import get_db, get_setting, set_setting, get_openrouter_key
 from utils.auth_decorators import login_required, admin_required
 from utils.helpers import _log_activity, _validate_password
 from services.ai import call_openrouter, _build_pricing_kb, _build_estimate_prompt
@@ -607,8 +607,8 @@ Always be helpful, concise, and professional. Use your knowledge of NFIP rules a
 
     try:
         selected_model   = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
-        fallback_model   = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
-        openrouter_key   = OPENROUTER_KEY
+        fallback_model   = get_setting('ai_fallback_model', 'meta-llama/llama-4-maverick')
+        openrouter_key   = get_openrouter_key()
         if not openrouter_key:
             return jsonify({'reply': '⚠️ OpenRouter API key not configured. Go to Settings → AI Integration to set it up.'})
 
@@ -680,7 +680,7 @@ def api_analyze_photo():
     mime     = data.get('mime', 'image/jpeg')
     if not img_b64:
         return jsonify({'error': 'no image'}), 400
-    key = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    key = get_openrouter_key()
     if not key:
         return jsonify({'description': ''})
     try:
@@ -781,7 +781,7 @@ def willie_generate_estimate(claim_id):
         return jsonify({'error': 'Claim not found'}), 404
     claim = dict(claim)  # convert sqlite3.Row → dict so .get() works
 
-    key = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    key = get_openrouter_key()
     model = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
     if not key:
         return jsonify({'error': 'OpenRouter API key not configured. Add it in Settings.'}), 400
@@ -1939,7 +1939,7 @@ def willie_analyze_claim(claim_id):
     if not claim: return jsonify({'error': 'Claim not found'}), 404
     claim = dict(claim)
 
-    key   = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    key   = get_openrouter_key()
     model = get_setting('ai_model') or 'openai/gpt-4o-mini'
     if not key:
         return jsonify({'error': 'OpenRouter API key not configured'}), 400

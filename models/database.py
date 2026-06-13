@@ -440,6 +440,21 @@ def set_setting(key, value):
     db.commit()
     db.close()
 
+
+def get_openrouter_key():
+    """Resolve the active OpenRouter API key.
+
+    Single source of truth used by every AI route. Order:
+      1. DB setting `openrouter_api_key` (Billy can paste his own key in Settings)
+      2. Railway env var OPENROUTER_API_KEY
+
+    Returns '' when no key is configured. Replaces the bare `OPENROUTER_KEY`
+    global that was lost in the monolith->modules split (it was undefined in
+    routes/, causing a NameError that silently killed Aquila chat and the
+    photo/estimate routes).
+    """
+    return get_setting('openrouter_api_key', '') or os.environ.get('OPENROUTER_API_KEY', '')
+
 # ── Aquila API token ─────────────────────────────────────────────────────────────────
 
 # ── Admin: Recruitment ─────────────────────────────────────────────────────────

@@ -144,8 +144,12 @@
       <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
         🤖 AI Integration
       </div>
-      {% if env_key_set %}
+      {% if key_active %}
+        {% if env_key_set %}
         <span class="key-status key-env">✅ Active (Railway Env Var)</span>
+        {% else %}
+        <span class="key-status key-env">✅ Active (Saved In App)</span>
+        {% endif %}
       {% else %}
         <span class="key-status key-unset">⚠️ Not Configured</span>
       {% endif %}
@@ -155,9 +159,33 @@
       <strong>OpenRouter</strong> powers two things:<br>
       <strong>1.</strong> <em>AI Photo Analysis</em> — analyzes damage photos on every claim using a vision-capable model (free or premium).<br>
       <strong>2.</strong> <em>Aquila Chat — Your Agentic AI Assistant</em> — locked to <strong>OWL Alpha</strong> for full agent capabilities. Aquila doesn't just chat — he <em>acts</em>. He can create claims, add/edit fields (client name, property address, dates), add rooms and line items, look up FEMA zones, check NFIP compliance, assign adjusters, add new team members, and perform any action inside FloodClaims Pro. Powered by Aquila's tool-calling agent system.<br><br>
-      Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab.<br>
+      You can paste your OpenRouter key below (saved securely in the app), or set <code>OPENROUTER_API_KEY</code> in Railway → Variables.<br>
       Get a key at <strong>openrouter.ai</strong> (free sign-up, pay-as-you-go).
     </div>
+
+    <!-- ── FORM START: AI Integration settings ── -->
+    <form method="POST" action="{{ url_for('admin.settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- ── OpenRouter API Key ── -->
+      <div class="form-group" style="margin-bottom:.75rem;">
+        <label style="margin-bottom:.3rem;display:block;font-size:.9rem;">🔑 OpenRouter API Key
+          <span style="font-weight:400;color:var(--gray-400);">— powers photo analysis &amp; Aquila chat</span>
+        </label>
+        {% if env_key_set %}
+        <div style="font-size:.8rem;color:#065f46;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:.6rem .75rem;">
+          ✅ A key is already set via the Railway environment variable. You don't need to enter one here. (Entering a key below will override it inside the app.)
+        </div>
+        {% endif %}
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.4rem;">
+          <input class="form-control" type="password" name="openrouter_api_key" id="openrouterKey"
+                 placeholder="{% if db_key_set %}{{ db_key_masked }}  (key saved — leave blank to keep){% else %}sk-or-v1-...{% endif %}"
+                 autocomplete="off" style="flex:1;min-width:220px;font-family:monospace;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleKeyVisibility()" style="font-size:.72rem;">👁️ Show</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-test-key" onclick="testOpenRouterKey()" style="font-size:.72rem;">🧪 Test Key</button>
+        </div>
+        <div id="key-test-result" style="margin-top:.4rem;font-size:.8rem;display:none;"></div>
+      </div>
 
     <!-- ── Aquila Chat Model (Locked) ── -->
     <div class="form-group" style="margin-bottom:.5rem">
@@ -255,6 +283,8 @@
     <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
       <button type="submit" class="btn btn-primary">💾 Save Settings</button>
     </div>
+    </form>
+    <!-- ── FORM END: AI Integration settings ── -->
 
     <!-- Free models results container -->
     <div id="free-models-results" style="margin-top:1rem;display:none;">
@@ -262,9 +292,9 @@
       <div id="free-models-list" class="model-grid"></div>
     </div>
 
-    {% if not env_key_set %}
+    {% if not key_active %}
     <div style="margin-top:1rem;font-size:.85rem;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;">
-      ⚠️ <strong>AI features disabled.</strong> Set <code>OPENROUTER_API_KEY</code> in Railway → floodclaim-app → Variables tab to enable both photo analysis and Aquila chat.
+      ⚠️ <strong>AI features disabled.</strong> Paste your OpenRouter key above and hit Save (or set <code>OPENROUTER_API_KEY</code> in Railway → Variables) to enable both photo analysis and Aquila chat.
     </div>
     {% endif %}
   </div>
@@ -541,6 +571,48 @@
 
 {% block extra_js %}
 <script>
+// ── OpenRouter API Key: show/hide + live test ─────────────────────────────
+function toggleKeyVisibility() {
+  var inp = document.getElementById('openrouterKey');
+  if (!inp) return;
+  inp.type = (inp.type === 'password') ? 'text' : 'password';
+}
+
+function testOpenRouterKey() {
+  var inp = document.getElementById('openrouterKey');
+  var out = document.getElementById('key-test-result');
+  var btn = document.getElementById('btn-test-key');
+  if (!out) return;
+  out.style.display = 'block';
+  out.style.color = '#64748b';
+  out.textContent = '⏳ Testing key with OpenRouter...';
+  if (btn) { btn.disabled = true; }
+  var body = new URLSearchParams();
+  body.append('csrf_token', '{{ csrf_token() }}');
+  body.append('openrouter_api_key', inp ? inp.value : '');
+  fetch('/admin/api/test-key', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    credentials: 'include',
+    body: body.toString()
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d.ok) {
+      out.style.color = '#065f46';
+      out.textContent = '✅ ' + (d.message || 'Key works!');
+    } else {
+      out.style.color = '#ef4444';
+      out.textContent = '❌ ' + (d.error || 'Test failed');
+    }
+  })
+  .catch(function(e){
+    out.style.color = '#ef4444';
+    out.textContent = '❌ Network error: ' + e;
+  })
+  .finally(function(){ if (btn) { btn.disabled = false; } });
+}
+
 // ── Help Modal System ─────────────────────────────────────────────────────
 var helpContent = {
   'ai-integration': {

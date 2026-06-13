@@ -1,7 +1,7 @@
 """Routes for claims blueprint."""
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
-from models.database import get_db, get_setting, set_setting
+from models.database import get_db, get_setting, set_setting, get_openrouter_key
 from utils.auth_decorators import login_required, admin_required, manager_required
 from utils.helpers import _log_activity
 from utils.security import allowed_file, csrf_required
@@ -35,7 +35,7 @@ def ai_estimate(claim_id):
         return jsonify({'ok': False, 'error': 'Claim not found'}), 404
     claim = dict(claim)  # convert sqlite3.Row → dict so .get() works
 
-    key   = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    key   = get_openrouter_key()
     model = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
     if not key:
         return jsonify({'ok': False, 'error': 'OpenRouter API key not configured. Go to Settings and add your key.'}), 400

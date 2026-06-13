@@ -1,7 +1,7 @@
 """Routes for admin blueprint."""
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
-from models.database import get_db, get_setting, set_setting, hash_pw, check_pw
+from models.database import get_db, get_setting, set_setting, hash_pw, check_pw, get_openrouter_key
 from utils.auth_decorators import login_required, admin_required
 from utils.security import csrf_required
 from utils.helpers import _validate_password
@@ -21,7 +21,13 @@ bp = Blueprint("admin", __name__)
 @csrf_required
 def settings():
     if request.method == 'POST':
-        # API key is managed via Railway env var OPENROUTER_API_KEY only — not stored in DB
+        # OpenRouter API key — Billy can paste his own key here (saved to DB).
+        # Code reads `get_setting('openrouter_api_key') or env var` everywhere,
+        # so a DB-stored key works without anyone touching Railway.
+        openrouter_api_key = request.form.get('openrouter_api_key', '').strip()
+        if openrouter_api_key and not openrouter_api_key.startswith('•'):
+            # Ignore the masked placeholder we render for an already-saved key
+            set_setting('openrouter_api_key', openrouter_api_key)
         # Aquila Chat is always locked to OWL Alpha — not user-configurable
         # Vision model selection
         ai_vision_model = request.form.get('ai_vision_model', '').strip()
@@ -43,16 +49,64 @@ def settings():
         return redirect(url_for('admin.settings'))
 
     env_key_set       = bool(os.environ.get('OPENROUTER_API_KEY'))
+    db_key            = get_setting('openrouter_api_key', '')
+    db_key_set        = bool(db_key)
+    # A key is active if it's in Railway env OR saved in the DB
+    key_active        = env_key_set or db_key_set
+    # Masked preview of the saved DB key (e.g. "sk-or-…last4") — never expose the full key
+    db_key_masked     = ('•' * 8 + db_key[-4:]) if len(db_key) >= 8 else ('•' * 8 if db_key else '')
     current_model     = get_setting('ai_model', 'openai/gpt-4o-mini')
     current_vision_model = get_setting('ai_vision_model', 'openrouter/auto')
     current_chat_model   = get_setting('ai_chat_model') or get_setting('ai_model', 'openrouter/owl-alpha')
-    current_fallback  = get_setting('ai_fallback_model', 'anthropic/claude-sonnet-4-5')
+    current_fallback  = get_setting('ai_fallback_model', 'meta-llama/llama-4-maverick')
     return render_template('settings.html',
                            env_key_set=env_key_set,
+                           db_key_set=db_key_set,
+                           key_active=key_active,
+                           db_key_masked=db_key_masked,
                            current_model=current_model,
                            current_vision_model=current_vision_model,
                            current_chat_model=current_chat_model,
                            current_fallback=current_fallback)
+
+
+@bp.route('/admin/api/test-key', methods=['POST'])
+@login_required
+@admin_required
+@csrf_required
+def api_test_key():
+    """Validate an OpenRouter key with a tiny live call. Accepts a key in the
+    POST body (to test before saving) or falls back to the stored DB/env key."""
+    posted = (request.form.get('openrouter_api_key') or '').strip()
+    if posted.startswith('•'):
+        posted = ''  # masked placeholder — ignore
+    key = posted or get_setting('openrouter_api_key') or os.environ.get('OPENROUTER_API_KEY', '')
+    if not key:
+        return jsonify({'ok': False, 'error': 'No key entered or saved yet. Paste your key first.'}), 400
+    try:
+        r = _req.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+            json={'model': 'openrouter/auto',
+                  'messages': [{'role': 'user', 'content': 'ping'}],
+                  'max_tokens': 1},
+            timeout=20,
+        )
+        if r.status_code == 401:
+            return jsonify({'ok': False, 'error': 'Invalid or expired key (401). Double-check you copied the whole key.'}), 200
+        if r.status_code == 402:
+            return jsonify({'ok': False, 'error': 'Key is valid but the account is out of credits (402). Add credits at openrouter.ai.'}), 200
+        if r.status_code == 429:
+            return jsonify({'ok': True, 'message': 'Key works! (rate-limited right now, but valid).'}), 200
+        data = r.json()
+        if 'error' in data:
+            return jsonify({'ok': False, 'error': f"OpenRouter says: {data['error'].get('message', 'unknown error')}"}), 200
+        if 'choices' in data:
+            return jsonify({'ok': True, 'message': 'Key works! AI is ready to go. ✅'}), 200
+        return jsonify({'ok': False, 'error': f'Unexpected response (HTTP {r.status_code}).'}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'Could not reach OpenRouter: {e}'}), 200
+
 
 # ── Free Models API ─────────────────────────────────────────────────────────────
 
@@ -174,7 +228,7 @@ def api_test_photo_analysis():
     file.save(tmp.name)
     tmp.close()
 
-    key = get_setting('openrouter_api_key') or OPENROUTER_KEY
+    key = get_openrouter_key()
     if not key:
         os.unlink(tmp.name)
         return jsonify({'ok': False, 'error': 'OpenRouter API key not configured'}), 400
