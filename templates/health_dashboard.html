@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Health Dashboard — FloodClaims Pro{% endblock %}
+{% block page_title %}🏥 Health Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+  .health-container { max-width: 900px; margin: 0 auto; }
+  .health-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem; flex-wrap: wrap; gap: .75rem;
+  }
+  .health-overall {
+    padding: .75rem 1.5rem; border-radius: 12px; font-weight: 800; font-size: 1.1rem;
+  }
+  .health-overall.ok { background: rgba(16,185,129,.1); color: #065f46; border: 2px solid rgba(16,185,129,.2); }
+  .health-overall.warn { background: rgba(245,158,11,.1); color: #92400e; border: 2px solid rgba(245,158,11,.2); }
+  .health-overall.fail { background: rgba(239,68,68,.1); color: #991b1b; border: 2px solid rgba(239,68,68,.2); }
+
+  .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem; }
+  @media (max-width: 500px) { .check-grid { grid-template-columns: 1fr; } }
+
+  .check-card {
+    border: 1px solid var(--gray-200); border-radius: 12px;
+    padding: 1rem 1.25rem; transition: box-shadow .2s;
+  }
+  .check-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+  .check-card.check-ok { border-left: 4px solid #10b981; }
+  .check-card.check-warn { border-left: 4px solid #f59e0b; }
+  .check-card.check-fail { border-left: 4px solid #ef4444; }
+
+  .check-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: .4rem;
+  }
+  .check-card-header h3 { font-size: .9rem; margin: 0; display: flex; align-items: center; gap: .4rem; }
+  .check-status-dot {
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  }
+  .check-status-dot.ok { background: #10b981; }
+  .check-status-dot.warn { background: #f59e0b; }
+  .check-status-dot.fail { background: #ef4444; }
+
+  .check-message { font-size: .82rem; color: var(--gray-600); line-height: 1.5; margin: .3rem 0; }
+  .check-issues { font-size: .75rem; color: #991b1b; margin: .3rem 0; padding-left: 1rem; }
+  .check-issues li { margin-bottom: .2rem; }
+  .check-detail { font-size: .72rem; color: var(--gray-400); margin-top: .3rem; }
+
+  .last-checked { font-size: .78rem; color: var(--gray-400); margin: .5rem 0 1rem; }
+
+  .action-bar { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+
+  .auto-heal-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .25rem .6rem; border-radius: 999px; font-size: .68rem; font-weight: 700;
+    background: rgba(6,182,212,.1); color: #164e63;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="health-container">
+
+  <div class="health-header">
+    <div>
+      <h2 style="margin:0;">🏥 System Health</h2>
+      <p class="last-checked" id="lastChecked">
+        {% if report %}Last checked: {{ report.timestamp }}{% else %}No checks run yet{% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+      <div class="health-overall {{ 'ok' if report and report.all_ok else ('fail' if report else 'warn') }}" id="overallStatus">
+        {% if report %}
+          {{ '✅ All Systems Healthy' if report.all_ok else '❌ ' ~ report.critical_issues|length ~ ' Issue(s) Found' }}
+        {% else %}
+          ⏳ Run a check to see status
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="action-bar" style="margin-bottom:1.5rem;">
+    <button class="btn btn-primary" onclick="runChecks()" id="btnRunChecks">🔄 Run Health Checks</button>
+    <button class="btn btn-ghost btn-sm" onclick="autoRefresh()">🔁 Auto-Refresh: <span id="autoRefreshStatus">OFF</span></button>
+    {% if session.get('role') == 'admin' %}
+    <a href="/setup/" class="btn btn-ghost btn-sm">🚀 Setup Wizard</a>
+    {% endif %}
+  </div>
+
+  <!-- Results grid -->
+  <div class="check-grid" id="checkGrid">
+    {% if report %}
+      {% for check in report.checks %}
+      <div class="check-card check-{{ 'ok' if check.ok else 'fail' }}" id="check-{{ loop.index }}">
+        <div class="check-card-header">
+          <h3>
+            <span class="check-status-dot {{ 'ok' if check.ok else 'fail' }}"></span>
+            {{ check.emoji }} {{ check.name }}
+          </h3>
+          {% if check.get('configured') is sameas false %}
+          <span class="auto-heal-badge">Not Configured</span>
+          {% endif %}
+        </div>
+        <p class="check-message">{{ check.message }}</p>
+        {% if check.issues %}
+        <ul class="check-issues">
+          {% for issue in check.issues %}
+          <li>{{ issue }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if check.get('tables') %}
+        <p class="check-detail">Tables: {{ check.tables|length }} | Claims: {{ check.get('claims', '?') }} | Users: {{ check.get('users', '?') }}</p>
+        {% endif %}
+        {% if check.get('free_gb') %}
+        <p class="check-detail">Free: {{ check.free_gb }}GB / {{ check.total_gb }}GB ({{ check.used_pct }}% used)</p>
+        {% endif %}
+        {% if check.get('photo_count') is not none %}
+        <p class="check-detail">Files: {{ check.photo_count }} photos ({{ check.total_mb }}MB)</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <p style="font-size:.72rem;color:var(--gray-400);margin-top:.5rem;">
+        Completed in {{ report.elapsed_s }}s
+      </p>
+    {% else %}
+      <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--gray-400);">
+        <p style="font-size:2rem;margin:0;">🔍</p>
+        <p>Click "Run Health Checks" to scan your system.</p>
+        <p style="font-size:.75rem;">This checks database, APIs, disk, routes, claims integrity, photos, and Aquila's brain.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Critical issues summary -->
+  {% if report and report.critical_issues %}
+  <div style="margin-top:1.5rem;padding:1rem;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:12px;">
+    <h3 style="font-size:.9rem;margin:0 0 .5rem;">🚨 Critical Issues</h3>
+    {% for issue in report.critical_issues %}
+    <p style="font-size:.82rem;margin:.3rem 0;color:#991b1b;">{{ issue }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let autoRefreshInterval = null;
+
+async function runChecks() {
+  const btn = document.getElementById('btnRunChecks');
+  btn.textContent = '⏳ Running...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch('/health-dashboard/api/check', {method: 'POST'});
+    const data = await resp.json();
+    renderReport(data);
+  } catch (e) {
+    alert('Error running health checks: ' + e);
+  } finally {
+    btn.textContent = '🔄 Run Health Checks';
+    btn.disabled = false;
+  }
+}
+
+function renderReport(report) {
+  document.getElementById('lastChecked').textContent = 'Last checked: ' + report.timestamp;
+  const overall = document.getElementById('overallStatus');
+  if (report.all_ok) {
+    overall.className = 'health-overall ok';
+    overall.textContent = '✅ All Systems Healthy';
+  } else {
+    overall.className = 'health-overall fail';
+    overall.textContent = '❌ ' + report.critical_issues.length + ' Issue(s) Found';
+  }
+
+  let html = '';
+  if (report.critical_issues.length > 0) {
+    html += `<div style="margin-top:1.5rem;padding:1rem;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:12px;">
+      <h3 style="font-size:.9rem;margin:0 0 .5rem;">🚨 Critical Issues</h3>`;
+    for (const issue of report.critical_issues) {
+      html += `<p style="font-size:.82rem;margin:.3rem 0;color:#991b1b;">${esc(issue)}</p>`;
+    }
+    html += '</div>';
+  }
+
+  html += '<div class="check-grid" style="margin-top:1rem;">';
+  for (const check of report.checks) {
+    const statusClass = check.ok ? 'ok' : 'fail';
+    html += `<div class="check-card check-${statusClass}">
+      <div class="check-card-header">
+        <h3><span class="check-status-dot ${statusClass}"></span>${esc(check.emoji + ' ' + check.name)}</h3>
+        ${check.configured === false ? '<span class="auto-heal-badge">Not Configured</span>' : ''}
+      </div>
+      <p class="check-message">${esc(check.message)}</p>`;
+    if (check.issues && check.issues.length > 0) {
+      html += '<ul class="check-issues">';
+      for (const issue of check.issues) html += `<li>${esc(issue)}</li>`;
+      html += '</ul>';
+    }
+    // Details
+    const details = [];
+    if (check.tables) details.push(`Tables: ${check.tables.length} | Claims: ${check.claims} | Users: ${check.users}`);
+    if (check.free_gb !== undefined) details.push(`Free: ${check.free_gb}GB / ${check.total_gb}GB (${check.used_pct}% used)`);
+    if (check.photo_count !== undefined) details.push(`${check.photo_count} photos (${check.total_mb}MB)`);
+    if (details.length > 0) {
+      html += '<p class="check-detail">' + details.map(esc).join(' | ') + '</p>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  html += `<p style="font-size:.72rem;color:var(--gray-400);margin-top:.5rem;">Completed in ${report.elapsed_s}s</p>`;
+
+  // Append critical issues after grid
+  const existingCritical = document.querySelector('.health-container > div[style*="critical"]');
+  if (existingCritical) existingCritical.remove();
+
+  const grid = document.getElementById('checkGrid');
+  grid.innerHTML = html;
+
+  // Add critical issues box after grid if any
+  if (report.critical_issues.length > 0) {
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-top:1.5rem;padding:1rem;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:12px;';
+    div.innerHTML = `<h3 style="font-size:.9rem;margin:0 0 .5rem;">🚨 Critical Issues</h3>` +
+      report.critical_issues.map(i => `<p style="font-size:.82rem;margin:.3rem 0;color:#991b1b;">${esc(i)}</p>`).join('');
+    grid.parentNode.insertBefore(div, grid.nextSibling);
+  }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function autoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+    document.getElementById('autoRefreshStatus').textContent = 'OFF';
+  } else {
+    autoRefreshInterval = setInterval(runChecks, 30000);
+    document.getElementById('autoRefreshStatus').textContent = '30s';
+  }
+}
+</script>
+{% endblock %}

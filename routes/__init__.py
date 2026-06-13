@@ -19,6 +19,10 @@ from routes.enhanced import bp as enhanced_bp
 from routes.password_reset import bp as password_reset_bp
 
 
+from routes.health import bp as health_bp
+from routes.setup_wizard import bp as setup_wizard_bp
+
+
 def register_blueprints(app):
     """Register all blueprints with the Flask app."""
     app.register_blueprint(api_bp)
@@ -39,3 +43,5 @@ def register_blueprints(app):
     app.register_blueprint(portal_bp)
     app.register_blueprint(enhanced_bp)
     app.register_blueprint(password_reset_bp)
+    app.register_blueprint(health_bp)
+    app.register_blueprint(setup_wizard_bp)

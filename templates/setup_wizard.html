@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard — FloodClaims Pro{% endblock %}
+{% block page_title %}🚀 Setup Wizard{% endblock %}
+
+{% block extra_css %}
+<style>
+  .wizard-container { max-width: 800px; margin: 0 auto; }
+  .wizard-header {
+    text-align: center; padding: 2rem 1rem; margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, rgba(6,214,199,.08), rgba(59,123,255,.08));
+    border-radius: 16px; border: 1px solid rgba(6,214,199,.15);
+  }
+  .wizard-header h2 { font-size: 1.5rem; margin: 0 0 .5rem; }
+  .wizard-header p { color: var(--gray-400); font-size: .9rem; margin: 0; }
+
+  /* Progress bar */
+  .setup-progress {
+    height: 8px; background: var(--gray-200); border-radius: 999px;
+    margin: 1rem 0; overflow: hidden;
+  }
+  .setup-progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--teal), var(--blue-light));
+    border-radius: 999px; transition: width .5s ease;
+  }
+
+  /* Service cards */
+  .service-card {
+    border: 1px solid var(--gray-200); border-radius: 12px;
+    margin-bottom: 1rem; overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .service-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  .service-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem; cursor: pointer; user-select: none;
+  }
+  .service-card-header:hover { background: rgba(6,214,199,.03); }
+  .service-card-left { display: flex; align-items: center; gap: .75rem; }
+  .service-emoji { font-size: 1.5rem; }
+  .service-info h3 { font-size: 1rem; margin: 0; }
+  .service-info p { font-size: .78rem; color: var(--gray-400); margin: .1rem 0 0; }
+  .service-status {
+    padding: .3rem .75rem; border-radius: 999px; font-size: .72rem; font-weight: 700;
+  }
+  .status-done { background: rgba(16,185,129,.12); color: #065f46; }
+  .status-partial { background: rgba(245,158,11,.12); color: #92400e; }
+  .status-missing { background: rgba(239,68,68,.12); color: #991b1b; }
+
+  .service-card-body {
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--gray-100);
+    display: none;
+  }
+  .service-card.expanded .service-card-body { display: block; }
+
+  .wizard-field { margin-bottom: 1rem; }
+  .wizard-field label {
+    display: block; font-size: .82rem; font-weight: 600;
+    margin-bottom: .3rem; color: var(--gray-700);
+  }
+  .wizard-field .help-text {
+    font-size: .72rem; color: var(--gray-400); margin-bottom: .3rem; line-height: 1.5;
+  }
+  .wizard-field input[type="text"],
+  .wizard-field input[type="password"],
+  .wizard-field input[type="email"] {
+    width: 100%; padding: .6rem .75rem; border: 1px solid var(--gray-200);
+    border-radius: 8px; font-size: .85rem; background: var(--surface);
+    color: var(--text);
+  }
+  .wizard-field input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,214,199,.1); }
+
+  .wizard-actions { display: flex; gap: .75rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+  .test-result {
+    margin-top: .75rem; padding: .6rem .85rem; border-radius: 8px;
+    font-size: .82rem; line-height: 1.5; display: none;
+  }
+  .test-result.show { display: block; }
+  .test-result.success { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: #065f46; }
+  .test-result.error { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); color: #991b1b; }
+  .test-result.info { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); color: #1e40af; }
+
+  /* Aquila chat panel */
+  .aquila-wizard-chat {
+    position: fixed; bottom: 80px; right: 20px; width: 380px; max-height: 500px;
+    background: var(--surface); border: 1px solid var(--gray-200);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.15);
+    display: none; flex-direction: column; z-index: 9999;
+  }
+  .aquila-wizard-chat.open { display: flex; }
+  .awc-header {
+    padding: .75rem 1rem; border-bottom: 1px solid var(--gray-200);
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 700; font-size: .85rem;
+  }
+  .awc-messages {
+    flex: 1; overflow-y: auto; padding: 1rem;
+    max-height: 350px; display: flex; flex-direction: column; gap: .5rem;
+  }
+  .awc-msg {
+    padding: .5rem .75rem; border-radius: 10px; font-size: .82rem; line-height: 1.5;
+    max-width: 85%;
+  }
+  .awc-msg.bot { background: rgba(6,214,199,.08); align-self: flex-start; }
+  .awc-msg.user { background: rgba(59,130,246,.1); align-self: flex-end; }
+  .awc-input-row {
+    display: flex; gap: .5rem; padding: .75rem 1rem;
+    border-top: 1px solid var(--gray-200);
+  }
+  .awc-input-row input {
+    flex: 1; padding: .5rem .75rem; border: 1px solid var(--gray-200);
+    border-radius: 8px; font-size: .82rem;
+  }
+  .awc-toggle {
+    position: fixed; bottom: 20px; right: 20px; z-index: 10000;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #06D6C7, #3B7BFF);
+    border: none; color: #fff; font-size: 1.5rem; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(6,214,199,.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container">
+
+  <!-- Header -->
+  <div class="wizard-header">
+    <h2>🚀 FloodClaims Pro Setup Wizard</h2>
+    <p>Aquila will guide you through setting up every integration. Click each service below to configure it.</p>
+    <div class="setup-progress">
+      <div class="setup-progress-bar" id="progressBar" style="width: {{ completion_pct }}%"></div>
+    </div>
+    <p style="font-size:.8rem;margin-top:.5rem;">
+      <strong id="progressText">{{ completion_pct }}% complete</strong> — 
+      <span id="servicesDone">{{ status.values()|selectattr('configured')|list|length }}</span> of {{ services|length }} services configured
+    </p>
+  </div>
+
+  <!-- Service cards -->
+  {% for svc_id, svc in services.items() %}
+  {% set svc_status = status[svc_id] %}
+  <div class="service-card" id="card-{{ svc_id }}">
+    <div class="service-card-header" onclick="toggleCard('{{ svc_id }}')">
+      <div class="service-card-left">
+        <span class="service-emoji">{{ svc.emoji }}</span>
+        <div class="service-info">
+          <h3>{{ svc.label }}</h3>
+          <p>{{ svc.description }}</p>
+        </div>
+      </div>
+      {% if svc_status.configured %}
+        <span class="service-status status-done">✅ Configured</span>
+      {% elif svc_status.partial %}
+        <span class="service-status status-partial">⚠️ Partial</span>
+      {% else %}
+        <span class="service-status status-missing">❌ Not Set Up</span>
+      {% endif %}
+    </div>
+    <div class="service-card-body">
+      {% for field in svc.fields %}
+      <div class="wizard-field">
+        <label>{{ field.label }}</label>
+        {% if field.help %}
+        <div class="help-text">{{ field.help }}</div>
+        {% endif %}
+        <input type="{{ 'password' if 'key' in field.key or 'token' in field.key or 'secret' in field.key else 'text' }}"
+               id="field-{{ svc_id }}-{{ field.key }}"
+               placeholder="{{ field.placeholder }}"
+               value="{{ get_setting(field.key) if not ('key' in field.key or 'token' in field.key or 'secret' in field.key) else '' }}"
+               {% if 'key' in field.key or 'token' in field.key or 'secret' in field.key %}autocomplete="off"{% endif %}>
+      </div>
+      {% endfor %}
+
+      <div class="wizard-actions">
+        <button class="btn btn-primary btn-sm" onclick="saveAndTest('{{ svc_id }}')">
+          💾 Save & Test Connection
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="saveOnly('{{ svc_id }}')">
+          💾 Save Only
+        </button>
+        <span id="status-{{ svc_id }}" style="font-size:.8rem;"></span>
+      </div>
+      <div class="test-result" id="test-result-{{ svc_id }}"></div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Quick actions -->
+  <div style="margin-top:1.5rem;padding:1rem;background:rgba(6,214,199,.05);border:1px solid rgba(6,214,199,.15);border-radius:12px;">
+    <h3 style="font-size:.95rem;margin:0 0 .5rem;">⚡ Quick Actions</h3>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" onclick="testAll()">🧪 Test All Connections</button>
+      <a href="{{ url_for('admin.settings') }}" class="btn btn-ghost btn-sm">⚙️ Back to Settings</a>
+      <a href="{{ url_for('health.dashboard') }}" class="btn btn-ghost btn-sm">🏥 Health Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<!-- Aquila chat toggle -->
+<button class="awc-toggle" onclick="toggleAquilaChat()" title="Ask Aquila for help">🦉</button>
+
+<!-- Aquila wizard chat -->
+<div class="aquila-wizard-chat" id="aquilaWizardChat">
+  <div class="awc-header">
+    <span>🦉 Aquila — Setup Assistant</span>
+    <button onclick="toggleAquilaChat()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;">&times;</button>
+  </div>
+  <div class="awc-messages" id="awcMessages">
+    <div class="awc-msg bot">Hi! I'm Aquila. I can help you set up any integration. Just ask me — for example: <strong>"How do I set up Twilio?"</strong> or <strong>"What's my OpenRouter API key?"</strong></div>
+  </div>
+  <div class="awc-input-row">
+    <input type="text" id="awcInput" placeholder="Ask Aquila for help..." onkeydown="if(event.key==='Enter')sendAquilaMsg()">
+    <button class="btn btn-primary btn-sm" onclick="sendAquilaMsg()">Send</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Card toggle ──────────────────────────────────────────────────────────────
+function toggleCard(svcId) {
+  const card = document.getElementById('card-' + svcId);
+  card.classList.toggle('expanded');
+}
+
+// ── Get field values for a service ───────────────────────────────────────────
+function getFieldValues(svcId) {
+  const inputs = document.querySelectorAll('[id^="field-' + svcId + '-"]');
+  const values = {};
+  inputs.forEach(inp => {
+    const key = inp.id.replace('field-' + svcId + '-', '');
+    values[key] = inp.value.trim();
+  });
+  return values;
+}
+
+// ── Save & Test ──────────────────────────────────────────────────────────────
+async function saveAndTest(svcId) {
+  const values = getFieldValues(svcId);
+  const statusEl = document.getElementById('status-' + svcId);
+  const resultEl = document.getElementById('test-result-' + svcId);
+  statusEl.textContent = '⏳ Testing...';
+  resultEl.className = 'test-result';
+  resultEl.style.display = 'none';
+
+  try {
+    const resp = await fetch('/setup/api/save-and-test', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({service_id: svcId, values: values}),
+    });
+    const data = await resp.json();
+    resultEl.textContent = data.message;
+    resultEl.className = 'test-result show ' + (data.ok ? 'success' : 'error');
+    statusEl.textContent = data.ok ? '✅ Saved & tested' : '❌ Fix issues above';
+    updateProgress();
+  } catch (e) {
+    resultEl.textContent = '⚠️ Error: ' + e;
+    resultEl.className = 'test-result show error';
+    statusEl.textContent = '❌ Error';
+  }
+}
+
+// ── Save only ────────────────────────────────────────────────────────────────
+async function saveOnly(svcId) {
+  const values = getFieldValues(svcId);
+  const statusEl = document.getElementById('status-' + svcId);
+  statusEl.textContent = '⏳ Saving...';
+  try {
+    const resp = await fetch('/setup/api/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({service_id: svcId, values: values}),
+    });
+    const data = await resp.json();
+    statusEl.textContent = data.ok ? '✅ Saved' : '❌ Error';
+    updateProgress();
+  } catch (e) {
+    statusEl.textContent = '❌ Error: ' + e;
+  }
+}
+
+// ── Test all ─────────────────────────────────────────────────────────────────
+async function testAll() {
+  const cards = document.querySelectorAll('.service-card');
+  for (const card of cards) {
+    const svcId = card.id.replace('card-', '');
+    card.classList.add('expanded');
+    await saveAndTest(svcId);
+    await new Promise(r => setTimeout(r, 500));
+  }
+}
+
+// ── Update progress bar ──────────────────────────────────────────────────────
+async function updateProgress() {
+  try {
+    const resp = await fetch('/setup/api/status');
+    const data = await resp.json();
+    document.getElementById('progressBar').style.width = data.completion_pct + '%';
+    document.getElementById('progressText').textContent = data.completion_pct + '% complete';
+    // Update status badges
+    for (const [svcId, st] of Object.entries(data.status)) {
+      const card = document.getElementById('card-' + svcId);
+      if (!card) continue;
+      const badge = card.querySelector('.service-status');
+      if (st.configured) {
+        badge.className = 'service-status status-done';
+        badge.textContent = '✅ Configured';
+      } else if (st.partial) {
+        badge.className = 'service-status status-partial';
+        badge.textContent = '⚠️ Partial';
+      } else {
+        badge.className = 'service-status status-missing';
+        badge.textContent = '❌ Not Set Up';
+      }
+    }
+  } catch (e) {}
+}
+
+// ── Aquila chat ──────────────────────────────────────────────────────────────
+let aquilaChatOpen = false;
+function toggleAquilaChat() {
+  aquilaChatOpen = !aquilaChatOpen;
+  document.getElementById('aquilaWizardChat').classList.toggle('open', aquilaChatOpen);
+  if (aquilaChatOpen) document.getElementById('awcInput').focus();
+}
+
+async function sendAquilaMsg() {
+  const input = document.getElementById('awcInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  const msgsEl = document.getElementById('awcMessages');
+  msgsEl.innerHTML += `<div class="awc-msg user">${escapeHtml(msg)}</div>`;
+  msgsEl.innerHTML += `<div class="awc-msg bot">⏳ Thinking...</div>`;
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  try {
+    const resp = await fetch('/willie/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: msg,
+        history: [],
+        context: 'Setup Wizard',
+      }),
+    });
+    const data = await resp.json();
+    const botMsgs = msgsEl.querySelectorAll('.awc-msg.bot');
+    const lastBot = botMsgs[botMsgs.length - 1];
+    lastBot.textContent = data.reply || data.error || 'Sorry, I had an issue. Try again.';
+  } catch (e) {
+    const botMsgs = msgsEl.querySelectorAll('.awc-msg.bot');
+    const lastBot = botMsgs[botMsgs.length - 1];
+    lastBot.textContent = '⚠️ Connection error. Is the app running?';
+  }
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+{% endblock %}
