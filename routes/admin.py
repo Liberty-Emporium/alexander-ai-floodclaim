@@ -5,7 +5,7 @@ from models.database import get_db, get_setting, set_setting, hash_pw, check_pw
 from utils.auth_decorators import login_required, admin_required
 from utils.security import csrf_required
 from utils.helpers import _validate_password
-from routes.willie import _read_brain_file
+from routes.willie import _read_brain_file, _get_default_brain
 from services.email import send_email
 import json
 import datetime

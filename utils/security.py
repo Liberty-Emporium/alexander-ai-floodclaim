@@ -65,6 +65,9 @@ def csrf_protect():
         import re
         if re.search(r'/claims/\d+/sign$', request.path):
             return  # Public signature endpoint — no session
+        # JSON API calls (AJAX/fetch) use session cookies + Bearer tokens, skip CSRF
+        if request.is_json:
+            return
         if not _validate_csrf():
             abort(403)
 

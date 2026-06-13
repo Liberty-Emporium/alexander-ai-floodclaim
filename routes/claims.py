@@ -746,7 +746,7 @@ def claim_qr(claim_id):
         token = secrets.token_urlsafe(32)
         db.execute('INSERT INTO client_portal_tokens (claim_id, token) VALUES (?,?)', (claim_id, token))
         db.commit()
-    upload_url = url_for('mobile_upload_page', claim_id=claim_id, t=token, _external=True)
+    upload_url = url_for('claims.mobile_upload_page', claim_id=claim_id, t=token, _external=True)
     # Generate QR as SVG using a simple URL-based QR service (no lib needed)
     qr_img_url = f'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={upload_url}'
     return render_template('qr_upload.html', claim=claim, upload_url=upload_url, qr_img_url=qr_img_url)

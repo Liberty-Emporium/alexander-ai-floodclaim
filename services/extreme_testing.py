@@ -212,6 +212,17 @@ class AquilaTestRunner:
 
     def _login(self):
         """Log in as admin user."""
+        # Make sure DB is initialized
+        try:
+            from models.database import _set_paths, init_db, DB_PATH, DATA_DIR
+            if not DB_PATH:
+                db_path = _get_db()
+                data_dir = os.path.dirname(db_path)
+                _set_paths(db_path, data_dir)
+            init_db()
+        except Exception as e:
+            pass  # DB may already be initialized
+
         # Get admin credentials from DB
         try:
             db = sqlite3.connect(_get_db())
@@ -408,9 +419,9 @@ class AquilaTestRunner:
                           data={'status': 'In Progress'}, category=category)
         if resp and resp.status_code in (200, 302):
             # Verify status changed
-            db = sqlite3.connect(_get_db())
-            row = db.execute('SELECT status FROM claims WHERE id=?', (claim_id,)).fetchone()
-            db.close()
+            with self.app.app_context():
+                from models.database import get_db
+                row = get_db().execute('SELECT status FROM claims WHERE id=?', (claim_id,)).fetchone()
             if row and row[0] == 'In Progress':
                 self._log(category, "Update status", "pass", "Status -> In Progress")
             else:
@@ -429,10 +440,10 @@ class AquilaTestRunner:
         room_id = None
         if resp and resp.status_code in (200, 302):
             # Extract room ID
-            db = sqlite3.connect(_get_db())
-            row = db.execute('SELECT id FROM rooms WHERE claim_id=? AND name=? ORDER BY id DESC LIMIT 1',
-                             (claim_id, 'Living Room')).fetchone()
-            db.close()
+            with self.app.app_context():
+                from models.database import get_db
+                row = get_db().execute('SELECT id FROM rooms WHERE claim_id=? AND name=? ORDER BY id DESC LIMIT 1',
+                                 (claim_id, 'Living Room')).fetchone()
             if row:
                 room_id = row[0]
                 self._log(category, "Add room", "pass", f"Room ID: {room_id}")
@@ -452,9 +463,9 @@ class AquilaTestRunner:
             self._log(category, "Add line item", "pass" if resp and resp.status_code in (200, 302) else "fail")
 
         # 8. Verify claim total recalculated
-        db = sqlite3.connect(_get_db())
-        row = db.execute('SELECT total_estimate FROM claims WHERE id=?', (claim_id,)).fetchone()
-        db.close()
+        with self.app.app_context():
+            from models.database import get_db
+            row = get_db().execute('SELECT total_estimate FROM claims WHERE id=?', (claim_id,)).fetchone()
         if row and row[0] > 0:
             self._log(category, "Recalculate total", "pass", f"Total: ${row[0]:,.2f}")
         else:
@@ -468,9 +479,9 @@ class AquilaTestRunner:
         resp = self._post(f'/claims/{claim_id}/delete', data={}, category=category)
         if resp and resp.status_code in (200, 302):
             # Verify deleted
-            db = sqlite3.connect(_get_db())
-            row = db.execute('SELECT id FROM claims WHERE id=?', (claim_id,)).fetchone()
-            db.close()
+            with self.app.app_context():
+                from models.database import get_db
+                row = get_db().execute('SELECT id FROM claims WHERE id=?', (claim_id,)).fetchone()
             if not row:
                 self._log(category, "Delete claim", "pass", f"Claim {claim_id} removed")
             else:
@@ -497,13 +508,14 @@ class AquilaTestRunner:
                 self._log(category, f"Pipeline column: {col}", "warn", "Column not found")
 
         # Create a test claim to move through pipeline
-        db = sqlite3.connect(_get_db())
-        cur = db.execute('''INSERT INTO claims (claim_number, client_name, property_address, flood_date, status)
-            VALUES (?,?,?,?,?)''', (f'PIPE-TEST-{int(time.time())}', 'Pipeline Test', '456 Pipe St',
-                                     '2026-06-01', 'New'))
-        db.commit()
-        claim_id = cur.lastrowid
-        db.close()
+        with self.app.app_context():
+            from models.database import get_db
+            db = get_db()
+            cur = db.execute('''INSERT INTO claims (claim_number, client_name, property_address, flood_date, status)
+                VALUES (?,?,?,?,?)''', (f'PIPE-TEST-{int(time.time())}', 'Pipeline Test', '456 Pipe St',
+                                         '2026-06-01', 'New'))
+            db.commit()
+            claim_id = cur.lastrowid
 
         if claim_id:
             # Move through pipeline stages
@@ -515,19 +527,19 @@ class AquilaTestRunner:
                 }, category=category)
 
                 # Verify in DB
-                db = sqlite3.connect(_get_db())
-                row = db.execute('SELECT status FROM claims WHERE id=?', (claim_id,)).fetchone()
-                db.close()
+                with self.app.app_context():
+                    from models.database import get_db
+                    row = get_db().execute('SELECT status FROM claims WHERE id=?', (claim_id,)).fetchone()
                 if row and row[0] == stage:
                     self._log(category, f"Move to {stage}", "pass")
                 else:
                     self._log(category, f"Move to {stage}", "fail", f"DB shows: {row[0] if row else 'N/A'}")
 
             # Cleanup
-            db = sqlite3.connect(_get_db())
-            db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
-            db.commit()
-            db.close()
+            with self.app.app_context():
+                from models.database import get_db
+                get_db().execute('DELETE FROM claims WHERE id=?', (claim_id,))
+                get_db().commit()
 
     def test_schedule(self):
         """Test scheduling functionality."""
@@ -605,14 +617,16 @@ class AquilaTestRunner:
         """Test QR code generation and portal upload flow."""
         category = "qr_portal"
 
-        # Create a test claim
-        db = sqlite3.connect(_get_db())
-        cur = db.execute('''INSERT INTO claims (claim_number, client_name, property_address, flood_date, status)
-            VALUES (?,?,?,?,?)''', (f'QR-TEST-{int(time.time())}', 'QR Test', '321 QR Blvd',
-                                     '2026-06-01', 'New'))
-        db.commit()
-        claim_id = cur.lastrowid
-        db.close()
+        # Create a test claim via the app's DB (same connection the routes use)
+        from flask import g as _g
+        with self.app.app_context():
+            from models.database import get_db
+            db = get_db()
+            cur = db.execute('''INSERT INTO claims (claim_number, client_name, property_address, flood_date, status)
+                VALUES (?,?,?,?,?)''', (f'QR-TEST-{int(time.time())}', 'QR Test', '321 QR Blvd',
+                                         '2026-06-01', 'New'))
+            db.commit()
+            claim_id = cur.lastrowid
 
         if not claim_id:
             self._log(category, "QR tests", "fail", "Could not create test claim")
@@ -656,11 +670,11 @@ class AquilaTestRunner:
         self._log(category, "QR code page", "pass" if resp and resp.status_code == 200 else "fail")
 
         # Cleanup
-        db = sqlite3.connect(_get_db())
-        db.execute('DELETE FROM claims WHERE id=?', (claim_id,))
-        db.execute('DELETE FROM client_portal_tokens WHERE claim_id=?', (claim_id,))
-        db.commit()
-        db.close()
+        with self.app.app_context():
+            from models.database import get_db
+            get_db().execute('DELETE FROM claims WHERE id=?', (claim_id,))
+            get_db().execute('DELETE FROM client_portal_tokens WHERE claim_id=?', (claim_id,))
+            get_db().commit()
 
     def test_analytics(self):
         """Test analytics page."""
@@ -694,9 +708,9 @@ class AquilaTestRunner:
         category = "ai"
 
         # 1. Check OpenRouter API key is configured
-        db = sqlite3.connect(_get_db())
-        key = db.execute("SELECT value FROM settings WHERE key='openrouter_api_key'").fetchone()
-        db.close()
+        with self.app.app_context():
+            from models.database import get_db
+            key = get_db().execute("SELECT value FROM settings WHERE key='openrouter_api_key'").fetchone()
 
         if key and key[0]:
             self._log(category, "OpenRouter key configured", "pass")
@@ -707,26 +721,47 @@ class AquilaTestRunner:
             else:
                 self._log(category, "OpenRouter key", "fail", "No API key in DB or environment")
 
-        # 2. Check brain files loaded
+        # 2. Initialize brain files if not already done
+        from flask import current_app as _ca
+        with self.app.app_context():
+            from models.database import get_setting, set_setting
+            from routes.willie import _read_brain_file, _get_default_brain
+            import os
+            brain_dir = os.path.join(os.path.dirname(__file__), '..', 'brain')
+            for fname, setting_key in [
+                ('IDENTITY.md', 'brain_identity_md'),
+                ('SOUL.md', 'brain_soul_md'),
+                ('MEMORY.md', 'brain_memory_md'),
+            ]:
+                fpath = os.path.join(brain_dir, fname)
+                content = _read_brain_file(fpath, setting_key)
+                if content:
+                    set_setting(setting_key, content)
+            for setting_key in ['brain_system_prompt', 'brain_photo_prompt']:
+                if not get_setting(setting_key):
+                    set_setting(setting_key, _get_default_brain(setting_key))
+
+        # 3. Check brain files loaded
         brain_keys = ['brain_identity_md', 'brain_soul_md', 'brain_memory_md',
                       'brain_system_prompt', 'brain_photo_prompt']
         missing_brains = []
-        db = sqlite3.connect(_get_db())
-        for bk in brain_keys:
-            row = db.execute("SELECT value FROM settings WHERE key=?", (bk,)).fetchone()
-            if not row or not row[0]:
-                missing_brains.append(bk)
-        db.close()
+        with self.app.app_context():
+            from models.database import get_db
+            db = get_db()
+            for bk in brain_keys:
+                row = db.execute("SELECT value FROM settings WHERE key=?", (bk,)).fetchone()
+                if not row or not row[0]:
+                    missing_brains.append(bk)
 
         if not missing_brains:
             self._log(category, "Brain files loaded", "pass", f"All {len(brain_keys)} brain files present")
         else:
             self._log(category, "Brain files loaded", "fail", f"Missing: {', '.join(missing_brains)}")
 
-        # 3. Check vision key configured
-        db = sqlite3.connect(_get_db())
-        vision_key = db.execute("SELECT value FROM settings WHERE key='ai_vision_key' OR key='openrouter_api_key' LIMIT 1").fetchone()
-        db.close()
+        # 4. Check vision key configured
+        with self.app.app_context():
+            from models.database import get_db
+            vision_key = get_db().execute("SELECT value FROM settings WHERE key='ai_vision_key' OR key='openrouter_api_key' LIMIT 1").fetchone()
         if vision_key and vision_key[0]:
             self._log(category, "AI model key", "pass")
         else:
@@ -776,9 +811,9 @@ class AquilaTestRunner:
 
         user_id = None
         if resp and resp.status_code in (200, 302):
-            db = sqlite3.connect(_get_db())
-            user = db.execute('SELECT id FROM users WHERE email=?', (test_email,)).fetchone()
-            db.close()
+            with self.app.app_context():
+                from models.database import get_db
+                user = get_db().execute('SELECT id FROM users WHERE email=?', (test_email,)).fetchone()
             if user:
                 user_id = user[0]
                 self._log(category, "Add team member", "pass", f"User ID: {user_id}")
@@ -801,9 +836,9 @@ class AquilaTestRunner:
         if user_id:
             resp = self._post(f'/admin/team/{user_id}/deactivate', data={}, category=category)
             if resp and resp.status_code in (200, 302):
-                db = sqlite3.connect(_get_db())
-                row = db.execute('SELECT is_active FROM users WHERE id=?', (user_id,)).fetchone()
-                db.close()
+                with self.app.app_context():
+                    from models.database import get_db
+                    row = get_db().execute('SELECT is_active FROM users WHERE id=?', (user_id,)).fetchone()
                 if row and row[0] == 0:
                     self._log(category, "Deactivate member", "pass")
                 else:
@@ -820,9 +855,9 @@ class AquilaTestRunner:
         if user_id:
             resp = self._post(f'/admin/team/{user_id}/delete', data={}, category=category)
             if resp and resp.status_code in (200, 302):
-                db = sqlite3.connect(_get_db())
-                row = db.execute('SELECT id FROM users WHERE id=?', (user_id,)).fetchone()
-                db.close()
+                with self.app.app_context():
+                    from models.database import get_db
+                    row = get_db().execute('SELECT id FROM users WHERE id=?', (user_id,)).fetchone()
                 if not row:
                     self._log(category, "Delete team member", "pass")
                 else:
@@ -855,9 +890,9 @@ class AquilaTestRunner:
         self._log(category, "Save settings", "pass" if resp and resp.status_code in (200, 302) else "fail")
 
         # Verify saved
-        db = sqlite3.connect(_get_db())
-        row = db.execute("SELECT value FROM settings WHERE key='ai_vision_model'").fetchone()
-        db.close()
+        with self.app.app_context():
+            from models.database import get_db
+            row = get_db().execute("SELECT value FROM settings WHERE key='ai_vision_model'").fetchone()
         if row and row[0] == 'openrouter/auto':
             self._log(category, "Verify saved setting", "pass", "ai_vision_model = openrouter/auto")
         else:
