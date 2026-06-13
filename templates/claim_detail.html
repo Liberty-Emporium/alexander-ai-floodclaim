@@ -164,7 +164,7 @@
     <a href="{{ url_for('aquila.aquila_panel', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">🦅 Aquila 3D</a>
     <a href="{{ url_for('enhanced.nfip_forms_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">📋 NFIP Forms</a>
     <a href="{{ url_for('enhanced.supplement_page', claim_id=claim.id) }}" class="btn btn-ghost btn-sm">➕ Supplement</a>
-    <a href="{{ url_for('reports.generate_portal_link', claim_id=claim.id) }}" class="btn btn-ghost btn-sm" onclick="event.preventDefault(); fetch('{{ url_for('reports.generate_portal_link', claim_id=claim.id) }}', {method:'POST'}).then(r=>r.json()).then(d=>{if(d.portal_url){prompt('Client portal link:', d.portal_url)}})">🔗 Client Portal</a>
+    <a href="{{ url_for('portal.generate_portal_link', claim_id=claim.id) }}" class="btn btn-ghost btn-sm" onclick="event.preventDefault(); fetch('{{ url_for('portal.generate_portal_link', claim_id=claim.id) }}', {method:'POST'}).then(r=>r.json()).then(d=>{if(d.portal_url){prompt('Client portal link:', d.portal_url)}})">🔗 Client Portal</a>
     <a href="{{ url_for('claims.submit_package_page', claim_id=claim.id) }}" class="btn btn-primary btn-sm">📤 Submit to Carrier</a>
     <a href="{{ url_for('reports.report', claim_id=claim.id) }}" class="btn btn-cyan btn-sm" target="_blank">📄 Report</a>
     <a href="{{ url_for('claims.compliance', claim_id=claim.id) }}" class="btn btn-amber btn-sm">✅ NFIP Check</a>
