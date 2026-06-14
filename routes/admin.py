@@ -5,7 +5,7 @@ from models.database import get_db, get_setting, set_setting, hash_pw, check_pw,
 from utils.auth_decorators import login_required, admin_required
 from utils.security import csrf_required
 from utils.helpers import _validate_password
-from routes.willie import _read_brain_file, _get_default_brain
+from routes.willie import _read_brain_file, _get_default_brain, FEEDBACK_SYSTEM_PROMPT
 from services.email import send_email
 import json
 import datetime
@@ -872,10 +872,10 @@ def feedback_chat():
     # Add current message
     messages.append({'role': 'user', 'content': message})
 
-    # Call OpenRouter
-    api_key = os.environ.get('OPENROUTER_API_KEY', '') or get_setting('openrouter_api_key')
+    # Call OpenRouter — use the canonical resolver (DB key -> env var)
+    api_key = get_openrouter_key()
     if not api_key:
-        return jsonify({'error': 'OpenRouter API key not configured. Please contact Jay to set it up.'}), 500
+        return jsonify({'error': 'OpenRouter API key not configured. Add it in Settings → AI Integration.'}), 500
 
     try:
         response = _req.post(
@@ -891,7 +891,14 @@ def feedback_chat():
             },
             timeout=30,
         )
+        if response.status_code == 401:
+            return jsonify({'error': 'Invalid or expired OpenRouter API key. Update it in Settings → AI Integration.'}), 500
+        if response.status_code == 402:
+            return jsonify({'error': 'OpenRouter account is out of credits. Add credits at openrouter.ai.'}), 500
         result = response.json()
+        if 'error' in result:
+            msg = result['error'].get('message', str(result['error'])) if isinstance(result['error'], dict) else str(result['error'])
+            return jsonify({'error': f'AI error: {msg}'}), 500
         reply = result['choices'][0]['message']['content']
     except Exception as e:
         return jsonify({'error': f'AI service unavailable: {str(e)}'}), 500
@@ -916,9 +923,9 @@ def feedback_report(conv_id):
     ).fetchall()
     conversation_text = '\n\n'.join([f"[{m['role']}]: {m['content']}" for m in msgs])
 
-    api_key = os.environ.get('OPENROUTER_API_KEY', '') or get_setting('openrouter_api_key')
+    api_key = get_openrouter_key()
     if not api_key:
-        return jsonify({'error': 'OpenRouter API key not configured.'}), 500
+        return jsonify({'error': 'OpenRouter API key not configured. Add it in Settings → AI Integration.'}), 500
 
     report_prompt = f"""Based on this client feedback conversation, create a structured requirements document.
 
@@ -968,7 +975,14 @@ OUTPUT FORMAT:
             },
             timeout=30,
         )
+        if response.status_code == 401:
+            return jsonify({'error': 'Invalid or expired OpenRouter API key. Update it in Settings → AI Integration.'}), 500
+        if response.status_code == 402:
+            return jsonify({'error': 'OpenRouter account is out of credits. Add credits at openrouter.ai.'}), 500
         result = response.json()
+        if 'error' in result:
+            msg = result['error'].get('message', str(result['error'])) if isinstance(result['error'], dict) else str(result['error'])
+            return jsonify({'error': f'AI error: {msg}'}), 500
         report = result['choices'][0]['message']['content']
     except Exception as e:
         return jsonify({'error': f'AI service unavailable: {str(e)}'}), 500
