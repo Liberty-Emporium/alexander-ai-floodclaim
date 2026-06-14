@@ -17,6 +17,53 @@ def health():
     return jsonify({'status': 'ok', 'ai_configured': ai_configured})
 
 
+@bp.route('/api/ai-selftest')
+def ai_selftest():
+    """Validate the configured OpenRouter key with a tiny live call.
+    Returns the real outcome (valid / invalid / out-of-credits / error) WITHOUT
+    leaking the key. Public so AI health can be verified without admin login."""
+    import requests as _req
+    key = ''
+    try:
+        key = get_openrouter_key()
+    except Exception:
+        pass
+    if not key:
+        return jsonify({'ok': False, 'state': 'no_key',
+                        'message': 'No OpenRouter key configured (DB or env).'})
+    try:
+        r = _req.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+            json={'model': 'openrouter/auto',
+                  'messages': [{'role': 'user', 'content': 'ping'}],
+                  'max_tokens': 1},
+            timeout=20,
+        )
+        if r.status_code == 401:
+            return jsonify({'ok': False, 'state': 'invalid_key', 'http': 401,
+                            'message': 'Key is invalid or expired (401).'})
+        if r.status_code == 402:
+            return jsonify({'ok': False, 'state': 'no_credits', 'http': 402,
+                            'message': 'Key valid but account out of credits (402).'})
+        if r.status_code == 429:
+            return jsonify({'ok': True, 'state': 'rate_limited', 'http': 429,
+                            'message': 'Key works (rate-limited right now, but valid).'})
+        d = r.json()
+        if 'error' in d:
+            msg = d['error'].get('message', str(d['error'])) if isinstance(d['error'], dict) else str(d['error'])
+            return jsonify({'ok': False, 'state': 'api_error', 'http': r.status_code,
+                            'message': msg[:200]})
+        if 'choices' in d:
+            return jsonify({'ok': True, 'state': 'working', 'http': r.status_code,
+                            'message': 'Key works — AI is ready.'})
+        return jsonify({'ok': False, 'state': 'unexpected', 'http': r.status_code,
+                        'message': f'Unexpected response (HTTP {r.status_code}).'})
+    except Exception as e:
+        return jsonify({'ok': False, 'state': 'network_error',
+                        'message': f'Could not reach OpenRouter: {str(e)[:160]}'})
+
+
 @bp.route('/seed', methods=['GET', 'POST'])
 def seed_admin():
     """Create admin user. Call once to set up initial admin."""
