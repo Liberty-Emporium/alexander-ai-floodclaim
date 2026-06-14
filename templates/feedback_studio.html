@@ -227,11 +227,11 @@
 
   <!-- Welcome Screen -->
   <div class="fb-welcome" id="fbWelcome">
-    <div class="fb-welcome-icon">🎤</div>
-    <h2>Tell Us What You Want</h2>
+    <div class="fb-welcome-icon">💬</div>
+    <h2>Tell Us What You Think</h2>
     <p>
-      Talk to our AI about your app. Tell it what you need, what you'd like to change, or what's missing.
-      The AI saves everything we need to make your custom app better.
+      Talk to our AI about FloodClaims Pro. Report a bug, request a feature, or tell us what's
+      working and what's frustrating. The AI captures everything so we can make the app better for you.
     </p>
     <button class="fb-start-btn" onclick="fbStartSession()">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -253,7 +253,7 @@
     <div class="fb-input-area">
       <div class="fb-input-row">
         <textarea class="fb-textarea" id="fbInput"
-          placeholder="Type what you want changed in the app…"
+          placeholder="Report a bug, request a feature, or share feedback…"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();fbSend();}"
           rows="1"></textarea>
         <button class="fb-send-btn" id="fbSendBtn" onclick="fbSend()">Send</button>
@@ -290,7 +290,7 @@ function fbStartSession() {
   // Auto-start with AI greeting
   messages.push({
     role: 'assistant',
-    content: "Hey there! 👋 I'm here to help you think through what you want in your custom app. You can just start talking — tell me anything that's on your mind about the app. What kind of business do you run?",
+    content: "Hey there! 👋 I'm here to gather your feedback on FloodClaims Pro. Tell me anything that's on your mind — a bug you ran into, a feature you'd love, or something that's working great (or driving you nuts). What would you like to share?",
     created_at: new Date().toLocaleTimeString()
   });
   fbRenderMessages();
@@ -363,7 +363,7 @@ async function fbGenerateReport() {
     // Find conversation ID from messages (we don't track it client-side for simplicity)
     // Instead, send ALL messages to the AI and have it generate a report directly
     const conversationText = messages.map(m => `[${m.role}]: ${m.content}`).join('\n\n');
-    const reportPrompt = `Based on this client conversation, create a structured app requirements document.\n\nCONVERSATION:\n${conversationText}\n\nCreate a detailed requirements report including:\n# Client Requirements Report\n## What They Want\n## Key Features Needed\n## How They Work Today\n## What's Most Important\n## Recommended Next Steps\n\nFormat it nicely with headers and bullet points.`;
+    const reportPrompt = `Based on this feedback conversation about FloodClaims Pro, create a structured feedback report.\n\nCONVERSATION:\n${conversationText}\n\nCreate a detailed feedback report including:\n# FloodClaims Pro Feedback Report\n## Summary\n## Bugs Reported\n## Feature Requests\n## Improvements Suggested\n## What's Working Well\n## Priority (Blocking / Important / Nice-to-have)\n## Recommended Next Steps\n\nFor each item, note WHERE in the app it applies. Format it nicely with headers and bullet points.`;
 
     const resp = await fetch('/admin/feedback/chat', {
       method: 'POST',
