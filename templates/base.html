@@ -1527,6 +1527,25 @@ const HELP_CONTENT = {
       </div>
       <div class="help-tip"><strong>Claims count</strong> shows how many active claims each adjuster has. Use this to balance workload evenly.</div>
     `
+  },
+  feedback: {
+    title: '💬 Feedback Studio',
+    html: `
+      <div class="help-tip"><strong>Tell us how to make FloodClaims Pro better.</strong> Chat with the AI to report bugs, request features, or share what's working and what's frustrating. Everything is saved so Jay's team can act on it.</div>
+      <div class="help-section">
+        <div class="help-section-title">How to use it</div>
+        <div class="help-step"><div class="help-step-num">1</div><div class="help-step-body"><strong>Start a session</strong><p>Click <em>Start Talking</em>. The AI greets you and asks what's on your mind — no forms to fill out.</p></div></div>
+        <div class="help-step"><div class="help-step-num">2</div><div class="help-step-body"><strong>Describe it naturally</strong><p>Report a bug ("the AI estimate button does nothing on claim FC-2026-003"), request a feature, or just say what's annoying. The AI asks smart follow-ups to capture the details.</p></div></div>
+        <div class="help-step"><div class="help-step-num">3</div><div class="help-step-body"><strong>Get a report</strong><p>Click <em>📋 Get Report</em> and the AI turns the whole conversation into a structured feedback report — bugs, feature requests, improvements, and priorities.</p></div></div>
+        <div class="help-step"><div class="help-step-num">4</div><div class="help-step-body"><strong>Everything is saved</strong><p>Past sessions appear in the list so you and the team can review them anytime.</p></div></div>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">Tips for good feedback</div>
+        <div class="help-step"><div class="help-step-num">①</div><div class="help-step-body"><strong>For bugs:</strong> say which page, what you expected, what actually happened, and whether it happens every time.</div></div>
+        <div class="help-step"><div class="help-step-num">②</div><div class="help-step-body"><strong>For features:</strong> say who would use it and what problem it solves in your day-to-day work.</div></div>
+      </div>
+      <div class="help-tip"><strong>Note:</strong> The AI needs an OpenRouter API key (set in Settings → AI Integration) to respond. If it's not configured, you'll see a message telling you so.</div>
+    `
   }
 };
 
@@ -1547,6 +1566,7 @@ const PAGE_HELP_MAP = {
   'willie.willie':             'willie',
   'reports.report':            'report',
   'admin.settings':            'settings',
+  'admin.feedback_studio':     'feedback',
   'billing.billing':           'billing',
   'admin.team':                'team',
 };
