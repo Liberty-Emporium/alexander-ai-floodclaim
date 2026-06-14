@@ -5,7 +5,7 @@ from models.database import get_db, get_setting, set_setting, get_openrouter_key
 from utils.auth_decorators import login_required, admin_required, manager_required
 from utils.helpers import _log_activity
 from utils.security import allowed_file, csrf_required
-from services.ai import call_openrouter, ai_describe_photo, ai_describe_photo_detailed
+from services.ai import call_openrouter, ai_describe_photo, ai_analyze_photo, ai_describe_photo_detailed
 from services.email import send_email, notify_client_status_change
 from services.fema import lookup_fema_flood_zone
 from services.claims import gen_claim_number, recalc_claim
@@ -344,10 +344,10 @@ def new_claim():
                 filename = f'{secrets.token_hex(12)}.{ext}'
                 save_path = os.path.join(UPLOAD_DIR, filename)
                 photo.save(save_path)
-                ai_desc = ai_describe_photo(save_path)
+                _an = ai_analyze_photo(save_path)
                 db.execute(
-                    'INSERT INTO photos (claim_id, filename, caption, ai_description) VALUES (?,?,?,?)',
-                    (claim['id'], filename, 'Initial site photo', ai_desc))
+                    'INSERT INTO photos (claim_id, filename, caption, ai_description, estimated_cost, estimated_cost_range) VALUES (?,?,?,?,?,?)',
+                    (claim['id'], filename, 'Initial site photo', _an['description'], _an['estimated_cost'], _an['estimated_cost_range']))
         db.commit()
         _log_activity(claim['id'], f'Claim created: {claim_num}')
         flash(f'Claim {claim_num} created!', 'success')
@@ -723,10 +723,10 @@ def mobile_upload_post(claim_id):
             filename = f'{secrets.token_hex(12)}.{ext}'
             path     = os.path.join(UPLOAD_DIR, filename)
             f.save(path)
-            ai_desc = ai_describe_photo(path)
+            _an = ai_analyze_photo(path)
             db.execute(
-                'INSERT INTO photos (claim_id, room_id, filename, caption, ai_description) VALUES (?,?,?,?,?)',
-                (claim_id, room_id, filename, caption, ai_desc)
+                'INSERT INTO photos (claim_id, room_id, filename, caption, ai_description, estimated_cost, estimated_cost_range) VALUES (?,?,?,?,?,?,?)',
+                (claim_id, room_id, filename, caption, _an['description'], _an['estimated_cost'], _an['estimated_cost_range'])
             )
             saved += 1
     db.commit()

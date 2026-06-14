@@ -129,6 +129,7 @@ td{padding:.6rem .75rem;border-bottom:1px solid #f1f5f9}
           <img src="{{ request.host_url }}uploads/{{ photo.filename }}" alt="{{ photo.caption }}"/>
           {% if photo.caption %}<div class="photo-caption">{{ photo.caption }}</div>{% endif %}
           {% if photo.ai_description %}<div class="ai-note">🤖 {{ photo.ai_description }}</div>{% endif %}
+          {% if photo.estimated_cost_range %}<div class="ai-note" style="font-weight:700;color:#047857;">💲 Estimated repair: {{ photo.estimated_cost_range }}</div>{% endif %}
         </div>
         {% endfor %}
       </div>

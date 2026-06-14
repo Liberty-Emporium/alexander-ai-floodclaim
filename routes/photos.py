@@ -5,7 +5,7 @@ from models.database import get_db, get_setting
 from utils.auth_decorators import login_required
 from utils.helpers import _log_activity
 from utils.security import allowed_file, csrf_required
-from services.ai import ai_describe_photo, call_openrouter
+from services.ai import ai_describe_photo, ai_analyze_photo, call_openrouter
 import os
 import json
 import secrets
@@ -69,11 +69,14 @@ def upload_photo(claim_id):
         # PIL not available or error — save original
         file.save(save_path)
         flash_msg = 'Photo uploaded!'
-    ai_desc = ai_describe_photo(save_path)
+    analysis = ai_analyze_photo(save_path)
+    ai_desc = analysis['description']
+    est_cost = analysis['estimated_cost']
+    est_range = analysis['estimated_cost_range']
     db.execute(
-        'INSERT INTO photos (claim_id, room_id, filename, caption, ai_description) '
-        'VALUES (?,?,?,?,?)',
-        (claim_id, room_id, filename, caption, ai_desc))
+        'INSERT INTO photos (claim_id, room_id, filename, caption, ai_description, estimated_cost, estimated_cost_range) '
+        'VALUES (?,?,?,?,?,?,?)',
+        (claim_id, room_id, filename, caption, ai_desc, est_cost, est_range))
     db.commit()
     _log_activity(claim_id, f'Photo uploaded: {filename}')
     flash(flash_msg + (' AI analysis complete.' if ai_desc else
@@ -135,12 +138,19 @@ def analyze_photo_route(photo_id):
     image_path = os.path.join(UPLOAD_DIR, photo['filename'])
     if not os.path.exists(image_path):
         return jsonify({'error': 'Image file not found on disk'}), 404
-    desc = ai_describe_photo(image_path)
+    analysis = ai_analyze_photo(image_path)
+    desc = analysis['description']
     if not desc:
         return jsonify({'error': 'AI unavailable — add an OpenRouter key in ⚙️ Settings'})
-    db.execute('UPDATE photos SET ai_description=? WHERE id=?', (desc, photo_id))
+    db.execute('UPDATE photos SET ai_description=?, estimated_cost=?, estimated_cost_range=? WHERE id=?',
+               (desc, analysis['estimated_cost'], analysis['estimated_cost_range'], photo_id))
     db.commit()
-    return jsonify({'ok': True, 'description': desc})
+    return jsonify({
+        'ok': True,
+        'description': desc,
+        'estimated_cost': analysis['estimated_cost'],
+        'estimated_cost_range': analysis['estimated_cost_range'],
+    })
 
 
 

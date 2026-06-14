@@ -167,6 +167,10 @@ def init_db():
     _photo_cols = [r[1] for r in db.execute('PRAGMA table_info(photos)').fetchall()]
     if 'deleted_at' not in _photo_cols:
         db.execute('ALTER TABLE photos ADD COLUMN deleted_at TEXT DEFAULT NULL')
+    if 'estimated_cost' not in _photo_cols:
+        db.execute('ALTER TABLE photos ADD COLUMN estimated_cost REAL DEFAULT 0')
+    if 'estimated_cost_range' not in _photo_cols:
+        db.execute("ALTER TABLE photos ADD COLUMN estimated_cost_range TEXT DEFAULT ''")
     db.executescript('''
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,

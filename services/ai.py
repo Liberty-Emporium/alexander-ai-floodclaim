@@ -228,18 +228,53 @@ def _run_estimate_job(job_id, claim_id, claim, rooms, photo_analyses, photo_sect
         db.close()
 
 
-def ai_describe_photo(image_path):
-    """Describe flood damage in a photo using vision AI. Returns description or empty string."""
-    # Resolve the active key via the canonical resolver (DB setting -> env var).
-    # services/ai.py's own DB_PATH is never set after the monolith split, so its
-    # local _get_setting can't read the DB — use models.database directly.
+def _parse_cost_range(text):
+    """Extract a (low, high, 'range string') from AI text containing a dollar range.
+
+    Returns (midpoint_float, 'range str') or (0.0, '') if nothing parseable.
+    Handles formats like '$2,000 - $4,000', '$2000–$4000', '$1,500 to $3,200', '$5,000'.
+    """
+    import re as _re
+    if not text:
+        return 0.0, ''
+    # Find dollar amounts
+    nums = _re.findall(r'\$\s*([\d,]+(?:\.\d+)?)', text)
+    vals = []
+    for n in nums:
+        try:
+            vals.append(float(n.replace(',', '')))
+        except ValueError:
+            pass
+    if not vals:
+        return 0.0, ''
+    if len(vals) >= 2:
+        low, high = vals[0], vals[1]
+        if low > high:
+            low, high = high, low
+        mid = (low + high) / 2.0
+        rng = f"${low:,.0f} – ${high:,.0f}"
+        return mid, rng
+    # single value
+    v = vals[0]
+    return v, f"${v:,.0f}"
+
+
+def ai_analyze_photo(image_path):
+    """Analyze a flood-damage photo: returns {'description', 'estimated_cost', 'estimated_cost_range'}.
+
+    One vision API call produces a clean damage description PLUS a grounded
+    per-photo repair cost estimate. The cost is parsed out into structured
+    fields so it can be stored/displayed in the app's price field — NOT left
+    buried inside the description text.
+    """
+    blank = {'description': '', 'estimated_cost': 0.0, 'estimated_cost_range': ''}
     try:
         from models.database import get_openrouter_key
         key = get_openrouter_key() or OPENROUTER_KEY
     except Exception:
         key = _get_setting('openrouter_api_key') or os.environ.get('OPENROUTER_API_KEY', '') or OPENROUTER_KEY
     if not key:
-        return ''
+        return blank
     try:
         with open(image_path, 'rb') as f:
             img_b64 = base64.b64encode(f.read()).decode()
@@ -254,17 +289,14 @@ def ai_describe_photo(image_path):
                 'role': 'user',
                 'content': [
                     {'type': 'text', 'text': (
-                        'You are a licensed flood damage adjuster. Look at this photo and:\n'
-                        '1. Describe the flood/water damage you see in 2-3 sentences — be specific '
-                        'about what is damaged (walls, flooring, ceiling, cabinets, contents), the '
-                        'severity, and likely repair needs.\n'
-                        '2. On a new final line, give a rough repair cost estimate for ONLY what is '
-                        'visible in this photo, formatted EXACTLY as: "Estimated repair cost: $X,XXX – $X,XXX".\n\n'
-                        'Use these 2026 flood restoration rates to ground your estimate:\n'
-                        + _build_pricing_kb() +
-                        '\nBase the dollar range on the visible damage area and materials. Be realistic '
-                        '— include both mitigation and reconstruction where appropriate. This is a '
-                        'per-photo rough estimate, not the full claim total.'
+                        'You are a licensed flood damage adjuster. Analyze this photo and reply in '
+                        'EXACTLY this two-line format and nothing else:\n'
+                        'DESCRIPTION: <2-3 sentences describing the visible flood/water damage — what is '
+                        'damaged (walls, flooring, ceiling, cabinets, contents), severity, and likely repair needs>\n'
+                        'COST: $<low> - $<high>\n\n'
+                        'The COST is a rough repair estimate for ONLY what is visible in THIS photo '
+                        '(not the whole claim). Ground it in these 2026 flood restoration rates:\n'
+                        + _build_pricing_kb()
                     )},
                     {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}}
                 ]
@@ -274,12 +306,39 @@ def ai_describe_photo(image_path):
             max_tokens=400
         )
         if result.startswith('Error:'):
-            return ''
+            return blank
         if result.startswith('[Used fallback:'):
             result = result.split(']\n\n', 1)[-1] if ']\n\n' in result else result
-        return result
+
+        # Parse the two-line response
+        import re as _re
+        desc, cost_line = '', ''
+        for line in result.splitlines():
+            s = line.strip()
+            if _re.match(r'(?i)^description\s*:', s):
+                desc = _re.sub(r'(?i)^description\s*:\s*', '', s).strip()
+            elif _re.match(r'(?i)^cost\s*:', s):
+                cost_line = _re.sub(r'(?i)^cost\s*:\s*', '', s).strip()
+        # Fallbacks if the model didn't follow the format
+        if not desc:
+            # strip any cost-looking trailing text from the freeform result
+            desc = _re.sub(r'(?i)\bcost\s*:.*$', '', result).strip()
+        if not cost_line:
+            cost_line = result
+        mid, rng = _parse_cost_range(cost_line)
+        return {'description': desc, 'estimated_cost': mid, 'estimated_cost_range': rng}
     except Exception:
-        return ''
+        return blank
+
+
+def ai_describe_photo(image_path):
+    """Describe flood damage in a photo using vision AI. Returns description string only.
+
+    Thin wrapper over ai_analyze_photo for callers that only need the text
+    (e.g. report context, estimate prompts). Use ai_analyze_photo directly when
+    you also want the structured cost estimate.
+    """
+    return ai_analyze_photo(image_path).get('description', '')
 
 
 def ai_describe_photo_detailed(image_path, key, model):

@@ -56,6 +56,18 @@
     letter-spacing: .04em;
     margin-bottom: 0;
   }
+  .photo-cost-badge {
+    font-size: .72rem;
+    font-weight: 800;
+    color: #047857;
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(16,185,129,.3);
+    border-radius: 999px;
+    padding: 2px 8px;
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
   .photo-caption-label {
     font-size: .85rem;
     font-weight: 700;
@@ -278,6 +290,7 @@
           {% if photo.caption %}<div class="photo-caption-label">{{ photo.caption }}</div>{% endif %}
           <div class="ai-tag" style="display:flex;align-items:center;justify-content:space-between">
             <span>🤖 AI Analysis</span>
+            {% if photo.estimated_cost_range %}<span class="photo-cost-badge" title="AI estimated repair cost for this photo">💲 {{ photo.estimated_cost_range }}</span>{% endif %}
           </div>
           <p id="ai-desc-{{ photo.id }}" onclick="editAiDesc({{ photo.id }})" style="cursor:text;min-height:2em;flex:1" title="Click to edit">{{ photo.ai_description or 'No analysis yet — click 🤖 to analyze.' }}</p>
           <div class="photo-meta-row">
@@ -438,6 +451,7 @@
             {% if photo.caption %}<div class="photo-caption-label">{{ photo.caption }}</div>{% endif %}
             <div class="ai-tag" style="display:flex;align-items:center;justify-content:space-between">
               <span>🤖 AI Analysis</span>
+              {% if photo.estimated_cost_range %}<span class="photo-cost-badge" title="AI estimated repair cost for this photo">💲 {{ photo.estimated_cost_range }}</span>{% endif %}
             </div>
             <p id="ai-desc-{{ photo.id }}" onclick="editAiDesc({{ photo.id }})" style="cursor:text;min-height:2em;flex:1" title="Click to edit">{{ photo.ai_description or 'No analysis yet — click 🤖 to analyze.' }}</p>
             <div class="photo-meta-row">
@@ -949,6 +963,21 @@ async function reanalyzePhoto(photoId, btn) {
     const data = await r.json();
     if (data.description) {
       descEl.textContent = data.description;
+      // Update (or insert) the cost badge in this card's AI-tag header
+      if (data.estimated_cost_range) {
+        const card = descEl.closest('.photo-card');
+        const aiTag = card ? card.querySelector('.ai-tag') : null;
+        if (aiTag) {
+          let badge = aiTag.querySelector('.photo-cost-badge');
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'photo-cost-badge';
+            badge.title = 'AI estimated repair cost for this photo';
+            aiTag.appendChild(badge);
+          }
+          badge.textContent = '💲 ' + data.estimated_cost_range;
+        }
+      }
     } else if (data.error) {
       descEl.textContent = data.error;
     }
