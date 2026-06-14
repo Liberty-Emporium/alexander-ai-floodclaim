@@ -772,9 +772,11 @@
     border: 2px solid rgba(255,255,255,0.15) !important;
     width: 56px; height: 56px; border-radius: 50%;
     position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    cursor: grab; display: flex; align-items: center; justify-content: center;
     transition: transform .2s, box-shadow .2s;
+    touch-action: none; user-select: none;
   }
+  #aai-bubble:active { cursor: grabbing; }
   #aai-bubble:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(6,214,199,0.6) !important; }
   #aai-bubble img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
   #aai-bubble .aai-icon { font-size: 28px; }
@@ -937,11 +939,109 @@
       panel.classList.remove('open');
     } else {
       panel.classList.add('open');
+      positionPanel();
       document.getElementById('aai-input').focus();
     }
   };
 
-  bubble.addEventListener('click', function() { window.aaiToggle(); });
+  // ── Position the chat panel relative to the (possibly moved) bubble ──
+  function positionPanel() {
+    if (!panel.classList.contains('open')) return;
+    var rect = bubble.getBoundingClientRect();
+    var pw = panel.offsetWidth || 380, ph = panel.offsetHeight || 520;
+    var margin = 12;
+    // Prefer above the bubble, right-aligned to it
+    var left = rect.right - pw;
+    var top  = rect.top - ph - margin;
+    // Not enough room above? drop it below the bubble
+    if (top < 8) top = rect.bottom + margin;
+    // Clamp to viewport
+    left = Math.max(8, Math.min(left, window.innerWidth  - pw - 8));
+    top  = Math.max(8, Math.min(top,  window.innerHeight - ph - 8));
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+  }
+
+  // ── Draggable bubble (click-to-open preserved) ──
+  (function makeBubbleDraggable() {
+    var dragging = false, moved = false;
+    var startX, startY, origLeft, origTop;
+    var DRAG_THRESHOLD = 5; // px of movement before it counts as a drag, not a click
+
+    function applyBubblePos(left, top) {
+      var bw = bubble.offsetWidth || 56, bh = bubble.offsetHeight || 56;
+      left = Math.max(4, Math.min(left, window.innerWidth  - bw - 4));
+      top  = Math.max(4, Math.min(top,  window.innerHeight - bh - 4));
+      bubble.style.left = left + 'px';
+      bubble.style.top = top + 'px';
+      bubble.style.right = 'auto';
+      bubble.style.bottom = 'auto';
+    }
+
+    // Restore saved position
+    try {
+      var savedPos = JSON.parse(localStorage.getItem('aai_bubble_pos') || 'null');
+      if (savedPos && typeof savedPos.left === 'number') applyBubblePos(savedPos.left, savedPos.top);
+    } catch(e) {}
+
+    function onDown(e) {
+      var pt = e.touches ? e.touches[0] : e;
+      dragging = true; moved = false;
+      startX = pt.clientX; startY = pt.clientY;
+      var rect = bubble.getBoundingClientRect();
+      origLeft = rect.left; origTop = rect.top;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, {passive:false});
+      document.addEventListener('touchend', onUp);
+    }
+
+    function onMove(e) {
+      if (!dragging) return;
+      var pt = e.touches ? e.touches[0] : e;
+      var dx = pt.clientX - startX, dy = pt.clientY - startY;
+      if (!moved && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+        moved = true;
+        bubble.style.transition = 'none';
+        document.body.style.userSelect = 'none';
+      }
+      if (moved) {
+        if (e.cancelable) e.preventDefault();
+        applyBubblePos(origLeft + dx, origTop + dy);
+        positionPanel();
+      }
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+      bubble.style.transition = '';
+      document.body.style.userSelect = '';
+      if (dragging && moved) {
+        var rect = bubble.getBoundingClientRect();
+        try { localStorage.setItem('aai_bubble_pos', JSON.stringify({left: rect.left, top: rect.top})); } catch(e) {}
+        positionPanel();
+      } else if (dragging && !moved) {
+        window.aaiToggle(); // it was a click, not a drag
+      }
+      dragging = false;
+    }
+
+    bubble.addEventListener('mousedown', onDown);
+    bubble.addEventListener('touchstart', onDown, {passive:true});
+
+    // Keep things in-bounds on viewport resize
+    window.addEventListener('resize', function() {
+      var rect = bubble.getBoundingClientRect();
+      applyBubblePos(rect.left, rect.top);
+      positionPanel();
+    });
+  })();
+
   document.getElementById('aai-close-btn').addEventListener('click', function() { window.aaiToggle(true); });
 
   // ── Quick send buttons (via data attributes, no inline onclick) ──
