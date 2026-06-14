@@ -65,6 +65,8 @@ def csrf_protect():
         import re
         if re.search(r'/claims/\d+/sign$', request.path):
             return  # Public signature endpoint — no session
+        if re.search(r'/claims/\d+/mobile-upload$', request.path):
+            return  # Public QR mobile upload — authenticated by ?t= portal token, no session/CSRF
         # JSON API calls (AJAX/fetch) use session cookies + Bearer tokens, skip CSRF
         if request.is_json:
             return

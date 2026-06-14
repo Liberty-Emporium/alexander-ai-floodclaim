@@ -8,8 +8,15 @@ from utils.security import allowed_file, csrf_required
 from services.ai import ai_describe_photo, call_openrouter
 import os
 import json
+import secrets
 
 bp = Blueprint("photos", __name__)
+
+# UPLOAD_DIR was a module global in the old monolith but was never carried into
+# this split-out blueprint, causing a NameError on every photo upload/serve.
+# Derive it the same way app.py does (Railway volume mount, else /data).
+DATA_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '/data')
+UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
 
 @bp.route('/claims/<int:claim_id>/photo/upload', methods=['POST'])
 @login_required

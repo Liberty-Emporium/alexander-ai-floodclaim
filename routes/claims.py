@@ -17,6 +17,12 @@ import secrets
 
 bp = Blueprint("claims", __name__)
 
+# UPLOAD_DIR/DATA_DIR were module globals in the old monolith but weren't carried
+# into this blueprint, so most references to UPLOAD_DIR here raised NameError.
+# Derive them the same way app.py does (Railway volume mount, else /data).
+DATA_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '/data')
+UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
+
 
 
 

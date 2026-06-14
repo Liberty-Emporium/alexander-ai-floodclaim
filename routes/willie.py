@@ -16,6 +16,12 @@ import requests as _req
 
 bp = Blueprint("willie", __name__)
 
+# UPLOAD_DIR was a module global in the old monolith but wasn't carried into
+# this blueprint, so the photo-analysis helpers here raised NameError. Derive
+# it the same way app.py does (Railway volume mount, else /data).
+DATA_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '/data')
+UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
+
 def _read_brain_file(filepath, setting_key):
     """Read brain file from disk or return built-in default."""
     import os
