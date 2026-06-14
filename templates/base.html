@@ -901,7 +901,8 @@
       '<div class="aai-av" id="aai-chat-av">' + bubbleIcon + '</div>' +
       '<div><div class="aai-name" id="aai-chat-name">' + botName + '</div><div class="aai-sub">Flood Claims Expert</div></div>' +
       '<a class="aai-config-link" href="/admin/settings" target="_blank" title="Configure Aquila\'s identity, soul, memory & system prompt">&#x2699;&#xFE0F; Config</a>' +
-      '<button class="aai-config-link" id="aai-history-btn" style="background:none;border:none;cursor:pointer;" title="View chat history">&#x1F4DC; History</button>' +
+      '<button class="aai-config-link" id="aai-newchat-btn" style="background:none;border:none;cursor:pointer;margin-left:0;" title="Start a new chat">&#x2795; New Chat</button>' +
+      '<button class="aai-config-link" id="aai-history-btn" style="background:none;border:none;cursor:pointer;margin-left:0;" title="View chat history">&#x1F4DC; History</button>' +
       '<button class="aai-close" id="aai-close-btn">&times;</button>' +
     '</div>' +
     '<div class="aai-chat-msgs" id="aai-chat-msgs">' +
@@ -1070,6 +1071,43 @@
     chatHistory = [];
     aaiSaveHistory();
     document.getElementById('aai-history-list').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--t-muted,#64748b);font-size:.8rem;">History cleared.</div>';
+  });
+
+  // ── New Chat button ──
+  document.getElementById('aai-newchat-btn').addEventListener('click', function() {
+    // Start a fresh conversation: clear the in-memory thread, drop the saved
+    // local thread, and reset the panel back to the welcome screen. The bubble
+    // sends `history` (from chatHistory) on each request, so clearing it here
+    // gives Aquila a clean slate.
+    chatHistory = [];
+    aaiSaveHistory();
+    // Make sure we're showing the chat (not the history panel)
+    var histPanel = document.getElementById('aai-history-panel');
+    if (histPanel) histPanel.style.display = 'none';
+    var msgs = document.getElementById('aai-chat-msgs');
+    msgs.style.display = 'flex';
+    // Rebuild the welcome screen
+    msgs.innerHTML =
+      '<div class="aai-welcome" id="aai-welcome">' +
+        '<div class="aai-w-av">' + bubbleIcon + '</div>' +
+        '<div class="aai-w-title">Hey, I\u2019m ' + botName + '</div>' +
+        '<div class="aai-w-sub">Your flood damage expert. Ask me anything or tell me to take action in the app.</div>' +
+        '<div class="aai-quick-btns">' +
+          '<button class="aai-qb" data-qb="Show me a dashboard summary">&#x1F4CA; Dashboard summary</button>' +
+          '<button class="aai-qb" data-qb="List my open claims">&#x1F4CB; Open claims</button>' +
+          '<button class="aai-qb" data-qb="What are today\u2019s inspections?">&#x1F4C5; Today\u2019s schedule</button>' +
+          '<button class="aai-qb" data-qb="Walk me through creating a new claim">&#x2795; Create a claim</button>' +
+        '</div>' +
+      '</div>';
+    // Re-bind the quick-send buttons in the fresh welcome block
+    msgs.querySelectorAll('.aai-qb').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.getElementById('aai-input').value = this.getAttribute('data-qb');
+        window.aaiSend();
+      });
+    });
+    var input = document.getElementById('aai-input');
+    if (input) { input.value = ''; input.style.height = 'auto'; input.focus(); }
   });
 
   // ── Restore history messages on load ──
