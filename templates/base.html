@@ -1532,20 +1532,23 @@ const HELP_CONTENT = {
 
 // Route to help page key
 const PAGE_HELP_MAP = {
-  'dashboard':         'dashboard',
-  'new_claim':         'new_claim',
-  'claim_detail':      'claim_detail',
-  'pipeline':          'pipeline',
-  'schedule':          'schedule',
-  'notifications':     'notifications',
-  'compliance':        'compliance',
-  'analytics':         'analytics',
-  'submit_package_page': 'submit_package',
-  'willie':            'aquila',
-  'report':            'report',
-  'settings':          'settings',
-  'billing':           'billing',
-  'team':              'team',
+  // Flask endpoints are blueprint-prefixed (e.g. 'auth.dashboard'), so the
+  // keys here MUST include the blueprint name to match request.endpoint.
+  'auth.dashboard':            'dashboard',
+  'claims.new_claim':          'new_claim',
+  'claims.claim_detail':       'claim_detail',
+  'claims.claim_detail_mobile':'claim_detail',
+  'pipeline.pipeline':         'pipeline',
+  'schedule.schedule':         'schedule',
+  'schedule.notifications':    'notifications',
+  'claims.compliance':         'compliance',
+  'analytics.analytics':       'analytics',
+  'claims.submit_package_page':'submit_package',
+  'willie.willie':             'willie',
+  'reports.report':            'report',
+  'admin.settings':            'settings',
+  'billing.billing':           'billing',
+  'admin.team':                'team',
 };
 
 const CURRENT_ENDPOINT = '{{ request.endpoint }}';
