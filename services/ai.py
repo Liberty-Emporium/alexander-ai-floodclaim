@@ -254,16 +254,24 @@ def ai_describe_photo(image_path):
                 'role': 'user',
                 'content': [
                     {'type': 'text', 'text': (
-                        'You are a flood damage assessor. Describe the flood damage '
-                        'visible in this photo in 2-3 sentences. Be specific about what '
-                        'is damaged, the severity, and likely repair needs. Be professional and concise.'
+                        'You are a licensed flood damage adjuster. Look at this photo and:\n'
+                        '1. Describe the flood/water damage you see in 2-3 sentences — be specific '
+                        'about what is damaged (walls, flooring, ceiling, cabinets, contents), the '
+                        'severity, and likely repair needs.\n'
+                        '2. On a new final line, give a rough repair cost estimate for ONLY what is '
+                        'visible in this photo, formatted EXACTLY as: "Estimated repair cost: $X,XXX – $X,XXX".\n\n'
+                        'Use these 2026 flood restoration rates to ground your estimate:\n'
+                        + _build_pricing_kb() +
+                        '\nBase the dollar range on the visible damage area and materials. Be realistic '
+                        '— include both mitigation and reconstruction where appropriate. This is a '
+                        'per-photo rough estimate, not the full claim total.'
                     )},
                     {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{img_b64}'}}
                 ]
             }],
             model=model,
             key=key,
-            max_tokens=200
+            max_tokens=400
         )
         if result.startswith('Error:'):
             return ''
