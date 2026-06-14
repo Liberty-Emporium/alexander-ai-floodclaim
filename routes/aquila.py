@@ -41,7 +41,7 @@ def _get_aquila_url(path):
     return f"{AQUILA_BASE_URL}{path}"
 
 
-def _submit_aquila_job(job_type, claim_id, photo_paths, params=None):
+def _submit_aquila_job(job_type, claim_id, photo_paths, params=None, upload_dir=None):
     """Submit a job to Aquila and track it."""
     job_id = f"aq-{secrets.token_hex(8)}"
     job = {
@@ -58,17 +58,18 @@ def _submit_aquila_job(job_type, claim_id, photo_paths, params=None):
     with _jobs_lock:
         _aquila_jobs[job_id] = job
 
-    # Launch background thread
+    # Launch background thread. upload_dir is captured here in the request
+    # context and passed in — the thread has no app context to read config from.
     t = threading.Thread(
         target=_run_aquila_job,
-        args=(job_id, job_type, claim_paths, params or {}),
+        args=(job_id, job_type, photo_paths, params or {}, upload_dir or "/data/uploads"),
         daemon=True,
     )
     t.start()
     return job_id
 
 
-def _run_aquila_job(job_id, job_type, photo_paths, params):
+def _run_aquila_job(job_id, job_type, photo_paths, params, upload_dir="/data/uploads"):
     """Background thread: call Aquila API and update job status."""
     import requests as _req
 
@@ -122,7 +123,6 @@ def _run_aquila_job(job_id, job_type, photo_paths, params):
                 f.close()
             if resp.status_code == 200:
                 # Save the GLB file
-                upload_dir = current_app.config.get("UPLOAD_DIR", "/data/uploads")
                 model_filename = f"aquila_3d_{job_id}.glb"
                 model_path = os.path.join(upload_dir, model_filename)
                 with open(model_path, "wb") as f:
@@ -143,7 +143,15 @@ def _run_aquila_job(job_id, job_type, photo_paths, params):
 
     except Exception as e:
         job["status"] = "error"
-        job["error"] = str(e)
+        msg = str(e)
+        # Connection failures mean the separate Aquila 3D service isn't reachable.
+        # Give a clear, non-technical message instead of a raw stack trace.
+        if "Connection refused" in msg or "Max retries" in msg or "Failed to establish" in msg or "NewConnectionError" in msg:
+            job["error"] = ("The Aquila 3D analysis service isn't available right now. "
+                            "This feature requires the Aquila service to be running and "
+                            "configured (AQUILA_API_URL). Contact Jay to enable it.")
+        else:
+            job["error"] = msg
 
     with _jobs_lock:
         _aquila_jobs[job_id] = job
@@ -181,7 +189,7 @@ def aquila_analyze(claim_id):
         return jsonify({"ok": False, "error": "Photo files not found on disk"}), 400
 
     # Submit to Aquila
-    job_id = _submit_aquila_job("analyze", claim_id, photo_paths)
+    job_id = _submit_aquila_job("analyze", claim_id, photo_paths, upload_dir=upload_dir)
 
     return jsonify({
         "ok": True,
@@ -222,7 +230,7 @@ def aquila_generate_3d(claim_id):
     data = request.get_json(silent=True) or {}
     method = data.get("method", "auto")
 
-    job_id = _submit_aquila_job("generate_3d", claim_id, photo_paths, {"method": method})
+    job_id = _submit_aquila_job("generate_3d", claim_id, photo_paths, {"method": method}, upload_dir=upload_dir)
 
     return jsonify({
         "ok": True,
