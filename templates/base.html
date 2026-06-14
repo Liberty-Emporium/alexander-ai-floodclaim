@@ -687,9 +687,6 @@
     <a href="{{ url_for('schedule.notifications') }}" class="nav-link {% if request.endpoint=='schedule.notifications' %}active{% endif %}">
       <i data-lucide="bell" class="nav-link-icon"></i> Notifications
     </a>
-    <a href="{{ url_for('willie.willie') }}" class="nav-link {% if request.endpoint and 'willie' in request.endpoint %}active{% endif %}">
-      <i data-lucide="waves" class="nav-link-icon"></i> Aquila
-    </a>
 
     {% if session.role == 'admin' %}
     <div class="nav-section">Admin</div>
